@@ -137,6 +137,7 @@ export default function DashboardPage() {
           subtitle={`${activeTasks.length} ${t.dashboard.processing}`}
           accentColor="hsl(var(--primary))"
           onClick={() => setStatPanel("total")}
+          onSubtitleClick={() => setStatPanel("processing")}
         />
         <StatCard
           label={t.dashboard.inProgress}
@@ -144,6 +145,7 @@ export default function DashboardPage() {
           subtitle={`${review.length} ${t.dashboard.pendingReview}`}
           accentColor="#3b82f6"
           onClick={() => setStatPanel("in_progress")}
+          onSubtitleClick={() => setStatPanel("review")}
         />
         <StatCard
           label={t.dashboard.overdueCard}

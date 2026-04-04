@@ -9,6 +9,7 @@ export function StatCard({
   color,
   accentColor,
   onClick,
+  onSubtitleClick,
 }: {
   label: string;
   value: string | number;
@@ -16,12 +17,12 @@ export function StatCard({
   color?: string;
   accentColor?: string;
   onClick?: () => void;
+  onSubtitleClick?: () => void;
 }) {
   return (
     <div
       className={cn("bg-card border border-border rounded-xl p-4 relative overflow-hidden", onClick && "cursor-pointer hover:shadow-md hover:border-primary/30 transition-all focus-ring rounded-xl")}
       onClick={onClick}
-      /* When onClick is present, the div acts as a button — add keyboard and ARIA support */
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
@@ -34,7 +35,19 @@ export function StatCard({
       <p className="text-[26px] font-bold font-mono mt-1.5 -tracking-[0.5px]" style={{ color: accentColor ?? color }}>
         {value}
       </p>
-      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      {subtitle && (
+        onSubtitleClick ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onSubtitleClick(); }}
+            className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors"
+          >
+            {subtitle}
+          </button>
+        ) : (
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        )
+      )}
     </div>
   );
 }

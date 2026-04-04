@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import type { Task } from "@/lib/types";
 
-export type StatPanelType = "total" | "in_progress" | "overdue" | null;
+export type StatPanelType = "total" | "in_progress" | "overdue" | "processing" | "review" | null;
 
 interface TaskListPanelProps {
   open: boolean;
@@ -24,14 +24,25 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
     total: t.dashboard.totalTasks,
     in_progress: t.dashboard.inProgress,
     overdue: t.dashboard.overdueCard,
+    processing: t.dashboard.processing,
+    review: t.dashboard.pendingReview,
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    if (panelType === "total") return !["cancelled"].includes(task.status);
-    if (panelType === "in_progress") return task.status === "in_progress";
-    if (panelType === "overdue") return task.status === "overdue";
-    return false;
-  });
+  const filteredTasks = tasks
+    .filter((task) => {
+      if (panelType === "total") return !["cancelled"].includes(task.status);
+      if (panelType === "in_progress") return task.status === "in_progress";
+      if (panelType === "overdue") return task.status === "overdue";
+      if (panelType === "processing") return !["completed", "cancelled"].includes(task.status);
+      if (panelType === "review") return task.status === "review";
+      return false;
+    })
+    .sort((a, b) => {
+      // Sort by deadline ascending (nearest first), no-deadline items last
+      const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+      const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      return da - db;
+    });
 
   const handleTaskClick = (taskId: string) => {
     onOpenChange(false);
