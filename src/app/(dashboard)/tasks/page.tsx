@@ -11,6 +11,7 @@ import { useUIStore, useAuthStore, type TaskSortKey } from "@/lib/stores";
 import { StatusBadge, PriorityBadge, ProgressBar, UserAvatar, KPIRing, FilterChip, Button, EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";
 import { Dialog, DialogContent } from "@/components/shared/dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/shared/popover";
 import { cn } from "@/lib/utils/cn";
 import { ROLE_CONFIG, STATUS_CONFIG, PRIORITY_CONFIG, formatDate, formatRelativeDate } from "@/lib/utils/kpi";
 import { TaskDetail } from "@/components/tasks/task-detail";
@@ -147,8 +148,8 @@ export default function TasksPage() {
               {stats.total} {t.nav.tasks} · {stats.inProgress} {t.status.in_progress} · {stats.overdue} {t.status.overdue}
             </p>
           </div>
-          {/* View Switcher */}
-          <div className="flex items-center border border-border rounded-lg overflow-hidden">
+          {/* View Switcher – 3D raised tabs */}
+          <div className="flex items-center gap-1 rounded-xl bg-muted/60 dark:bg-muted/40 p-1 shadow-[inset_0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)]">
             {([
               ["grid", t.tasks.viewGrid],
               ["kanban", t.tasks.viewKanban],
@@ -159,8 +160,10 @@ export default function TasksPage() {
               <button
                 key={v}
                 onClick={() => setTaskView(v as any)}
-                className={`px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-                  taskView === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+                className={`relative px-3 py-1.5 text-[11px] font-medium rounded-lg transition-all duration-200 ${
+                  taskView === v
+                    ? "bg-background text-foreground translate-y-[-1px] shadow-[0_2px_4px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.06),inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50 dark:hover:bg-background/30 hover:shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:hover:shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
                 }`}
               >
                 {label}
@@ -892,8 +895,86 @@ function TaskCalendar({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: strin
 }
 
 /* ───── Workload View ──────────────────────────────────────────── */
+
+type BarSegmentGroup = "completed" | "in_progress" | "overdue" | "pending";
+
+const BAR_SEGMENT_CONFIG: Record<BarSegmentGroup, { color: string; statuses: string[] }> = {
+  completed:   { color: "#10b981", statuses: ["completed"] },
+  in_progress: { color: "#f59e0b", statuses: ["in_progress", "review"] },
+  overdue:     { color: "#ef4444", statuses: ["overdue"] },
+  pending:     { color: "#94a3b8", statuses: ["pending"] },
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: "#94a3b8", in_progress: "#f59e0b", review: "#f59e0b", completed: "#10b981", overdue: "#ef4444",
+};
+
+/** Clickable bar segment with popover listing tasks */
+function WorkloadBarSegment({ tasks, group, widthPct, label, onSelectTask }: {
+  tasks: Task[];
+  group: BarSegmentGroup;
+  widthPct: number;
+  label: string;
+  onSelectTask: (id: string) => void;
+}) {
+  const { color } = BAR_SEGMENT_CONFIG[group];
+  if (tasks.length === 0 || widthPct <= 0) return null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="h-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+          style={{ width: `${widthPct}%`, background: color }}
+          title={`${label}: ${tasks.length}`}
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className="w-72 max-h-64 overflow-y-auto rounded-lg border border-border bg-popover p-0 shadow-lg"
+      >
+        <div className="sticky top-0 flex items-center gap-2 border-b border-border bg-popover px-3 py-2">
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+          <span className="text-xs font-semibold">{label}</span>
+          <span className="ml-auto text-[10px] text-muted-foreground">{tasks.length}</span>
+        </div>
+        <div className="divide-y divide-border/40">
+          {tasks.map((task) => (
+            <button
+              key={task.id}
+              type="button"
+              onClick={() => onSelectTask(task.id)}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-secondary/60 focus-visible:bg-secondary/60 focus-visible:outline-none"
+            >
+              <span
+                className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                style={{ background: STATUS_COLORS[task.status] || "#6366f1" }}
+              />
+              <span className="flex-1 truncate text-xs">{task.title}</span>
+              {task.deadline && (
+                <span className="flex-shrink-0 text-[10px] text-muted-foreground">
+                  {formatDate(task.deadline)}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function TaskWorkload({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: string) => void }) {
   const { t } = useI18n();
+
+  const statusLabels: Record<BarSegmentGroup, string> = {
+    completed: t.status.completed,
+    in_progress: t.status.in_progress,
+    overdue: t.status.overdue,
+    pending: t.status.pending,
+  };
 
   // Group tasks by assignee
   const userMap = new Map<string, { name: string; avatar: string | null; role: string; tasks: Task[] }>();
@@ -916,19 +997,21 @@ function TaskWorkload({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: strin
 
   const maxCount = Math.max(...users.map((u) => u.count), 1);
 
-  const statusColors: Record<string, string> = {
-    pending: "#94a3b8", in_progress: "#f59e0b", review: "#f59e0b", completed: "#10b981", overdue: "#ef4444",
-  };
-
   if (users.length === 0) return <EmptyState title={t.tasks.noTasks} subtitle={t.tasks.noTasksSub} />;
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="divide-y divide-border/30">
         {users.map((u) => {
-          const completed = u.tasks.filter((t) => t.status === "completed").length;
-          const inProgress = u.tasks.filter((t) => ["in_progress", "review"].includes(t.status)).length;
-          const overdue = u.tasks.filter((t) => t.status === "overdue").length;
+          // Build segment data: group tasks by bar segment category
+          const segmentTasks: Record<BarSegmentGroup, Task[]> = {
+            completed: [], in_progress: [], overdue: [], pending: [],
+          };
+          for (const task of u.tasks) {
+            const group = (Object.entries(BAR_SEGMENT_CONFIG) as [BarSegmentGroup, typeof BAR_SEGMENT_CONFIG[BarSegmentGroup]][])
+              .find(([, cfg]) => cfg.statuses.includes(task.status));
+            segmentTasks[group?.[0] ?? "pending"].push(task);
+          }
 
           return (
             <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors">
@@ -941,21 +1024,19 @@ function TaskWorkload({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: strin
                 </div>
               </div>
 
-              {/* Stacked bar */}
+              {/* Stacked bar – each segment is clickable */}
               <div className="flex-1 flex items-center gap-2">
                 <div className="flex-1 h-5 bg-secondary rounded overflow-hidden flex">
-                  {completed > 0 && (
-                    <div className="h-full" style={{ width: `${(completed / maxCount) * 100}%`, background: "#10b981" }} title={`${t.status.completed}: ${completed}`} />
-                  )}
-                  {inProgress > 0 && (
-                    <div className="h-full" style={{ width: `${(inProgress / maxCount) * 100}%`, background: "#f59e0b" }} title={`${t.status.in_progress}: ${inProgress}`} />
-                  )}
-                  {overdue > 0 && (
-                    <div className="h-full" style={{ width: `${(overdue / maxCount) * 100}%`, background: "#ef4444" }} title={`${t.status.overdue}: ${overdue}`} />
-                  )}
-                  {(u.count - completed - inProgress - overdue) > 0 && (
-                    <div className="h-full" style={{ width: `${((u.count - completed - inProgress - overdue) / maxCount) * 100}%`, background: "#94a3b8" }} title={`${t.status.pending}: ${u.count - completed - inProgress - overdue}`} />
-                  )}
+                  {(["completed", "in_progress", "overdue", "pending"] as BarSegmentGroup[]).map((group) => (
+                    <WorkloadBarSegment
+                      key={group}
+                      group={group}
+                      tasks={segmentTasks[group]}
+                      widthPct={(segmentTasks[group].length / maxCount) * 100}
+                      label={statusLabels[group]}
+                      onSelectTask={onSelect}
+                    />
+                  ))}
                 </div>
                 <span className="text-xs font-mono text-muted-foreground w-6 text-right">{u.count}</span>
               </div>
@@ -967,7 +1048,7 @@ function TaskWorkload({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: strin
                     key={task.id}
                     onClick={() => onSelect(task.id)}
                     className="px-1.5 py-0.5 rounded text-[10px] truncate max-w-[90px] hover:opacity-80 transition-opacity"
-                    style={{ background: `${statusColors[task.status] || "#6366f1"}20`, color: statusColors[task.status] || "#6366f1" }}
+                    style={{ background: `${STATUS_COLORS[task.status] || "#6366f1"}20`, color: STATUS_COLORS[task.status] || "#6366f1" }}
                   >
                     {task.title}
                   </button>
