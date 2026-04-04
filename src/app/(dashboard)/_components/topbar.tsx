@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore, useNotifStore } from "@/lib/stores";
 import { useSignOut } from "@/lib/hooks/use-users";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
-import { Search, Bell, Menu, Settings, LogOut, User, Building2, Users, Building, UsersRound, ShieldCheck, Target, FileText, Landmark } from "lucide-react";
+import { Search, Bell, Menu, Settings, LogOut, User, KeyRound, Building2, Users, Building, UsersRound, ShieldCheck, Target, FileText, Landmark } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -70,6 +70,7 @@ function UserMenu() {
           <div className="py-1 max-h-[320px] overflow-y-auto">
             {[
               { href: "/settings/profile", label: "Hồ sơ cá nhân", icon: <User size={15} />, roles: ["admin", "leader", "director", "head", "team_leader", "staff"] },
+              { href: "/settings/security", label: "Đổi mật khẩu", icon: <KeyRound size={15} />, roles: ["admin", "leader", "director", "head", "team_leader", "staff"] },
               { href: "/settings/organization", label: "Tổ chức", icon: <Building2 size={15} />, roles: ["admin", "leader", "head"] },
               { href: "/settings/accounts", label: "Tài khoản", icon: <Users size={15} />, roles: ["admin", "leader", "head"] },
               { href: "/settings/centers", label: "Trung tâm", icon: <Landmark size={15} />, roles: ["admin", "leader"] },
