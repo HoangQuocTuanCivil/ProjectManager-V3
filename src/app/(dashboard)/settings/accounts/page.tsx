@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { ExcelImportButton } from "./excel-import";
+import { FileDown } from "lucide-react";
+import * as XLSX from "xlsx";
 
 const supabase = createClient();
 
@@ -174,6 +176,40 @@ export default function AccountsSettingsPage() {
     }
   };
 
+  /** Exports the current filtered user list to an Excel file with all profile fields */
+  const handleExportExcel = () => {
+    const exportData = filtered.map((u: any) => {
+      const center = (allCenters as any[]).find((c: any) => c.id === u.center_id || c.id === u.department?.center_id);
+      return {
+        "Họ tên": u.full_name,
+        "Email": u.email,
+        "Vai trò": ROLE_CONFIG[u.role as keyof typeof ROLE_CONFIG]?.label || u.role,
+        "Chức danh": u.job_title || "",
+        "Trung tâm": center?.name || "",
+        "Mã trung tâm": center?.code || "",
+        "Phòng ban": u.department?.name || "",
+        "Mã phòng ban": u.department?.code || "",
+        "Nhóm": u.team?.name || "",
+        "Số điện thoại": u.phone || "",
+        "Trạng thái": u.is_active ? "Hoạt động" : "Đã khóa",
+        "Đăng nhập cuối": u.last_login ? formatDate(u.last_login) : "Chưa",
+        "Ngày tạo": formatDate(u.created_at),
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    ws["!cols"] = [
+      { wch: 22 }, { wch: 28 }, { wch: 14 }, { wch: 18 },
+      { wch: 18 }, { wch: 10 }, { wch: 18 }, { wch: 10 },
+      { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Danh sách tài khoản");
+    XLSX.writeFile(wb, `Danh_sach_tai_khoan_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success(`Đã xuất ${exportData.length} tài khoản`);
+  };
+
   const inputClass = "mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none";
   const labelClass = "text-sm text-muted-foreground font-medium";
 
@@ -184,7 +220,10 @@ export default function AccountsSettingsPage() {
           <h2 className="text-lg font-bold">Quản lý tài khoản</h2>
           <p className="text-base text-muted-foreground mt-0.5">{users.length} người dùng</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" onClick={handleExportExcel} disabled={filtered.length === 0}>
+            <FileDown size={14} /> Xuất Excel
+          </Button>
           <ExcelImportButton
             deptCodeMap={deptCodeMap}
             teamCodeMap={teamCodeMap}
