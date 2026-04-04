@@ -6,7 +6,8 @@ import { useEffect, useRef } from "react";
  * Animated particle network background — floating nodes that form
  * connection lines when near each other. Optimized for performance:
  * - Throttled to 30fps to reduce CPU load
- * - Spatial grid partitioning avoids O(n²) distance checks
+ * - Avoids forcing reflows (getBoundingClientRect) during animation loop
+ * - Clean boundary collision logic
  * - Pauses when tab is hidden, resumes when visible
  * - Stable animation loop that never re-initializes on parent re-renders
  */
@@ -44,6 +45,8 @@ export function ParticleNetwork({ className }: { className?: string }) {
     let animFrame = 0;
     let lastTime = 0;
     let particles: Particle[] = [];
+    let width = 0;
+    let height = 0;
 
     /** Detects dark mode for adjusting particle brightness */
     const getTheme = () => {
@@ -79,22 +82,9 @@ export function ParticleNetwork({ className }: { className?: string }) {
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      particles = initParticles(rect.width, rect.height);
-    };
-
-    /** Partitions particles into a spatial grid for efficient neighbor lookups */
-    const buildGrid = (w: number, h: number) => {
-      const cellSize = CONNECTION_DISTANCE;
-      const cols = Math.ceil(w / cellSize);
-      const rows = Math.ceil(h / cellSize);
-      const grid: number[][] = new Array(cols * rows);
-      for (let i = 0; i < grid.length; i++) grid[i] = [];
-      for (let i = 0; i < particles.length; i++) {
-        const col = Math.min(Math.floor(particles[i].x / cellSize), cols - 1);
-        const row = Math.min(Math.floor(particles[i].y / cellSize), rows - 1);
-        grid[row * cols + col].push(i);
-      }
-      return { grid, cols, rows };
+      width = rect.width;
+      height = rect.height;
+      particles = initParticles(width, height);
     };
 
     /** Main render loop — moves particles, draws connections and dots */
@@ -107,55 +97,53 @@ export function ParticleNetwork({ className }: { className?: string }) {
       }
       lastTime = timestamp;
 
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
       const theme = getTheme();
 
-      ctx.clearRect(0, 0, w, h);
+      ctx.clearRect(0, 0, width, height);
 
       // Move particles, bounce off edges
       for (const p of particles) {
         p.x += p.vx;
         p.y += p.vy;
-        if (p.x < 0 || p.x > w) p.vx *= -1;
-        if (p.y < 0 || p.y > h) p.vy *= -1;
+
+        // Clean collision logic to prevent boundary traps
+        if (p.x <= 0) {
+          p.x = 0;
+          p.vx = Math.abs(p.vx);
+        } else if (p.x >= width) {
+          p.x = width;
+          p.vx = -Math.abs(p.vx);
+        }
+
+        if (p.y <= 0) {
+          p.y = 0;
+          p.vy = Math.abs(p.vy);
+        } else if (p.y >= height) {
+          p.y = height;
+          p.vy = -Math.abs(p.vy);
+        }
       }
 
-      // Draw connection lines using spatial grid neighbor lookup
-      const { grid, cols, rows } = buildGrid(w, h);
+      // Draw connection lines using standard loop (fast enough & no array GC overhead)
       const connDist2 = CONNECTION_DISTANCE * CONNECTION_DISTANCE;
-
       ctx.lineWidth = 0.8;
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const cell = grid[row * cols + col];
-          const neighborOffsets = [[0, 0], [1, 0], [0, 1], [1, 1]];
-          for (const [dc, dr] of neighborOffsets) {
-            const nc = col + dc;
-            const nr = row + dr;
-            if (nc >= cols || nr >= rows) continue;
-            const neighbor = grid[nr * cols + nc];
-            const isSame = dc === 0 && dr === 0;
-            for (let ii = 0; ii < cell.length; ii++) {
-              const startJ = isSame ? ii + 1 : 0;
-              for (let jj = startJ; jj < neighbor.length; jj++) {
-                const a = particles[cell[ii]];
-                const b = particles[neighbor[jj]];
-                const dx = a.x - b.x;
-                const dy = a.y - b.y;
-                const distSq = dx * dx + dy * dy;
-                if (distSq < connDist2) {
-                  const dist = Math.sqrt(distSq);
-                  const opacity = (1 - dist / CONNECTION_DISTANCE) * 0.2 * theme.line;
-                  ctx.strokeStyle = `hsla(${theme.color}, ${opacity})`;
-                  ctx.beginPath();
-                  ctx.moveTo(a.x, a.y);
-                  ctx.lineTo(b.x, b.y);
-                  ctx.stroke();
-                }
-              }
-            }
+
+      for (let i = 0; i < particles.length; i++) {
+        const a = particles[i];
+        for (let j = i + 1; j < particles.length; j++) {
+          const b = particles[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const distSq = dx * dx + dy * dy;
+
+          if (distSq < connDist2) {
+            const dist = Math.sqrt(distSq);
+            const opacity = (1 - dist / CONNECTION_DISTANCE) * 0.2 * theme.line;
+            ctx.strokeStyle = `hsla(${theme.color}, ${opacity})`;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
           }
         }
       }
@@ -180,6 +168,7 @@ export function ParticleNetwork({ className }: { className?: string }) {
         cancelAnimationFrame(animFrame);
       } else {
         lastTime = 0;
+        cancelAnimationFrame(animFrame);
         animFrame = requestAnimationFrame(animate);
       }
     };
