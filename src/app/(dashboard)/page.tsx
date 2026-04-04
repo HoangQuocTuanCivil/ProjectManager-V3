@@ -336,12 +336,12 @@ export default function DashboardPage() {
           </Section>
 
           <Section title={t.dashboard.kpiQuick}>
-            <div className="p-4 flex items-center justify-center gap-6">
+            <div className="p-6 flex items-center justify-center gap-8">
               <div className="text-center">
-                <KPIRing score={scopedAvgKPI} size={64} strokeWidth={5} />
-                <p className="text-[11px] text-muted-foreground mt-1">{t.dashboard.kpiAvg}</p>
+                <KPIRing score={scopedAvgKPI} size={96} strokeWidth={6} />
+                <p className="text-xs text-muted-foreground mt-2">{t.dashboard.kpiAvg}</p>
               </div>
-              <div className="space-y-1.5 text-sm">
+              <div className="space-y-2.5 text-sm">
                 <button
                   onClick={() => setStatPanel("evaluated")}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
