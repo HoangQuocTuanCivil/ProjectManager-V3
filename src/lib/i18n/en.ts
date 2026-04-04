@@ -137,6 +137,7 @@ const en: Translations = {
     kpiRanking: "KPI Staff Ranking",
     kpiRankingCenter: "Center",
     kpiRankingDept: "Department",
+    kpiRankingTeam: "Team",
     kpiRankingAll: "All",
     kpiRankingEmpty: "No KPI data available",
     kpiRankingScore: "Score",

@@ -143,6 +143,7 @@ const vi = {
     kpiRanking: "Xếp hạng KPI nhân sự",
     kpiRankingCenter: "Trung tâm",
     kpiRankingDept: "Phòng",
+    kpiRankingTeam: "Nhóm",
     kpiRankingAll: "Tất cả",
     kpiRankingEmpty: "Chưa có dữ liệu KPI",
     kpiRankingScore: "Điểm",

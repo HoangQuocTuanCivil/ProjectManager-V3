@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
-import { useCenters } from "@/lib/hooks";
+import { useCenters, useAllTeams } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores";
 import { useI18n } from "@/lib/i18n";
@@ -44,8 +44,9 @@ export default function DashboardPage() {
   const { data: periods = [] } = useAllocationPeriods();
   const { data: centers = [] } = useCenters();
   const { data: departments = [] } = useDepartments();
+  const { data: allTeams = [] } = useAllTeams();
 
-  const [kpiGroupBy, setKpiGroupBy] = useState<"center" | "department">("center");
+  const [kpiGroupBy, setKpiGroupBy] = useState<"center" | "department" | "team">("center");
   const [kpiFilterId, setKpiFilterId] = useState("all");
 
   const activeTasks = tasks.filter((t) => !["completed", "cancelled"].includes(t.status));
@@ -56,18 +57,29 @@ export default function DashboardPage() {
   const avgKPI = totalWeight > 0
     ? Math.round(tasks.reduce((s, t) => s + t.expect_score * t.kpi_weight, 0) / totalWeight)
     : 0;
-  // Recent tasks: prioritize tasks assigned to or created by the current user, sorted by updated_at
+  // Recent tasks: sorted by deadline ascending (nearest due first)
   const recentTasks = [...tasks]
     .filter((t) => t.assignee_id === user?.id || t.assigner_id === user?.id)
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .sort((a, b) => {
+      const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+      const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      return da - db;
+    })
     .slice(0, 8);
-  const activeProjects = projects.filter((p) => p.status === "active");
+  // Active projects: sorted by end_date ascending (nearest due first)
+  const activeProjects = projects
+    .filter((p) => p.status === "active")
+    .sort((a, b) => {
+      const da = a.end_date ? new Date(a.end_date).getTime() : Infinity;
+      const db = b.end_date ? new Date(b.end_date).getTime() : Infinity;
+      return da - db;
+    });
 
   // KPI ranking: aggregate weighted average score per user
   const kpiRanking = useMemo(() => {
     const userMap = new Map<string, {
       id: string; name: string; avatar: string | null; role: string;
-      deptId: string | null; centerId: string | null;
+      deptId: string | null; centerId: string | null; teamId: string | null;
       totalWeight: number; weightedScore: number;
     }>();
 
@@ -78,16 +90,14 @@ export default function DashboardPage() {
       if (weight === 0) continue;
 
       if (!userMap.has(task.assignee_id)) {
-        // Derive center_id from the task's department join
-        const deptId = task.dept_id ?? null;
-        const centerId = task.department?.center_id ?? null;
         userMap.set(task.assignee_id, {
           id: task.assignee_id,
           name: task.assignee.full_name,
           avatar: task.assignee.avatar_url ?? null,
           role: task.assignee.role,
-          deptId,
-          centerId,
+          deptId: task.dept_id ?? null,
+          centerId: task.department?.center_id ?? null,
+          teamId: task.team_id ?? null,
           totalWeight: 0,
           weightedScore: 0,
         });
@@ -104,7 +114,9 @@ export default function DashboardPage() {
       }))
       .filter((u) => {
         if (kpiFilterId === "all") return true;
-        return kpiGroupBy === "center" ? u.centerId === kpiFilterId : u.deptId === kpiFilterId;
+        if (kpiGroupBy === "center") return u.centerId === kpiFilterId;
+        if (kpiGroupBy === "department") return u.deptId === kpiFilterId;
+        return u.teamId === kpiFilterId;
       })
       .sort((a, b) => b.score - a.score);
   }, [tasks, kpiGroupBy, kpiFilterId]);
@@ -114,8 +126,11 @@ export default function DashboardPage() {
     if (kpiGroupBy === "center") {
       return centers.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }));
     }
-    return departments.map((d: { id: string; name: string }) => ({ id: d.id, name: d.name }));
-  }, [kpiGroupBy, centers, departments]);
+    if (kpiGroupBy === "department") {
+      return departments.map((d: { id: string; name: string }) => ({ id: d.id, name: d.name }));
+    }
+    return allTeams.map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }));
+  }, [kpiGroupBy, centers, departments, allTeams]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -237,6 +252,12 @@ export default function DashboardPage() {
                   className={`px-2.5 py-1 transition-colors ${kpiGroupBy === "department" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
                 >
                   {t.dashboard.kpiRankingDept}
+                </button>
+                <button
+                  onClick={() => { setKpiGroupBy("team"); setKpiFilterId("all"); }}
+                  className={`px-2.5 py-1 transition-colors ${kpiGroupBy === "team" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+                >
+                  {t.dashboard.kpiRankingTeam}
                 </button>
               </div>
               <select

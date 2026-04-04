@@ -21,7 +21,7 @@ export function StatCard({
 }) {
   return (
     <div
-      className={cn("bg-card border border-border rounded-xl p-4 relative overflow-hidden", onClick && "cursor-pointer hover:shadow-md hover:border-primary/30 transition-all focus-ring rounded-xl")}
+      className={cn("bg-card border border-border rounded-xl p-4 relative overflow-hidden transition-all", onClick && "cursor-pointer hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/40 active:translate-y-0 focus-ring")}
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
