@@ -186,13 +186,13 @@ export default function TasksPage() {
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         {/* Status */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <FilterChip active={taskFilters.status === "all" || !taskFilters.status} onClick={() => setTaskFilters({ status: "all" })}>
-            {t.common.all}
+            {t.status.all}
           </FilterChip>
           {STATUS_ORDER.map((s) => (
             <FilterChip key={s} active={taskFilters.status === s} onClick={() => setTaskFilters({ status: s })}>
-              {STATUS_CONFIG[s].icon} {STATUS_CONFIG[s].label}
+              {STATUS_CONFIG[s].icon} {t.status[s]}
             </FilterChip>
           ))}
         </div>
@@ -207,11 +207,11 @@ export default function TasksPage() {
             { value: "all", label: `${t.tasks.priorityCol}: ${t.common.all}` },
             ...(["low", "medium", "high", "urgent"] as TaskPriority[]).map((p) => ({
               value: p,
-              label: `${PRIORITY_CONFIG[p].icon} ${PRIORITY_CONFIG[p].label}`,
+              label: `${PRIORITY_CONFIG[p].icon} ${t.priority[p]}`,
             })),
           ]}
           placeholder={`${t.tasks.priorityCol}: ${t.common.all}`}
-          className="h-10 w-44 bg-card"
+          className="h-8 w-36 bg-card text-xs"
         />
 
         {/* Center */}
@@ -224,7 +224,7 @@ export default function TasksPage() {
               ...centerOptions,
             ]}
             placeholder={t.tasks.centerAll}
-            className="h-10 w-48 bg-card"
+            className="h-8 w-40 bg-card text-xs"
           />
         )}
 
@@ -238,7 +238,7 @@ export default function TasksPage() {
               ...deptOptions,
             ]}
             placeholder={t.tasks.deptAll}
-            className="h-10 w-52 bg-card"
+            className="h-8 w-40 bg-card text-xs"
           />
         )}
 
@@ -251,7 +251,7 @@ export default function TasksPage() {
             ...projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` })),
           ]}
           placeholder={t.tasks.projectAll}
-          className="h-10 w-52 bg-card"
+          className="h-8 w-40 bg-card text-xs"
         />
 
         {/* Team */}
@@ -264,7 +264,7 @@ export default function TasksPage() {
               ...deptTeams.map((t: any) => ({ value: t.id, label: t.name })),
             ]}
             placeholder={t.tasks.teamAll}
-            className="h-10 w-44 bg-card"
+            className="h-8 w-36 bg-card text-xs"
           />
         )}
 
@@ -275,9 +275,9 @@ export default function TasksPage() {
             value={searchInput}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder={t.tasks.searchPlaceholder}
-            className="w-48 h-10 pl-8 pr-3 rounded-lg border border-border bg-card text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            className="w-40 h-8 pl-7 pr-2 rounded-lg border border-border bg-card text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">🔍</span>
+          <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </div>
 
         {/* Sort (for Kanban & Timeline) */}
@@ -288,11 +288,11 @@ export default function TasksPage() {
               onChange={(val) => setTaskSort(val as TaskSortKey)}
               options={sortOptions}
               placeholder={`${t.tasks.sortBy}...`}
-              className="h-10 w-40 bg-card"
+              className="h-8 w-32 bg-card text-xs"
             />
             <button
               onClick={() => setTaskSort(taskSort.key, taskSort.dir === "asc" ? "desc" : "asc")}
-              className="h-10 w-10 flex items-center justify-center rounded-lg border border-border bg-card text-xs hover:bg-secondary transition-colors"
+              className="h-8 w-8 flex items-center justify-center rounded-lg border border-border bg-card text-xs hover:bg-secondary transition-colors"
               title={taskSort.dir === "asc" ? t.common.ascending : t.common.descending}
             >
               {taskSort.dir === "asc" ? "↑" : "↓"}
