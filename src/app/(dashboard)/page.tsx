@@ -57,6 +57,37 @@ export default function DashboardPage() {
   const avgKPI = totalWeight > 0
     ? Math.round(tasks.reduce((s, t) => s + t.expect_score * t.kpi_weight, 0) / totalWeight)
     : 0;
+
+  // KPI Quick: scoped by user role
+  const scopedTasks = useMemo(() => {
+    if (!user) return tasks;
+    switch (user.role) {
+      case "director":
+        return user.center_id
+          ? tasks.filter((t) => t.department?.center_id === user.center_id)
+          : tasks;
+      case "head":
+        return user.dept_id
+          ? tasks.filter((t) => t.dept_id === user.dept_id)
+          : tasks;
+      case "team_leader":
+        return user.team_id
+          ? tasks.filter((t) => t.team_id === user.team_id)
+          : tasks;
+      case "staff":
+        return tasks.filter((t) => t.assignee_id === user.id);
+      default: // admin, leader
+        return tasks;
+    }
+  }, [tasks, user]);
+
+  const scopedEvaluated = scopedTasks.filter((t) => t.kpi_evaluated_at);
+  const scopedReview = scopedTasks.filter((t) => t.status === "review");
+  const scopedOverdue = scopedTasks.filter((t) => t.status === "overdue");
+  const scopedWeight = scopedTasks.reduce((s, t) => s + t.kpi_weight, 0);
+  const scopedAvgKPI = scopedWeight > 0
+    ? Math.round(scopedTasks.reduce((s, t) => s + t.expect_score * t.kpi_weight, 0) / scopedWeight)
+    : 0;
   // Recent tasks: sorted by deadline ascending (nearest due first)
   const recentTasks = [...tasks]
     .filter((t) => t.assignee_id === user?.id || t.assigner_id === user?.id)
@@ -307,25 +338,34 @@ export default function DashboardPage() {
           <Section title={t.dashboard.kpiQuick}>
             <div className="p-4 flex items-center justify-center gap-6">
               <div className="text-center">
-                <KPIRing score={avgKPI} size={64} strokeWidth={5} />
+                <KPIRing score={scopedAvgKPI} size={64} strokeWidth={5} />
                 <p className="text-[11px] text-muted-foreground mt-1">{t.dashboard.kpiAvg}</p>
               </div>
               <div className="space-y-1.5 text-sm">
-                <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setStatPanel("evaluated")}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
                   <div className="w-2 h-2 rounded-full bg-green-500" />
                   <span className="text-muted-foreground">{t.dashboard.evaluatedLabel}</span>
-                  <span className="font-mono font-semibold">{evaluated.length}</span>
-                </div>
-                <div className="flex items-center gap-2">
+                  <span className="font-mono font-semibold">{scopedEvaluated.length}</span>
+                </button>
+                <button
+                  onClick={() => setStatPanel("review")}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
                   <div className="w-2 h-2 rounded-full bg-amber-500" />
                   <span className="text-muted-foreground">{t.dashboard.pendingLabel}</span>
-                  <span className="font-mono font-semibold">{review.length}</span>
-                </div>
-                <div className="flex items-center gap-2">
+                  <span className="font-mono font-semibold">{scopedReview.length}</span>
+                </button>
+                <button
+                  onClick={() => setStatPanel("overdue")}
+                  className="flex items-center gap-2 hover:text-primary transition-colors"
+                >
                   <div className="w-2 h-2 rounded-full bg-red-500" />
                   <span className="text-muted-foreground">{t.dashboard.overdueLabel}</span>
-                  <span className="font-mono font-semibold">{overdue.length}</span>
-                </div>
+                  <span className="font-mono font-semibold">{scopedOverdue.length}</span>
+                </button>
               </div>
             </div>
           </Section>

@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import type { Task } from "@/lib/types";
 
-export type StatPanelType = "total" | "in_progress" | "overdue" | "processing" | "review" | null;
+export type StatPanelType = "total" | "in_progress" | "overdue" | "processing" | "review" | "evaluated" | null;
 
 interface TaskListPanelProps {
   open: boolean;
@@ -26,6 +26,7 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
     overdue: t.dashboard.overdueCard,
     processing: t.dashboard.processing,
     review: t.dashboard.pendingReview,
+    evaluated: t.dashboard.evaluatedLabel,
   };
 
   const filteredTasks = tasks
@@ -35,6 +36,7 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
       if (panelType === "overdue") return task.status === "overdue";
       if (panelType === "processing") return !["completed", "cancelled"].includes(task.status);
       if (panelType === "review") return task.status === "review";
+      if (panelType === "evaluated") return !!task.kpi_evaluated_at;
       return false;
     })
     .sort((a, b) => {
