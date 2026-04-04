@@ -42,12 +42,14 @@ export function DialogContent({
 
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 animate-fade-in" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 duration-150" />
       <DialogPrimitive.Content
         className={cn(
           "fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
           "w-[calc(100%-2rem)] rounded-xl bg-card border border-border shadow-2xl",
-          "animate-slide-in-bottom focus:outline-none",
+          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+          "duration-150 focus:outline-none",
           sizes[size],
           className
         )}
