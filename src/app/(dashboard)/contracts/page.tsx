@@ -211,32 +211,34 @@ function toStoragePath(fileUrl: string): string {
 
 function ContractFileViewer({ fileUrl, label }: { fileUrl: string; label: string }) {
   const [showViewer, setShowViewer] = useState(false);
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const path = toStoragePath(fileUrl);
   const isPdf = /\.pdf$/i.test(path);
 
   const getSignedUrl = async (expiresIn = 3600): Promise<string | null> => {
-    const { data, error: err } = await supabase.storage.from("contract-files").createSignedUrl(path, expiresIn);
-    if (err) {
-      console.error("Signed URL error:", err.message, "path:", path);
-      setError(err.message);
-      toast.error(`Lỗi tạo link: ${err.message}`);
-      return null;
-    }
-    setError(null);
+    const { data, error } = await supabase.storage.from("contract-files").createSignedUrl(path, expiresIn);
+    if (error) { toast.error(`Lỗi: ${error.message}`); return null; }
     return data.signedUrl;
   };
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (showViewer) { setShowViewer(false); return; }
+    if (showViewer) {
+      setShowViewer(false);
+      if (blobUrl) { URL.revokeObjectURL(blobUrl); setBlobUrl(null); }
+      return;
+    }
     setLoading(true);
-    const url = await getSignedUrl();
-    setSignedUrl(url);
+    const signed = await getSignedUrl();
+    if (signed) {
+      // Fetch PDF as blob to bypass X-Frame-Options header
+      const res = await fetch(signed);
+      const blob = await res.blob();
+      setBlobUrl(URL.createObjectURL(blob));
+      setShowViewer(true);
+    }
     setLoading(false);
-    if (url) setShowViewer(true);
   };
 
   const handleDownload = async (e: React.MouseEvent) => {
@@ -253,17 +255,16 @@ function ContractFileViewer({ fileUrl, label }: { fileUrl: string; label: string
         {isPdf ? (
           <button type="button" onClick={handleToggle} disabled={loading}
             className="text-xs text-primary hover:underline font-medium disabled:opacity-50">
-            {loading ? "..." : showViewer ? "Ẩn PDF" : "Xem PDF"}
+            {loading ? "Đang tải..." : showViewer ? "Ẩn PDF" : "Xem PDF"}
           </button>
         ) : (
           <button type="button" onClick={handleDownload} className="text-xs text-primary hover:underline">Xem file</button>
         )}
         <button type="button" onClick={handleDownload} className="text-xs text-muted-foreground hover:underline">Tải về</button>
-        {error && <span className="text-[10px] text-destructive">{error}</span>}
       </div>
-      {showViewer && isPdf && signedUrl && (
+      {showViewer && isPdf && blobUrl && (
         <div className="mt-2 rounded-lg border border-border overflow-hidden bg-secondary/30">
-          <iframe src={signedUrl} className="w-full h-[500px]" title="Contract PDF" />
+          <iframe src={blobUrl} className="w-full h-[500px]" title="Contract PDF" />
         </div>
       )}
     </div>
