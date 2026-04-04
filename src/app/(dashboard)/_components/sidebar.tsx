@@ -56,13 +56,15 @@ function SidebarContent({
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-4" role="navigation" aria-label="Menu">
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {navItems
             .filter((item) => !item.roles || (user && item.roles.includes(user.role)))
             .map((item) => {
               const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
               const isHome = item.href === "/" && pathname === "/";
               const active = isActive || isHome;
+              const hasChildren = item.children && item.children.length > 0;
+
               const navButton = (
                 <button
                   key={item.href}
@@ -88,14 +90,41 @@ function SidebarContent({
                   )}
                 </button>
               );
-              if (collapsed) {
-                return (
-                  <Tooltip key={item.href} content={item.label} side="right">
-                    {navButton}
-                  </Tooltip>
-                );
-              }
-              return navButton;
+
+              // Render parent item + expandable sub-items when parent is active
+              return (
+                <div key={item.href}>
+                  {collapsed ? (
+                    <Tooltip content={item.label} side="right">{navButton}</Tooltip>
+                  ) : (
+                    navButton
+                  )}
+
+                  {/* Sub-navigation items — shown when parent is active and sidebar is expanded */}
+                  {hasChildren && active && !collapsed && (
+                    <div className="ml-8 mt-0.5 mb-1 space-y-0.5 border-l-2 border-primary/20 pl-3">
+                      {item.children!.map((child) => {
+                        const childActive = pathname === child.href;
+                        const childLabel = (t.nav as any)[child.tKey] || child.tKey;
+                        return (
+                          <button
+                            key={child.href}
+                            onClick={() => handleNav(child.href)}
+                            className={cn(
+                              "w-full text-left px-2 py-1.5 rounded-md text-[13px] font-[430] transition-all",
+                              childActive
+                                ? "text-primary font-semibold bg-primary/5"
+                                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                            )}
+                          >
+                            {childLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
             })}
         </div>
       </nav>
