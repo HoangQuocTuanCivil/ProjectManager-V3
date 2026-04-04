@@ -55,7 +55,7 @@ export default function AllocationSummaryPage() {
       <div>
         <button onClick={() => history.back()} className="text-sm text-muted-foreground hover:text-primary mb-2">← Báo cáo</button>
         <h1 className="text-xl font-bold">Báo cáo chia khoán</h1>
-        <p className="text-base text-muted-foreground mt-0.5">Tổng hợp các đợt chia khoán và phân bổ</p>
+        <p className="text-base text-muted-foreground mt-0.5">Tổng hợp các khoán và phân bổ</p>
       </div>
 
       {/* Stats */}

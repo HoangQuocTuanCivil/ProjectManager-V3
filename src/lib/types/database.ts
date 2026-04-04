@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      dept_budget_allocations: {
+        Row: {
+          id: string
+          org_id: string
+          project_id: string
+          dept_id: string
+          allocated_amount: number
+          note: string | null
+          created_by: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          project_id: string
+          dept_id: string
+          allocated_amount?: number
+          note?: string | null
+          created_by: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          project_id?: string
+          dept_id?: string
+          allocated_amount?: number
+          note?: string | null
+          created_by?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dept_budget_allocations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dept_budget_allocations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dept_budget_allocations_dept_id_fkey"
+            columns: ["dept_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dept_budget_allocations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       allocation_configs: {
         Row: {
           created_at: string | null

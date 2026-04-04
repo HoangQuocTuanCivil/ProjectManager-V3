@@ -12,7 +12,7 @@ BEGIN
     'goals','goal_targets','goal_projects','milestones',
     'tasks','task_comments','task_attachments','task_status_logs','task_scores',
     'task_dependencies','task_checklists','checklist_items','time_entries',
-    'kpi_configs','allocation_configs','allocation_periods','allocation_results',
+    'kpi_configs','allocation_configs','allocation_periods','allocation_results','dept_budget_allocations',
     'kpi_records','project_kpi_summary','global_kpi_summary',
     'notifications','user_sessions','audit_logs','user_invitations',
     'permissions','custom_roles','role_permissions',
@@ -245,6 +245,11 @@ CREATE POLICY "ar_r" ON allocation_results FOR SELECT
 CREATE POLICY "ar_m" ON allocation_results FOR ALL
   USING (period_id IN (SELECT id FROM allocation_periods WHERE org_id = public.user_org_id())
     AND public.user_role() IN ('admin', 'leader', 'director'));
+
+-- ─── DEPT BUDGET ALLOCATIONS ─────────────────────────────────────────────────
+CREATE POLICY "dba_r" ON dept_budget_allocations FOR SELECT USING (org_id = public.user_org_id());
+CREATE POLICY "dba_m" ON dept_budget_allocations FOR ALL
+  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
 
 -- ─── KPI RECORDS ─────────────────────────────────────────────────────────────
 CREATE POLICY "kr_r" ON kpi_records FOR SELECT USING (org_id = public.user_org_id());

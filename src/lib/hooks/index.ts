@@ -3,7 +3,7 @@
 export { useTasks, useTask, useCreateTask, useUpdateTask, useEvaluateKPI, useUpdateProgress, taskKeys } from "./use-tasks";
 export { useProjects, useProject, useCreateProject, useUpdateProject, useAddProjectMember, useRemoveProjectMember, useCreateMilestone, useUpdateMilestone, useDeleteMilestone, useDeleteProject, projectKeys } from "./use-projects";
 export { useWorkflows, useWorkflow, usePendingApprovals, useAdvanceWorkflow, useCreateWorkflow, useUpdateWorkflow, useDeleteWorkflow, useToggleWorkflow, workflowKeys } from "./use-workflows";
-export { useKPIRecords, useAllocationConfig, useAllocationPeriods, useCreateAllocationPeriod, useCalculateAllocation, useApproveAllocation, useDeleteAllocationPeriod, kpiKeys } from "./use-kpi";
+export { useKPIRecords, useAllocationConfig, useAllocationPeriods, useCreateAllocationPeriod, useCalculateAllocation, useApproveAllocation, useDeleteAllocationPeriod, useDeptBudgetAllocations, useUpsertDeptBudgetAllocation, useDeleteDeptBudgetAllocation, kpiKeys } from "./use-kpi";
 export { useUsers, useUser, useUpdateUser, useDeleteUser, useResetPassword, useCreateUser, useInviteUser, useSignOut, userKeys } from "./use-users";
 export { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead, notifKeys } from "./use-notifications";
 export { useCenters, useCreateCenter, useUpdateCenter, centerKeys, useTeams, useAllTeams, useCreateTeam, useUpdateTeam, useDeleteTeam, teamKeys } from "./use-teams";

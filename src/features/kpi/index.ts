@@ -7,5 +7,8 @@ export {
   useCalculateAllocation,
   useApproveAllocation,
   useDeleteAllocationPeriod,
+  useDeptBudgetAllocations,
+  useUpsertDeptBudgetAllocation,
+  useDeleteDeptBudgetAllocation,
   kpiKeys,
 } from './hooks/use-kpi';

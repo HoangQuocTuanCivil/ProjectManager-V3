@@ -110,7 +110,7 @@ export default function ProjectAllocationPage() {
           ))}
         </div>
       ) : (
-        <EmptyState icon="💰" title="Chưa có đợt chia khoán" subtitle="Tạo đợt khoán từ trang KPI & Chia khoán" />
+        <EmptyState icon="💰" title="Chưa có khoán" subtitle="Tạo đợt khoán từ trang KPI & Chia khoán" />
       )}
     </div>
   );

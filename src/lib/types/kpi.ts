@@ -1,6 +1,6 @@
 import type { Json } from './database';
 import type { AllocationMode, AllocationStatus, KPIVerdict } from './enums';
-import type { User } from './organization';
+import type { User, Department } from './organization';
 import type { Project } from './project';
 
 export interface KPIScores {
@@ -44,6 +44,22 @@ export interface AllocationPeriod {
   config?: AllocationConfig;
   project?: Project;
   results?: AllocationResult[];
+}
+
+export interface DeptBudgetAllocation {
+  id: string;
+  org_id: string;
+  project_id: string;
+  dept_id: string;
+  allocated_amount: number;
+  note: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  project?: Pick<Project, 'id' | 'code' | 'name' | 'budget' | 'allocation_fund'>;
+  department?: Pick<Department, 'id' | 'name' | 'code'>;
+  creator?: Pick<User, 'id' | 'full_name'>;
 }
 
 export interface AllocationResult {

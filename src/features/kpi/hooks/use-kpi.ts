@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { AllocationPeriod, AllocationConfig } from "@/lib/types";
+import type { AllocationPeriod, AllocationConfig, DeptBudgetAllocation } from "@/lib/types";
 import type { TablesInsert } from "@/lib/types/database";
 
 const supabase = createClient();
@@ -14,6 +14,7 @@ export const kpiKeys = {
   periods: () => [...kpiKeys.all, "periods"] as const,
   period: (id: string) => [...kpiKeys.all, "period", id] as const,
   config: () => [...kpiKeys.all, "config"] as const,
+  budgetAllocations: (projectId?: string) => [...kpiKeys.all, "budget-alloc", projectId] as const,
 };
 
 /** Lấy danh sách bản ghi KPI, có thể lọc theo user */
@@ -188,5 +189,65 @@ export function useDeleteAllocationPeriod() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.periods() });
     },
+  });
+}
+
+/* ───── Dept Budget Allocation (Giao khoán) ───────────────────── */
+
+/** Lấy danh sách giao khoán theo phòng ban, có thể lọc theo dự án */
+export function useDeptBudgetAllocations(projectId?: string) {
+  return useQuery({
+    queryKey: kpiKeys.budgetAllocations(projectId),
+    queryFn: async () => {
+      let query = supabase
+        .from("dept_budget_allocations")
+        .select("*, project:projects(id, code, name, budget, allocation_fund), department:departments(id, name, code), creator:users!created_by(id, full_name)")
+        .order("created_at", { ascending: false });
+      if (projectId) query = query.eq("project_id", projectId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as unknown as DeptBudgetAllocation[];
+    },
+  });
+}
+
+/** Tạo / cập nhật giao khoán cho phòng ban (upsert theo project_id + dept_id) */
+export function useUpsertDeptBudgetAllocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { project_id: string; dept_id: string; allocated_amount: number; note?: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from("users").select("org_id").eq("id", user!.id).single();
+      if (!profile) throw new Error("Không tìm thấy profile");
+
+      const { data, error } = await supabase
+        .from("dept_budget_allocations")
+        .upsert({
+          org_id: profile.org_id,
+          project_id: input.project_id,
+          dept_id: input.dept_id,
+          allocated_amount: input.allocated_amount,
+          note: input.note || null,
+          created_by: user!.id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "project_id,dept_id" })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() }),
+  });
+}
+
+/** Xóa giao khoán phòng ban */
+export function useDeleteDeptBudgetAllocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("dept_budget_allocations").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() }),
   });
 }

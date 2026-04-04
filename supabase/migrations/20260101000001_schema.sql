@@ -508,6 +508,20 @@ CREATE TABLE allocation_results (
   UNIQUE(period_id, user_id)
 );
 
+-- Giao khoán ngân sách cho phòng ban (PM giao khoán nội bộ)
+CREATE TABLE dept_budget_allocations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  dept_id UUID NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+  allocated_amount NUMERIC(15,0) NOT NULL DEFAULT 0,
+  note TEXT,
+  created_by UUID NOT NULL REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(project_id, dept_id)
+);
+
 -- Bản ghi KPI theo kỳ
 CREATE TABLE kpi_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -955,6 +969,7 @@ CREATE INDEX idx_gkpi ON global_kpi_summary(org_id, user_id, period, period_star
 CREATE INDEX idx_alloc_periods ON allocation_periods(org_id, status, period_start DESC);
 CREATE INDEX idx_alloc_results ON allocation_results(period_id, weighted_score DESC);
 CREATE INDEX idx_alloc_results_user ON allocation_results(user_id, calculated_at DESC);
+CREATE INDEX idx_dept_budget_alloc ON dept_budget_allocations(project_id, dept_id);
 
 -- Thông báo
 CREATE INDEX idx_notif_unread ON notifications(user_id, created_at DESC) WHERE is_read = FALSE;

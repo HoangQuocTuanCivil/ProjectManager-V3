@@ -16,7 +16,7 @@ const DEFAULT_SETTINGS: NotifSetting[] = [
   { key: "task_completed", label: "Task hoàn thành", description: "Khi task bạn quản lý được hoàn thành", email: true, push: true },
   { key: "task_overdue", label: "Task quá hạn", description: "Khi task vượt quá deadline", email: true, push: true },
   { key: "kpi_evaluated", label: "Nghiệm thu KPI", description: "Khi task được nghiệm thu và chấm KPI", email: true, push: true },
-  { key: "allocation_approved", label: "Duyệt khoán", description: "Khi đợt chia khoán được phê duyệt", email: true, push: false },
+  { key: "allocation_approved", label: "Duyệt khoán", description: "Khi khoán được phê duyệt", email: true, push: false },
   { key: "workflow_pending", label: "Chờ phê duyệt", description: "Khi có workflow cần bạn xử lý", email: true, push: true },
   { key: "comment_mention", label: "Nhắc đến bạn", description: "Khi có ai nhắc đến bạn trong bình luận", email: false, push: true },
   { key: "project_update", label: "Cập nhật dự án", description: "Khi dự án bạn tham gia có thay đổi", email: false, push: false },
