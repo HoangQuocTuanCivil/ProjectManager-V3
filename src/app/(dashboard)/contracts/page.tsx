@@ -264,8 +264,8 @@ function ContractFileViewer({ fileUrl, label }: { fileUrl: string; label: string
         <button type="button" onClick={handleDownload} className="text-xs text-muted-foreground hover:underline">Tải về</button>
       </div>
       {showViewer && isPdf && blobUrl && (
-        <div className="mt-2 rounded-lg border border-border overflow-hidden bg-secondary/30">
-          <iframe src={blobUrl} className="w-full h-[500px]" title="Contract PDF" />
+        <div className="mt-2 mx-auto max-w-2xl rounded-lg border border-border overflow-hidden bg-secondary/30">
+          <iframe src={blobUrl} className="w-full h-[600px]" title="Contract PDF" />
         </div>
       )}
     </div>
