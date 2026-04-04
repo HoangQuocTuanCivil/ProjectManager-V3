@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useGoals, goalKeys } from "@/lib/hooks/use-data";
+import { useGoals, goalKeys } from "@/lib/hooks/use-goals";
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
 import { Button, FilterChip, EmptyState, ProgressBar, UserAvatar, StatCard } from "@/components/shared";

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/lib/stores";
-import { useUpdateUser } from "@/lib/hooks/use-data";
+import { useUpdateUser } from "@/lib/hooks/use-users";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { Button } from "@/components/shared";

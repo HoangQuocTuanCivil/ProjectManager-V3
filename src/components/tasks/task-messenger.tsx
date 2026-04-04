@@ -235,7 +235,7 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
               body: excerpt,
               type: "mention",
               data: { task_id: taskId },
-            }))
+            })) as any
           );
         }
       }

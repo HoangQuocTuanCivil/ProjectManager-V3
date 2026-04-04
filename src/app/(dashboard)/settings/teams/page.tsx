@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { useAllTeams, useCreateTeam, useUpdateTeam, useDeleteTeam } from "@/lib/hooks/use-data";
+import { useAllTeams, useCreateTeam, useUpdateTeam, useDeleteTeam } from "@/lib/hooks/use-teams";
 import { Section, Button, UserAvatar, Toggle, EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/shared/ui/search-select";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";

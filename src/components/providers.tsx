@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores";
 import { useRealtimeSubscriptions } from "@/lib/supabase/realtime";
+import type { User } from "@/lib/types";
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setUser, setLoading } = useAuthStore();
@@ -19,7 +20,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
           .select("*, department:departments!users_dept_id_fkey(id, name, code)")
           .eq("id", user.id)
           .single();
-        setUser(profile);
+        setUser(profile as unknown as User);
       } else {
         setUser(null);
       }

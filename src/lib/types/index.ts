@@ -1,3 +1,5 @@
+import type { Json } from './database';
+
 export type UserRole = 'admin' | 'director' | 'leader' | 'head' | 'team_leader' | 'staff';
 export type TaskStatus = 'pending' | 'in_progress' | 'review' | 'completed' | 'overdue' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -18,7 +20,7 @@ export interface Organization {
   name: string;
   domain: string | null;
   logo_url: string | null;
-  settings: Record<string, any>;
+  settings: Record<string, Json | undefined>;
   created_at: string;
 }
 
@@ -119,12 +121,12 @@ export interface Project {
   location: string | null;
   client: string | null;
   contract_no: string | null;
-  metadata: Record<string, any>;
+  metadata: Record<string, Json | undefined>;
   created_at: string;
   // Joined
   manager?: User;
   department?: Department;
-  departments?: { dept: Department }[];
+  departments?: { dept: DepartmentSummary }[];
   member_count?: number;
   task_count?: number;
   progress?: number;
@@ -188,7 +190,7 @@ export interface Task {
   health: HealthScore;
   is_milestone: boolean;
   is_recurring: boolean;
-  metadata: Record<string, any>;
+  metadata: Record<string, Json | undefined>;
   created_at: string;
   updated_at: string;
   team_id: string | null;
@@ -210,20 +212,22 @@ export interface Task {
 export interface TaskCreateInput {
   title: string;
   description?: string;
-  project_id?: string;
-  assignee_id?: string;
+  project_id?: string | null;
+  assignee_id?: string | null;
   dept_id?: string;
   priority: TaskPriority;
   task_type: TaskType;
   kpi_weight: number;
   expect_quality: number;
   expect_difficulty: number;
+  expect_volume?: number;
+  expect_ahead?: number;
   start_date?: string;
   deadline?: string;
   parent_task_id?: string;
-  team_id?: string;
+  team_id?: string | null;
   template_id?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, Json | undefined>;
 }
 
 export interface TaskDependency {
@@ -318,7 +322,7 @@ export interface AllocationResult {
   share_percentage: number;
   allocated_amount: number;
   task_count: number;
-  breakdown: Record<string, any>;
+  breakdown: Record<string, Json | undefined>;
   user?: User;
 }
 
@@ -388,7 +392,7 @@ export interface WorkflowStep {
   assigned_role: UserRole | null;
   is_automatic: boolean;
   sla_hours: number | null;
-  on_complete_actions: any[];
+  on_complete_actions: Json[];
   color: string | null;
 }
 
@@ -416,7 +420,7 @@ export interface Notification {
   title: string;
   body: string | null;
   type: string;
-  data: Record<string, any>;
+  data: Record<string, Json | undefined>;
   is_read: boolean;
   created_at: string;
 }
@@ -433,7 +437,7 @@ export interface TaskTemplate {
   default_estimate_hours: number | null;
   default_expect_quality: number;
   default_expect_difficulty: number;
-  default_checklist: any[];
+  default_checklist: Json[];
   default_tags: string[];
 }
 
@@ -442,7 +446,7 @@ export interface DashboardWidget {
   dashboard_id: string;
   widget_type: 'chart' | 'number' | 'task_list' | 'goal' | 'workload' | 'kpi_ring';
   title: string | null;
-  config: Record<string, any>;
+  config: Record<string, Json | undefined>;
   position: { x: number; y: number; w: number; h: number };
 }
 
@@ -451,7 +455,7 @@ export interface OrgSetting {
   org_id: string;
   category: string;
   key: string;
-  value: any;
+  value: Json;
   description: string | null;
 }
 
@@ -470,6 +474,70 @@ export interface CustomRole {
   color: string;
   base_role: UserRole;
   permissions?: Permission[];
+}
+
+export interface GoalCreateInput {
+  title: string;
+  description?: string | null;
+  goal_type?: GoalType;
+  status?: GoalStatus;
+  owner_id?: string | null;
+  dept_id?: string | null;
+  parent_goal_id?: string | null;
+  period_label?: string | null;
+  start_date?: string | null;
+  due_date?: string | null;
+  progress?: number;
+  progress_source?: string;
+  is_public?: boolean;
+  color?: string;
+}
+
+export interface DepartmentSummary {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface UserUpdateInput {
+  full_name?: string;
+  email?: string;
+  phone?: string | null;
+  role?: UserRole;
+  dept_id?: string | null;
+  center_id?: string | null;
+  team_id?: string | null;
+  job_title?: string | null;
+  is_active?: boolean;
+  custom_role_id?: string | null;
+  manager_id?: string | null;
+}
+
+export interface CenterUpdateInput {
+  name?: string;
+  code?: string | null;
+  description?: string | null;
+  director_id?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+export interface TeamUpdateInput {
+  name?: string;
+  code?: string | null;
+  description?: string | null;
+  dept_id?: string;
+  leader_id?: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+export interface MilestoneUpdateInput {
+  title?: string;
+  description?: string | null;
+  due_date?: string;
+  status?: 'upcoming' | 'reached' | 'missed';
+  reached_at?: string | null;
 }
 
 export type TaskView = 'grid' | 'kanban' | 'gantt' | 'calendar' | 'workload';

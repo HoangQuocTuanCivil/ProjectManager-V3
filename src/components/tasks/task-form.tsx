@@ -4,7 +4,8 @@ import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCreateTask } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
-import { useUsers, useTeams } from "@/lib/hooks/use-data";
+import { useUsers } from "@/lib/hooks/use-users";
+import { useTeams } from "@/lib/hooks/use-teams";
 import { useWorkflows } from "@/lib/hooks/use-workflows";
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
@@ -163,7 +164,7 @@ export function TaskForm({ onClose }: { onClose: () => void }) {
         if (hasAssignees) {
           await supabase
             .from("tasks")
-            .update({ metadata: { ...(newTask.metadata || {}), step_assignees: stepAssignees } })
+            .update({ metadata: { ...((newTask.metadata ?? {}) as Record<string, any>), step_assignees: stepAssignees } })
             .eq("id", newTask.id);
         }
         const executeStep = steps.find((s: any) => s.step_type === "execute");
@@ -256,7 +257,7 @@ export function TaskForm({ onClose }: { onClose: () => void }) {
             <div>
               <label className="text-sm text-muted-foreground font-medium">Dự án</label>
               <SearchSelect
-                value={form.project_id}
+                value={form.project_id ?? ""}
                 onChange={(val) => update("project_id", val)}
                 options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
                 placeholder="Chọn dự án..."

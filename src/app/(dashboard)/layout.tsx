@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 import { useAuthStore, useNotifStore } from "@/lib/stores";
 import { cn } from "@/lib/utils/cn";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
-import { useSignOut } from "@/lib/hooks/use-data";
+import { useSignOut } from "@/lib/hooks/use-users";
 import { useI18n, type Locale } from "@/lib/i18n";
 import {
   LayoutDashboard, ClipboardList, Building2, Target, Rocket,
@@ -215,7 +215,7 @@ function SidebarContent({
                     {!collapsed && (
                       <>
                         <span className="truncate">{item.label}</span>
-                        {item.badge === "tasks" && unreadCount > 0 && (
+                        {"badge" in item && item.badge === "tasks" && unreadCount > 0 && (
                           <span className="ml-auto bg-destructive text-white text-[11px] px-1.5 py-0.5 rounded-full font-semibold">
                             {unreadCount}
                           </span>

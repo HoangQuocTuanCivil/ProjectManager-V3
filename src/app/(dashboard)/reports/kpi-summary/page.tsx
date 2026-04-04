@@ -1,7 +1,7 @@
 "use client";
 
 import { useTasks } from "@/lib/hooks/use-tasks";
-import { useUsers } from "@/lib/hooks/use-data";
+import { useUsers } from "@/lib/hooks/use-users";
 import { Section, StatCard, KPIRing, KPIScoreBar, VerdictBadge, UserAvatar, EmptyState } from "@/components/shared";
 import { ROLE_CONFIG, VERDICT_CONFIG, KPI_WEIGHTS, getVerdict, formatPercent } from "@/lib/utils/kpi";
 import {

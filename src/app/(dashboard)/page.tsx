@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
-import { useAllocationPeriods } from "@/lib/hooks/use-data";
+import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
 import { useAuthStore } from "@/lib/stores";
 import { useI18n } from "@/lib/i18n";
 import {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useOrgSettings, useUpdateSetting } from "@/lib/hooks/use-data";
+import { useOrgSettings, useUpdateSetting } from "@/lib/hooks/use-org-settings";
 import { useAuthStore } from "@/lib/stores";
 import { Section, Button } from "@/components/shared";
 
@@ -27,7 +27,7 @@ export default function OrganizationSettingsPage() {
             <div>
               <label className="text-sm text-muted-foreground font-medium">Tên tổ chức</label>
               <input
-                defaultValue={getSetting("general", "org_name") || "A2Z WorkHub"}
+                defaultValue={(getSetting("general", "org_name") as string) || "A2Z WorkHub"}
                 className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none"
                 readOnly
               />
@@ -35,7 +35,7 @@ export default function OrganizationSettingsPage() {
             <div>
               <label className="text-sm text-muted-foreground font-medium">Domain</label>
               <input
-                defaultValue={getSetting("general", "domain") || "workhub.a2z.com.vn"}
+                defaultValue={(getSetting("general", "domain") as string) || "workhub.a2z.com.vn"}
                 className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none"
                 readOnly
               />
@@ -43,7 +43,7 @@ export default function OrganizationSettingsPage() {
             <div className="col-span-2">
               <label className="text-sm text-muted-foreground font-medium">Mô tả</label>
               <textarea
-                defaultValue={getSetting("general", "description") || ""}
+                defaultValue={(getSetting("general", "description") as string) || ""}
                 rows={2}
                 className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none resize-none"
                 readOnly

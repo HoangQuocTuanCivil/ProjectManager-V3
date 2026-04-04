@@ -479,4 +479,7 @@ const vi = {
 } as const;
 
 export default vi;
-export type Translations = typeof vi;
+
+// Chuyển literal string thành string để các locale khác có thể gán giá trị khác
+type DeepString<T> = { [K in keyof T]: T[K] extends string ? string : DeepString<T[K]> };
+export type Translations = DeepString<typeof vi>;

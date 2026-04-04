@@ -3,7 +3,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { Project, ProjectMember, Milestone } from "@/lib/types";
+import type { Project, ProjectMember, Milestone, DepartmentSummary, MilestoneUpdateInput } from "@/lib/types";
+import type { TablesInsert } from "@/lib/types/database";
 
 const supabase = createClient();
 
@@ -34,19 +35,19 @@ export function useProjects() {
           .select("project_id, dept:departments(id, name, code)");
 
         if (pdData && pdData.length > 0) {
-          const pdMap = new Map<string, { dept: any }[]>();
-          pdData.forEach((pd: any) => {
+          const pdMap = new Map<string, { dept: DepartmentSummary }[]>();
+          pdData.forEach((pd) => {
             const arr = pdMap.get(pd.project_id) || [];
-            arr.push({ dept: pd.dept });
+            arr.push({ dept: pd.dept as DepartmentSummary });
             pdMap.set(pd.project_id, arr);
           });
-          return data.map((p: any) => ({ ...p, departments: pdMap.get(p.id) || [] })) as Project[];
+          return data.map((p) => ({ ...p, departments: pdMap.get(p.id) || [] })) as unknown as Project[];
         }
       } catch {
         // table may not exist yet
       }
 
-      return data as Project[];
+      return data as unknown as Project[];
     },
     staleTime: 60_000,
   });
@@ -65,16 +66,16 @@ export function useProject(id: string) {
       if (error) throw error;
 
       // Fetch project departments separately (M2M via project_departments)
-      let departments: any[] = [];
+      let departments: DepartmentSummary[] = [];
       try {
         const { data: pdData } = await supabase
           .from("project_departments")
           .select("dept:departments(id, name, code)")
           .eq("project_id", id);
-        if (pdData) departments = pdData.map((pd: any) => pd.dept).filter(Boolean);
+        if (pdData) departments = pdData.map((pd) => pd.dept).filter(Boolean) as DepartmentSummary[];
       } catch {}
 
-      return { ...data, departments } as Project & { members: ProjectMember[]; milestones: Milestone[]; departments: any[] };
+      return { ...data, departments } as unknown as Project & { members: ProjectMember[]; milestones: Milestone[]; departments: DepartmentSummary[] };
     },
     enabled: !!id,
   });
@@ -86,10 +87,10 @@ export function useCreateProject() {
     mutationFn: async (input: Partial<Project> & { dept_ids?: string[] }) => {
       const { dept_ids, ...projectInput } = input;
       // Clean empty strings for UUID FK columns
-      if ((projectInput as any).manager_id === "") (projectInput as any).manager_id = null;
+      if (projectInput.manager_id === "") projectInput.manager_id = null;
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profile } = await supabase.from("users").select("org_id").eq("id", user!.id).single();
-      const { data, error } = await supabase.from("projects").insert({ ...projectInput, org_id: profile!.org_id }).select().single();
+      const { data, error } = await supabase.from("projects").insert({ ...projectInput, org_id: profile!.org_id } as TablesInsert<'projects'>).select().single();
       if (error) throw error;
 
       // Insert project-department assignments (graceful if table not yet created)
@@ -127,7 +128,7 @@ export function useAddProjectMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { project_id: string; user_id: string; role: string }) => {
-      const { data, error } = await supabase.from("project_members").insert(input).select("*, user:users(*)").single();
+      const { data, error } = await supabase.from("project_members").insert(input as TablesInsert<'project_members'>).select("*, user:users(*)").single();
       if (error) throw error;
       return data;
     },
@@ -150,7 +151,7 @@ export function useCreateMilestone() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { project_id: string; title: string; due_date: string; status?: string }) => {
-      const { data, error } = await supabase.from("milestones").insert(input).select().single();
+      const { data, error } = await supabase.from("milestones").insert(input as TablesInsert<'milestones'>).select().single();
       if (error) throw error;
       return data;
     },
@@ -161,7 +162,7 @@ export function useCreateMilestone() {
 export function useUpdateMilestone() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, project_id, ...updates }: { id: string; project_id: string } & Record<string, any>) => {
+    mutationFn: async ({ id, project_id, ...updates }: { id: string; project_id: string } & MilestoneUpdateInput) => {
       const { data, error } = await supabase.from("milestones").update(updates).eq("id", id).select().single();
       if (error) throw error;
       return data;

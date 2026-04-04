@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     .neq("status", "archived")
     .order("created_at", { ascending: false });
 
-  if (status && status !== "all") query = query.eq("status", status);
+  if (status && status !== "all") query = query.eq("status", status as any);
 
   const { data, error } = await query;
   if (error) return errorResponse(error.message, 500);

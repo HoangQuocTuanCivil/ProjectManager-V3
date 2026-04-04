@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
-import { useAllocationPeriods, useAllocationConfig, kpiKeys, useCalculateAllocation, useApproveAllocation, useCreateAllocationPeriod, useDeleteAllocationPeriod, useUsers } from "@/lib/hooks/use-data";
+import { useAllocationPeriods, useAllocationConfig, kpiKeys, useCalculateAllocation, useApproveAllocation, useCreateAllocationPeriod, useDeleteAllocationPeriod } from "@/lib/hooks/use-kpi";
+import { useUsers } from "@/lib/hooks/use-users";
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -15,7 +16,7 @@ import { AllocationTable, UserKPICard } from "@/components/kpi";
 import { ROLE_CONFIG, VERDICT_CONFIG, formatVND, formatDate, formatPercent, getVerdict, calcKPIScore } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
-import type { Task, AllocationPeriod } from "@/lib/types";
+import type { Task, AllocationPeriod, AllocationMode } from "@/lib/types";
 
 type KPITab = "overview" | "allocation" | "config";
 
@@ -199,7 +200,7 @@ function AllocationSection({ periods, user }: { periods: AllocationPeriod[]; use
     payment_percent: 100,
     period_start: "",
     period_end: "",
-    mode: "per_project" as const,
+    mode: "per_project" as AllocationMode,
   });
 
   const handleCreate = async () => {

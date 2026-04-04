@@ -3,7 +3,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { WorkflowTemplate, WorkflowStep, TaskWorkflowState } from "@/lib/types";
+import type { WorkflowTemplate, WorkflowStep } from "@/lib/types";
+import type { TablesInsert, TablesUpdate } from "@/lib/types/database";
 
 const supabase = createClient();
 
@@ -70,7 +71,7 @@ export function usePendingApprovals() {
       if (error) throw error;
 
       // Filter by role
-      return (data || []).filter((s: any) => {
+      return (data || []).filter((s) => {
         if (!s.current_step?.assigned_role) return false;
         if (profile.role === "admin" || profile.role === "leader") return true;
         return s.current_step.assigned_role === profile.role;
@@ -111,7 +112,7 @@ export function useCreateWorkflow() {
       const { steps, ...template } = input;
       const { data: wf, error: wfErr } = await supabase
         .from("workflow_templates")
-        .insert({ ...template, org_id: profile!.org_id, created_by: user!.id })
+        .insert({ ...template, org_id: profile!.org_id, created_by: user!.id } as TablesInsert<'workflow_templates'>)
         .select()
         .single();
       if (wfErr) throw wfErr;
@@ -120,13 +121,13 @@ export function useCreateWorkflow() {
         const stepInserts = steps.map((s, i) => ({ ...s, template_id: wf.id, step_order: i + 1 }));
         const { data: stepsData, error: stepsErr } = await supabase
           .from("workflow_steps")
-          .insert(stepInserts)
+          .insert(stepInserts as TablesInsert<'workflow_steps'>[])
           .select();
         if (stepsErr) throw stepsErr;
 
         // Auto-create linear transitions
         if (stepsData && stepsData.length > 1) {
-          const transitions: any[] = stepsData.slice(0, -1).map((s: any, i: number) => ({
+          const transitions: TablesInsert<'workflow_transitions'>[] = stepsData.slice(0, -1).map((s, i) => ({
             template_id: wf.id,
             from_step_id: s.id,
             to_step_id: stepsData[i + 1].id,
@@ -135,9 +136,9 @@ export function useCreateWorkflow() {
           }));
 
           // Add rejection transitions: review→execute, approve→review (loop back)
-          const reviewStep = stepsData.find((s: any) => s.step_type === "review");
-          const executeStep = stepsData.find((s: any) => s.step_type === "execute");
-          const approveStep = stepsData.find((s: any) => s.step_type === "approve");
+          const reviewStep = stepsData.find((s) => s.step_type === "review");
+          const executeStep = stepsData.find((s) => s.step_type === "execute");
+          const approveStep = stepsData.find((s) => s.step_type === "approve");
           if (reviewStep && executeStep) {
             transitions.push({
               template_id: wf.id,
@@ -170,7 +171,7 @@ export function useCreateWorkflow() {
 export function useUpdateWorkflow() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, steps, ...updates }: { id: string; steps?: Partial<WorkflowStep>[] } & Record<string, any>) => {
+    mutationFn: async ({ id, steps, ...updates }: { id: string; steps?: Partial<WorkflowStep>[] } & TablesUpdate<'workflow_templates'>) => {
       // Update template
       const { error: wfErr } = await supabase.from("workflow_templates").update(updates).eq("id", id);
       if (wfErr) throw wfErr;
@@ -186,13 +187,13 @@ export function useUpdateWorkflow() {
           const stepInserts = steps.map((s, i) => ({ ...s, template_id: id, step_order: i + 1 }));
           const { data: stepsData, error: stepsErr } = await supabase
             .from("workflow_steps")
-            .insert(stepInserts)
+            .insert(stepInserts as TablesInsert<'workflow_steps'>[])
             .select();
           if (stepsErr) throw stepsErr;
 
           // Auto-create linear transitions
           if (stepsData && stepsData.length > 1) {
-            const transitions: any[] = stepsData.slice(0, -1).map((s: any, i: number) => ({
+            const transitions: TablesInsert<'workflow_transitions'>[] = stepsData.slice(0, -1).map((s, i) => ({
               template_id: id,
               from_step_id: s.id,
               to_step_id: stepsData[i + 1].id,
@@ -201,9 +202,9 @@ export function useUpdateWorkflow() {
             }));
 
             // Add rejection transitions
-            const reviewStep = stepsData.find((s: any) => s.step_type === "review");
-            const executeStep = stepsData.find((s: any) => s.step_type === "execute");
-            const approveStep = stepsData.find((s: any) => s.step_type === "approve");
+            const reviewStep = stepsData.find((s) => s.step_type === "review");
+            const executeStep = stepsData.find((s) => s.step_type === "execute");
+            const approveStep = stepsData.find((s) => s.step_type === "approve");
             if (reviewStep && executeStep) {
               transitions.push({ template_id: id, from_step_id: reviewStep.id, to_step_id: executeStep.id, condition_type: "if_rejected", label: "Yêu cầu sửa" });
             }

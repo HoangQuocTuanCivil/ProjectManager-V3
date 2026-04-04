@@ -1,6 +1,6 @@
 "use client";
 
-import { useAllocationPeriods } from "@/lib/hooks/use-data";
+import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
 import { Section, StatCard, EmptyState, UserAvatar } from "@/components/shared";
 import { AllocationTable } from "@/components/kpi";
 import { ROLE_CONFIG, formatVND, formatDate } from "@/lib/utils/kpi";

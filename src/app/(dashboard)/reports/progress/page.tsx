@@ -2,7 +2,7 @@
 
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
-import { useUsers } from "@/lib/hooks/use-data";
+import { useUsers } from "@/lib/hooks/use-users";
 import { Section, StatCard, ProgressBar, UserAvatar, StatusBadge, HealthBadge } from "@/components/shared";
 import { ROLE_CONFIG, STATUS_CONFIG, formatDate } from "@/lib/utils/kpi";
 import {
@@ -35,10 +35,10 @@ export default function ProgressReportPage() {
     const uOverdue = uTasks.filter((t) => t.status === "overdue").length;
     const uCompleted = uTasks.filter((t) => t.status === "completed").length;
     return { id: u.id, name: u.full_name, role: u.role, total: uTasks.length, active: uActive, overdue: uOverdue, completed: uCompleted };
-  }).filter((u) => u.total > 0).sort((a, b) => b.active - a.active);
+  }).filter((u: any) => u.total > 0).sort((a: any, b: any) => b.active - a.active);
 
   // Bar chart data for workload
-  const workloadChart = userWorkload.slice(0, 10).map((u) => ({
+  const workloadChart = userWorkload.slice(0, 10).map((u: any) => ({
     name: u.name.split(" ").pop(),
     active: u.active,
     completed: u.completed,
@@ -125,7 +125,7 @@ export default function ProgressReportPage() {
               </tr>
             </thead>
             <tbody>
-              {userWorkload.map((u) => (
+              {userWorkload.map((u: any) => (
                 <tr key={u.id} className="border-b border-border/40">
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import type { Task, TaskCreateInput, TaskFilters } from '@/lib/types';
+import type { TablesUpdate } from '@/lib/types/database';
 
 const supabase = createClient();
 
@@ -48,14 +49,14 @@ export function useTasks(filters: TaskFilters = {}) {
       if (!data || data.length === 0) return [] as Task[];
 
       // Fetch team names separately (new FK not auto-detected by PostgREST)
-      const teamIds = [...new Set(data.map((t: any) => t.team_id).filter(Boolean))];
-      let teamsMap: Record<string, any> = {};
+      const teamIds = [...new Set(data.map((t) => t.team_id).filter(Boolean))];
+      let teamsMap: Record<string, { id: string; name: string; code: string | null }> = {};
       if (teamIds.length > 0) {
         const { data: teamsData } = await supabase.from('teams').select('id, name, code').in('id', teamIds);
-        if (teamsData) teamsData.forEach((t: any) => { teamsMap[t.id] = t; });
+        if (teamsData) teamsData.forEach((t) => { teamsMap[t.id] = t; });
       }
 
-      return data.map((t: any) => {
+      return data.map((t) => {
         const dept = Array.isArray(t.department) ? t.department[0] || null : t.department;
         // Normalize center nested inside department
         if (dept?.center) {
@@ -63,7 +64,7 @@ export function useTasks(filters: TaskFilters = {}) {
         }
         return {
           ...t,
-          team: teamsMap[t.team_id] || null,
+          team: teamsMap[t.team_id ?? ''] || null,
           // Normalize joined relations (PostgREST may return arrays after schema reload)
           assignee: Array.isArray(t.assignee) ? t.assignee[0] || null : t.assignee,
           assigner: Array.isArray(t.assigner) ? t.assigner[0] || null : t.assigner,
@@ -95,9 +96,10 @@ export function useTask(id: string) {
       if (error) throw error;
 
       // Fetch team separately
+      let team: { id: string; name: string; code: string | null } | null = null;
       if (data.team_id) {
         const { data: teamData } = await supabase.from('teams').select('id, name, code').eq('id', data.team_id).single();
-        (data as any).team = teamData || null;
+        team = teamData || null;
       }
 
       // Fetch optional relations separately (may be blocked by RLS)
@@ -109,12 +111,13 @@ export function useTask(id: string) {
 
       return {
         ...data,
+        team,
         comments: comments.data || [],
         checklists: checklists.data || [],
         attachments: [],
         dependencies: [],
         workflow_state: wfState.data || null,
-      } as Task;
+      } as unknown as Task;
     },
     enabled: !!id,
   });
@@ -134,9 +137,9 @@ export function useCreateTask() {
 
       // Clean empty strings → null for UUID fields
       const cleanInput = { ...input };
-      if (!cleanInput.project_id) cleanInput.project_id = null as any;
-      if (!cleanInput.assignee_id) cleanInput.assignee_id = null as any;
-      if (!cleanInput.team_id) cleanInput.team_id = null as any;
+      if (!cleanInput.project_id) cleanInput.project_id = null;
+      if (!cleanInput.assignee_id) cleanInput.assignee_id = null;
+      if (!cleanInput.team_id) cleanInput.team_id = null;
       if (!cleanInput.dept_id) cleanInput.dept_id = "";
 
       const { data, error } = await supabase
@@ -146,8 +149,8 @@ export function useCreateTask() {
           org_id: profile!.org_id,
           dept_id: cleanInput.dept_id || profile!.dept_id,
           assigner_id: user!.id,
-          expect_volume: (input as any).expect_volume ?? 100,
-          expect_ahead: (input as any).expect_ahead ?? 100,
+          expect_volume: input.expect_volume ?? 100,
+          expect_ahead: input.expect_ahead ?? 100,
         })
         .select()
         .single();
@@ -233,7 +236,7 @@ export function useUpdateProgress() {
         throw new Error('Chỉ người được giao hoặc Admin mới có thể cập nhật tiến độ');
       }
 
-      const updates: any = { progress };
+      const updates: TablesUpdate<'tasks'> = { progress };
       // Auto-sync status based on progress:
       // 0% → pending (Đang chuẩn bị)
       // 0% < progress < 100% → in_progress (Đang làm)
@@ -258,7 +261,8 @@ export function useUpdateProgress() {
             .eq("task_id", id)
             .is("completed_at", null)
             .maybeSingle();
-          if (wfState?.current_step && (wfState.current_step as any).step_type === 'execute') {
+          const step = wfState?.current_step as { step_type: string } | null;
+          if (step?.step_type === 'execute') {
             const { data: { user } } = await supabase.auth.getUser();
             await supabase.rpc("fn_workflow_advance", {
               p_task: id, p_actor: user!.id, p_result: "completed",

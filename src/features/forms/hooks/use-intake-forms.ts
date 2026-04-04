@@ -21,7 +21,7 @@ export function useIntakeForms() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as IntakeForm[];
+      return (data || []) as unknown as IntakeForm[];
     },
     staleTime: 60_000,
   });
@@ -37,7 +37,7 @@ export function useIntakeForm(id: string) {
         .eq("id", id)
         .single();
       if (error) throw error;
-      return data as IntakeForm;
+      return data as unknown as IntakeForm;
     },
     enabled: !!id,
   });
@@ -51,7 +51,7 @@ export function useCreateIntakeForm() {
       const { data: profile } = await supabase.from("users").select("org_id").eq("id", user!.id).single();
       const { data, error } = await supabase
         .from("intake_forms")
-        .insert({ ...input, org_id: (profile as any).org_id, created_by: user!.id })
+        .insert({ ...input, org_id: (profile as any).org_id, created_by: user!.id } as any)
         .select()
         .single();
       if (error) throw error;
@@ -67,7 +67,7 @@ export function useUpdateIntakeForm() {
     mutationFn: async ({ id, ...updates }: Partial<IntakeForm> & { id: string }) => {
       const { error } = await supabase
         .from("intake_forms")
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ ...updates, updated_at: new Date().toISOString() } as any)
         .eq("id", id);
       if (error) throw error;
     },
@@ -92,7 +92,7 @@ export function useFormSubmissions(formId?: string) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as FormSubmission[];
+      return (data || []) as unknown as FormSubmission[];
     },
   });
 }
@@ -104,7 +104,7 @@ export function useSubmitForm() {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: result, error } = await supabase
         .from("form_submissions")
-        .insert({ form_id: formId, submitted_by: user!.id, data, status: "submitted" })
+        .insert({ form_id: formId, submitted_by: user!.id, data, status: "submitted" } as any)
         .select()
         .single();
       if (error) throw error;
@@ -126,7 +126,7 @@ export function useReviewSubmission() {
           reviewed_by: user!.id,
           reviewed_at: new Date().toISOString(),
           review_note: note || null,
-        })
+        } as any)
         .eq("id", id);
       if (error) throw error;
     },

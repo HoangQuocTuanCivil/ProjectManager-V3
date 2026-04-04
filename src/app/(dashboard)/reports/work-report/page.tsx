@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
-import { useUsers, useAllTeams, useCenters } from "@/lib/hooks/use-data";
+import { useUsers } from "@/lib/hooks/use-users";
+import { useAllTeams, useCenters } from "@/lib/hooks/use-teams";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Button, ProgressBar, AlertCard, DeadlineCountdown, StatusBadge, PriorityBadge, TrendIndicator } from "@/components/shared";

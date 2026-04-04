@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useTasks } from "@/lib/hooks/use-tasks";
-import { useAllocationPeriods } from "@/lib/hooks/use-data";
+import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
 import { Section, StatCard, UserAvatar, KPIRing, EmptyState } from "@/components/shared";
 import { AllocationTable } from "@/components/kpi";
 import { ROLE_CONFIG, formatVND } from "@/lib/utils/kpi";

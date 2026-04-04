@@ -6,7 +6,7 @@ import { Button, Toggle } from "@/components/shared";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
 import { SearchSelect } from "@/shared/ui/search-select";
-import type { WorkflowStepType, UserRole } from "@/lib/types";
+import type { WorkflowStepType, UserRole, WorkflowStep } from "@/lib/types";
 
 const STEP_TYPES: { id: WorkflowStepType; label: string; icon: string; color: string }[] = [
   { id: "create", label: "Tạo", icon: "✏️", color: "#38bdf8" },
@@ -86,7 +86,7 @@ export function WorkflowBuilder({ onClose, onSave }: { onClose: () => void; onSa
           is_automatic: s.is_automatic,
           sla_hours: s.sla_hours,
         })),
-      });
+      } as any);
       toast.success("Tạo quy trình thành công!");
       onSave?.();
       onClose();

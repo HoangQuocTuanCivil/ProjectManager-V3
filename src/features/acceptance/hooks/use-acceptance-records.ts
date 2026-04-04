@@ -57,7 +57,7 @@ export function useAcceptanceRecords(filter?: AcceptanceFilter) {
       const { data, error } = await query;
       if (error) throw error;
 
-      let records = (data as Task[]).map(toAcceptanceRecord);
+      let records = (data as unknown as Task[]).map(toAcceptanceRecord);
 
       // Client-side filtering
       if (filter?.status && filter.status !== "all") {
@@ -124,7 +124,7 @@ export function useUpdatePayment() {
     }) => {
       // Read current metadata, merge payment fields
       const { data: task } = await supabase.from("tasks").select("metadata").eq("id", taskId).single();
-      const metadata = { ...(task?.metadata || {}), payment_status, payment_amount, payment_date, payment_note };
+      const metadata = { ...((task?.metadata ?? {}) as Record<string, any>), payment_status, payment_amount, payment_date, payment_note };
       const { error } = await supabase.from("tasks").update({ metadata }).eq("id", taskId);
       if (error) throw error;
     },

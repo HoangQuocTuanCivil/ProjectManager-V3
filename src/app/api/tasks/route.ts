@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
   const assignee_id = searchParams.get("assignee_id");
   const search = searchParams.get("search");
 
-  if (status && status !== "all") query = query.eq("status", status);
-  if (priority && priority !== "all") query = query.eq("priority", priority);
+  if (status && status !== "all") query = query.eq("status", status as any);
+  if (priority && priority !== "all") query = query.eq("priority", priority as any);
   if (project_id && project_id !== "all") query = query.eq("project_id", project_id);
   if (assignee_id && assignee_id !== "all") query = query.eq("assignee_id", assignee_id);
   if (search) query = query.ilike("title", `%${search}%`);

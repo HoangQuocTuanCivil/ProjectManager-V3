@@ -28,11 +28,11 @@ export async function POST(req: NextRequest) {
   // Log webhook event
   try {
     await admin.from("audit_logs").insert({
-      action: "webhook_received",
+      action: "create",
       resource_type: "webhook",
       resource_id: payload.id || null,
       new_values: { source, event: payload.event || payload.type, payload },
-    });
+    } as any);
   } catch {
     // Logging failure should not block processing
   }

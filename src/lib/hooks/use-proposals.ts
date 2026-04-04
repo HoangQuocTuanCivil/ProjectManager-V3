@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import type { TablesInsert } from '@/lib/types/database';
 
 const supabase = createClient();
 
@@ -30,7 +31,7 @@ export function useProposals(statusFilter?: string) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []).map((p: any) => ({
+      return (data || []).map((p) => ({
         ...p,
         proposer: Array.isArray(p.proposer) ? p.proposer[0] || null : p.proposer,
         approver: Array.isArray(p.approver) ? p.approver[0] || null : p.approver,
@@ -88,8 +89,8 @@ export function useCreateProposal() {
       // Clean empty strings
       const clean = { ...input };
       if (!clean.project_id) delete clean.project_id;
-      if (!clean.dept_id) clean.dept_id = profile.dept_id;
-      if (!clean.team_id) clean.team_id = profile.team_id;
+      if (!clean.dept_id) clean.dept_id = profile.dept_id ?? undefined;
+      if (!clean.team_id) clean.team_id = profile.team_id ?? undefined;
 
       const { data, error } = await supabase
         .from('task_proposals')
@@ -97,7 +98,7 @@ export function useCreateProposal() {
           ...clean,
           org_id: profile.org_id,
           proposed_by: user.id,
-        } as any)
+        } as TablesInsert<'task_proposals'>)
         .select()
         .single();
       if (error) throw error;
@@ -110,7 +111,7 @@ export function useCreateProposal() {
         body: `${profile.full_name} đề xuất: "${input.title}"`,
         type: 'task_proposal',
         data: { proposal_id: data.id, proposed_by: user.id },
-      } as any);
+      } as TablesInsert<'notifications'>);
 
       return data;
     },
@@ -158,7 +159,7 @@ export function useApproveProposal() {
           status: 'pending',
           expect_volume: 100,
           expect_ahead: 100,
-        } as any)
+        } as TablesInsert<'tasks'>)
         .select()
         .single();
       if (tErr) throw tErr;
@@ -183,7 +184,7 @@ export function useApproveProposal() {
         body: `${approverProfile?.full_name || 'Người duyệt'} đã duyệt đề xuất "${proposal.title}"`,
         type: 'proposal_approved',
         data: { proposal_id: proposalId, task_id: task.id },
-      } as any);
+      } as TablesInsert<'notifications'>);
 
       return task;
     },
@@ -230,7 +231,7 @@ export function useRejectProposal() {
         body: `${approverProfile?.full_name || 'Người duyệt'} từ chối: "${proposal.title}"${reason ? ` — Lý do: ${reason}` : ''}`,
         type: 'proposal_rejected',
         data: { proposal_id: proposalId },
-      } as any);
+      } as TablesInsert<'notifications'>);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.all });

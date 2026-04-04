@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useCreateProject } from "@/lib/hooks/use-projects";
-import { useUsers } from "@/lib/hooks/use-data";
+import { useUsers } from "@/lib/hooks/use-users";
 import { useAuthStore } from "@/lib/stores";
 import { canCreateProject } from "@/lib/utils/permissions";
 import { createClient } from "@/lib/supabase/client";

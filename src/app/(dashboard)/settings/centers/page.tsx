@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCenters, useCreateCenter, useUpdateCenter } from "@/lib/hooks/use-data";
+import { useCenters, useCreateCenter, useUpdateCenter } from "@/lib/hooks/use-teams";
 import { useQuery } from "@tanstack/react-query";
 import { Section, Button, UserAvatar, Toggle, EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/shared/ui/search-select";

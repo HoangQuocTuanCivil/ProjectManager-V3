@@ -10,11 +10,6 @@ const nextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "10mb" },
   },
-  typescript: {
-    // Pre-existing type errors from placeholder Database type
-    // Remove after running `npm run db:types`
-    ignoreBuildErrors: true,
-  },
-  poweredByHeader: false,
+poweredByHeader: false,
 };
 export default nextConfig;

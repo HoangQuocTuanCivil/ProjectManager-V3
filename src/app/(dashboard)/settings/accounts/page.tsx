@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useUsers, useUpdateUser, useDeleteUser, useResetPassword, useCreateUser, useCustomRoles, useAllTeams, useCenters } from "@/lib/hooks/use-data";
+import { useUsers, useUpdateUser, useDeleteUser, useResetPassword, useCreateUser } from "@/lib/hooks/use-users";
+import { useCustomRoles } from "@/lib/hooks/use-org-settings";
+import { useAllTeams, useCenters } from "@/lib/hooks/use-teams";
 import { Section, Button, UserAvatar, RoleBadge, Toggle, EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/shared/ui/search-select";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";
@@ -291,7 +293,7 @@ export default function AccountsSettingsPage() {
               autoFocus
             />
             <div className="flex justify-end gap-2 mt-5">
-              <Button size="sm" variant="outline" onClick={() => setResetPwUser(null)}>Hủy</Button>
+              <Button size="sm" variant="ghost" onClick={() => setResetPwUser(null)}>Hủy</Button>
               <Button
                 size="sm"
                 disabled={newPassword.length < 6 || resetPassword.isPending}

@@ -10,6 +10,7 @@ import { Button } from "@/components/shared";
 import { SearchSelect } from "@/shared/ui/search-select";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { toast } from "sonner";
+import type { UserRole } from "@/lib/types";
 
 const ROLE_LEVEL: Record<string, number> = {
   admin: 5, director: 4, leader: 4, head: 3, team_leader: 2, staff: 1,
@@ -31,7 +32,7 @@ function useApprovers(myRole: string) {
       const { data, error } = await supabase
         .from("users")
         .select("id, full_name, role, avatar_url")
-        .in("role", higherRoles)
+        .in("role", higherRoles as UserRole[])
         .eq("is_active", true)
         .order("full_name");
       if (error) throw error;
