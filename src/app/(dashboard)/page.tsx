@@ -160,161 +160,157 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[5fr_4fr_3fr] gap-5">
-        {/* Recent Tasks */}
-        <div>
-          <Section
-            title={t.dashboard.recentTasks}
-            action={
-              <button onClick={() => router.push("/tasks")} className="text-sm text-primary hover:underline">
-                {t.common.viewAll} →
-              </button>
-            }
-          >
-            {tasksLoading ? (
-              <div className="p-4 space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-secondary rounded-lg animate-pulse" />
-                ))}
-              </div>
-            ) : recentTasks.length === 0 ? (
-              <div className="p-6">
-                <EmptyState icon="📋" title={t.dashboard.noTasks} subtitle={t.dashboard.noTasksSub} />
-              </div>
-            ) : (
-              <div className="divide-y divide-border/40">
-                {recentTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    onClick={() => router.push("/tasks")}
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/30 cursor-pointer transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        {task.project && (
-                          <span className="text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                            {task.project.code}
-                          </span>
-                        )}
-                        <span className="text-sm font-medium truncate">{task.title}</span>
-                      </div>
+      {/* Row 1: Công việc gần đây + Dự án đang triển khai */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
+        <Section
+          title={t.dashboard.recentTasks}
+          action={
+            <button onClick={() => router.push("/tasks")} className="text-sm text-primary hover:underline">
+              {t.common.viewAll} →
+            </button>
+          }
+        >
+          {tasksLoading ? (
+            <div className="p-4 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-12 bg-secondary rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : recentTasks.length === 0 ? (
+            <div className="p-6">
+              <EmptyState title={t.dashboard.noTasks} subtitle={t.dashboard.noTasksSub} />
+            </div>
+          ) : (
+            <div className="divide-y divide-border/40">
+              {recentTasks.map((task) => (
+                <div
+                  key={task.id}
+                  onClick={() => router.push("/tasks")}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/30 cursor-pointer transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {task.project && (
+                        <span className="text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                          {task.project.code}
+                        </span>
+                      )}
+                      <span className="text-sm font-medium truncate">{task.title}</span>
                     </div>
-                    <StatusBadge status={task.status} />
-                    <ProgressBar value={task.progress} className="hidden md:flex" />
-                    {task.assignee && (
-                      <UserAvatar name={task.assignee.full_name} color={ROLE_CONFIG[task.assignee.role]?.color} size="xs" />
-                    )}
                   </div>
-                ))}
-              </div>
-            )}
-          </Section>
-        </div>
+                  <StatusBadge status={task.status} />
+                  <ProgressBar value={task.progress} className="hidden md:flex" />
+                  {task.assignee && (
+                    <UserAvatar name={task.assignee.full_name} color={ROLE_CONFIG[task.assignee.role]?.color} size="xs" />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
 
-        {/* KPI Ranking */}
-        <div>
-          <Section
-            title={t.dashboard.kpiRanking}
-            action={
-              <button onClick={() => router.push("/kpi")} className="text-sm text-primary hover:underline">
-                {t.common.viewAll} →
-              </button>
-            }
-          >
-            {/* Group-by toggle + filter select */}
-            <div className="px-4 py-2.5 flex items-center gap-2 border-b border-border/40">
-              <div className="flex rounded-lg border border-border overflow-hidden text-xs">
-                <button
-                  onClick={() => { setKpiGroupBy("center"); setKpiFilterId("all"); }}
-                  className={`px-2.5 py-1 transition-colors ${kpiGroupBy === "center" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
-                >
-                  {t.dashboard.kpiRankingCenter}
-                </button>
-                <button
-                  onClick={() => { setKpiGroupBy("department"); setKpiFilterId("all"); }}
-                  className={`px-2.5 py-1 transition-colors ${kpiGroupBy === "department" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
-                >
-                  {t.dashboard.kpiRankingDept}
-                </button>
-              </div>
-              <select
-                value={kpiFilterId}
-                onChange={(e) => setKpiFilterId(e.target.value)}
-                className="flex-1 text-xs bg-secondary border border-border rounded-lg px-2 py-1 outline-none"
+        <Section
+          title={t.dashboard.activeProjects}
+          action={
+            <button onClick={() => router.push("/projects")} className="text-sm text-primary hover:underline">
+              {t.common.viewAll} →
+            </button>
+          }
+        >
+          <div className="p-3 space-y-2">
+            {activeProjects.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">{t.dashboard.noProjects}</p>
+            ) : (
+              activeProjects.slice(0, 5).map((p) => (
+                <div key={p.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-secondary/50 transition-colors">
+                  <div className="w-8 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary font-mono">
+                    {p.code?.slice(0, 3)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{p.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{p.code}</p>
+                  </div>
+                  <ProgressBar value={p.progress ?? 0} showText={false} className="w-16" />
+                </div>
+              ))
+            )}
+          </div>
+        </Section>
+      </div>
+
+      {/* Row 2: Xếp hạng KPI + KPI nhanh + Khoán */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
+        <Section
+          title={t.dashboard.kpiRanking}
+          action={
+            <button onClick={() => router.push("/kpi")} className="text-sm text-primary hover:underline">
+              {t.common.viewAll} →
+            </button>
+          }
+        >
+          {/* Group-by toggle + filter select */}
+          <div className="px-4 py-2.5 flex items-center gap-2 border-b border-border/40">
+            <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+              <button
+                onClick={() => { setKpiGroupBy("center"); setKpiFilterId("all"); }}
+                className={`px-2.5 py-1 transition-colors ${kpiGroupBy === "center" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
               >
-                <option value="all">{t.dashboard.kpiRankingAll}</option>
-                {kpiFilterOptions.map((opt: { id: string; name: string }) => (
-                  <option key={opt.id} value={opt.id}>{opt.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Ranking list */}
-            {kpiRanking.length === 0 ? (
-              <div className="p-6">
-                <EmptyState icon="🏆" title={t.dashboard.kpiRankingEmpty} />
-              </div>
-            ) : (
-              <div className="divide-y divide-border/40 max-h-[420px] overflow-y-auto">
-                {kpiRanking.map((item, idx) => {
-                  const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
-                  const scoreColor = item.score >= 80 ? "text-green-500" : item.score >= 50 ? "text-amber-500" : "text-red-500";
-                  return (
-                    <div key={item.id} className="flex items-center gap-2.5 px-4 py-2 hover:bg-secondary/30 transition-colors">
-                      <span className="w-6 text-center text-xs font-mono text-muted-foreground shrink-0">
-                        {medal ?? idx + 1}
-                      </span>
-                      <UserAvatar
-                        name={item.name}
-                        src={item.avatar}
-                        color={ROLE_CONFIG[item.role as keyof typeof ROLE_CONFIG]?.color}
-                        size="xs"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.name}</p>
-                      </div>
-                      <span className={`text-sm font-mono font-bold ${scoreColor}`}>
-                        {item.score}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Section>
-        </div>
-
-        {/* Right Column */}
-        <div className="space-y-5">
-          {/* Active Projects */}
-          <Section
-            title={t.dashboard.activeProjects}
-            action={
-              <button onClick={() => router.push("/projects")} className="text-sm text-primary hover:underline">
-                {t.common.viewAll} →
+                {t.dashboard.kpiRankingCenter}
               </button>
-            }
-          >
-            <div className="p-3 space-y-2">
-              {activeProjects.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">{t.dashboard.noProjects}</p>
-              ) : (
-                activeProjects.slice(0, 5).map((p) => (
-                  <div key={p.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                    <div className="w-8 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary font-mono">
-                      {p.code?.slice(0, 3)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{p.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{p.code}</p>
-                    </div>
-                    <ProgressBar value={p.progress ?? 0} showText={false} className="w-16" />
-                  </div>
-                ))
-              )}
+              <button
+                onClick={() => { setKpiGroupBy("department"); setKpiFilterId("all"); }}
+                className={`px-2.5 py-1 transition-colors ${kpiGroupBy === "department" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+              >
+                {t.dashboard.kpiRankingDept}
+              </button>
             </div>
-          </Section>
+            <select
+              value={kpiFilterId}
+              onChange={(e) => setKpiFilterId(e.target.value)}
+              className="flex-1 text-xs bg-secondary border border-border rounded-lg px-2 py-1 outline-none"
+            >
+              <option value="all">{t.dashboard.kpiRankingAll}</option>
+              {kpiFilterOptions.map((opt: { id: string; name: string }) => (
+                <option key={opt.id} value={opt.id}>{opt.name}</option>
+              ))}
+            </select>
+          </div>
 
+          {/* Ranking list */}
+          {kpiRanking.length === 0 ? (
+            <div className="p-6">
+              <EmptyState title={t.dashboard.kpiRankingEmpty} />
+            </div>
+          ) : (
+            <div className="divide-y divide-border/40 max-h-[420px] overflow-y-auto">
+              {kpiRanking.map((item, idx) => {
+                const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
+                const scoreColor = item.score >= 80 ? "text-green-500" : item.score >= 50 ? "text-amber-500" : "text-red-500";
+                return (
+                  <div key={item.id} className="flex items-center gap-2.5 px-4 py-2 hover:bg-secondary/30 transition-colors">
+                    <span className="w-6 text-center text-xs font-mono text-muted-foreground shrink-0">
+                      {medal ?? idx + 1}
+                    </span>
+                    <UserAvatar
+                      name={item.name}
+                      src={item.avatar}
+                      color={ROLE_CONFIG[item.role as keyof typeof ROLE_CONFIG]?.color}
+                      size="xs"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.name}</p>
+                    </div>
+                    <span className={`text-sm font-mono font-bold ${scoreColor}`}>
+                      {item.score}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Section>
+
+        <div className="space-y-5">
           {/* Quick KPI */}
           <Section title={t.dashboard.kpiQuick}>
             <div className="p-4 flex items-center justify-center gap-6">
