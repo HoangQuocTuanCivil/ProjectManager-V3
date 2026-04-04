@@ -13,4 +13,6 @@ export type DependencyType = 'blocking' | 'waiting_on' | 'related';
 export type WorkflowStepType = 'create' | 'assign' | 'execute' | 'submit' | 'review' | 'approve' | 'reject' | 'revise' | 'calculate' | 'notify' | 'archive' | 'custom';
 export type KPIVerdict = 'exceptional' | 'exceeded' | 'near_target' | 'below_target' | 'pending';
 export type TaskView = 'grid' | 'kanban' | 'gantt' | 'calendar' | 'workload';
+export type ContractStatus = 'draft' | 'active' | 'completed' | 'terminated';
+export type BillingMilestoneStatus = 'upcoming' | 'invoiced' | 'paid' | 'overdue';
 export type SettingsTab = 'accounts' | 'roles' | 'depts' | 'teams' | 'workflows' | 'kpi' | 'templates' | 'notifications' | 'security';

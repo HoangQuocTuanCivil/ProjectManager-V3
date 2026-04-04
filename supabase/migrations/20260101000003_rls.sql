@@ -251,6 +251,7 @@ CREATE POLICY "dba_r" ON dept_budget_allocations FOR SELECT USING (org_id = publ
 CREATE POLICY "dba_m" ON dept_budget_allocations FOR ALL
   USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
 
+
 -- ─── KPI RECORDS ─────────────────────────────────────────────────────────────
 CREATE POLICY "kr_r" ON kpi_records FOR SELECT USING (org_id = public.user_org_id());
 CREATE POLICY "kr_m" ON kpi_records FOR ALL

@@ -14,6 +14,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/kpi/allocation": "Đợt khoán",
   "/kpi/allocation/new": "Tạo đợt khoán",
   "/kpi/budget-assign": "Giao khoán",
+  "/kpi/contracts": "Hợp đồng đầu ra",
   "/kpi/config": "Cấu hình",
   "/kpi/evaluation": "Nghiệm thu",
   "/kpi/records": "Lịch sử KPI",
