@@ -301,23 +301,21 @@ CREATE POLICY "rp_m" ON role_permissions FOR ALL
 -- ─── WORKFLOW TEMPLATES ──────────────────────────────────────────────────────
 CREATE POLICY "wf_r" ON workflow_templates FOR SELECT USING (org_id = public.user_org_id());
 CREATE POLICY "wf_m" ON workflow_templates FOR ALL
-  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader'));
-CREATE POLICY "wf_director" ON workflow_templates FOR SELECT
-  USING (public.user_role() = 'director' AND org_id = public.user_org_id());
+  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director', 'head', 'team_leader'));
 
 -- ─── WORKFLOW STEPS ──────────────────────────────────────────────────────────
 CREATE POLICY "ws_r" ON workflow_steps FOR SELECT
   USING (template_id IN (SELECT id FROM workflow_templates WHERE org_id = public.user_org_id()));
 CREATE POLICY "ws_m" ON workflow_steps FOR ALL
   USING (template_id IN (SELECT id FROM workflow_templates WHERE org_id = public.user_org_id())
-    AND public.user_role() IN ('admin', 'leader', 'director'));
+    AND public.user_role() IN ('admin', 'leader', 'director', 'head', 'team_leader'));
 
 -- ─── WORKFLOW TRANSITIONS ────────────────────────────────────────────────────
 CREATE POLICY "wt_r" ON workflow_transitions FOR SELECT
   USING (template_id IN (SELECT id FROM workflow_templates WHERE org_id = public.user_org_id()));
 CREATE POLICY "wt_m" ON workflow_transitions FOR ALL
   USING (template_id IN (SELECT id FROM workflow_templates WHERE org_id = public.user_org_id())
-    AND public.user_role() IN ('admin', 'leader', 'director'));
+    AND public.user_role() IN ('admin', 'leader', 'director', 'head', 'team_leader'));
 
 -- ─── TASK WORKFLOW STATE ─────────────────────────────────────────────────────
 CREATE POLICY "tws_r" ON task_workflow_state FOR SELECT
