@@ -146,7 +146,7 @@ export function ProposalList({ onClose }: { onClose: () => void }) {
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><span className="text-muted-foreground">Ưu tiên: </span><PriorityBadge priority={selectedProposal.priority} /></div>
+                <div><span className="text-muted-foreground">Ưu tiên: </span>{selectedProposal.priority && <PriorityBadge priority={selectedProposal.priority} />}</div>
                 <div><span className="text-muted-foreground">Trọng số: </span><span className="font-mono">W:{selectedProposal.kpi_weight}</span></div>
                 {selectedProposal.project && (
                   <div className="col-span-2"><span className="text-muted-foreground">Dự án: </span><span className="font-mono text-primary">{selectedProposal.project.code} — {selectedProposal.project.name}</span></div>
@@ -230,7 +230,7 @@ export function ProposalList({ onClose }: { onClose: () => void }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <PriorityBadge priority={p.priority} />
+                      {p.priority && <PriorityBadge priority={p.priority} />}
                       <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ background: `${cfg.color}20`, color: cfg.color }}>
                         {cfg.label}
                       </span>

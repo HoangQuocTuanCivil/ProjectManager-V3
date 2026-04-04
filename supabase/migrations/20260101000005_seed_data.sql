@@ -44,35 +44,8 @@ WHERE id IN (
   'de000000-0000-0000-0000-000000000002'
 );
 
--- ─── AUTH USERS ──────────────────────────────────────────────────────────────
--- 6 tài khoản Supabase Auth (local dev — mật khẩu: Test@2026!)
-INSERT INTO auth.users (
-  id, instance_id, email, encrypted_password, email_confirmed_at,
-  raw_app_meta_data, raw_user_meta_data, aud, role,
-  created_at, updated_at,
-  confirmation_token, recovery_token,
-  email_change, email_change_token_new, email_change_token_current,
-  email_change_confirm_status, phone, phone_change, phone_change_token, reauthentication_token
-)
-VALUES
-  ('00e00000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','viet.nq@a2z.com.vn', crypt('Test@2026!',gen_salt('bf')),NOW(),'{"provider":"email","providers":["email"]}','{"full_name":"Nguyễn Quốc Việt"}','authenticated','authenticated',NOW(),NOW(),'','','','','',0,NULL,'','',''),
-  ('00e00000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000000','tam.tm@a2z.com.vn',  crypt('Test@2026!',gen_salt('bf')),NOW(),'{"provider":"email","providers":["email"]}','{"full_name":"Trần Minh Tâm"}',  'authenticated','authenticated',NOW(),NOW(),'','','','','',0,NULL,'','',''),
-  ('00e00000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000000','dung.lh@a2z.com.vn', crypt('Test@2026!',gen_salt('bf')),NOW(),'{"provider":"email","providers":["email"]}','{"full_name":"Lê Hoàng Dũng"}',  'authenticated','authenticated',NOW(),NOW(),'','','','','',0,NULL,'','',''),
-  ('00e00000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000000','huong.pt@a2z.com.vn',crypt('Test@2026!',gen_salt('bf')),NOW(),'{"provider":"email","providers":["email"]}','{"full_name":"Phạm Thị Hương"}','authenticated','authenticated',NOW(),NOW(),'','','','','',0,NULL,'','',''),
-  ('00e00000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000000','khoa.vd@a2z.com.vn', crypt('Test@2026!',gen_salt('bf')),NOW(),'{"provider":"email","providers":["email"]}','{"full_name":"Võ Đình Khoa"}',  'authenticated','authenticated',NOW(),NOW(),'','','','','',0,NULL,'','',''),
-  ('00e00000-0000-0000-0000-000000000006','00000000-0000-0000-0000-000000000000','linh.dn@a2z.com.vn', crypt('Test@2026!',gen_salt('bf')),NOW(),'{"provider":"email","providers":["email"]}','{"full_name":"Đặng Ngọc Linh"}','authenticated','authenticated',NOW(),NOW(),'','','','','',0,NULL,'','','')
-ON CONFLICT (id) DO NOTHING;
-
--- Auth identities — bắt buộc để Supabase Auth flow hoạt động đúng
-INSERT INTO auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
-VALUES
-  ('00e00000-0000-0000-0000-000000000001','00e00000-0000-0000-0000-000000000001','viet.nq@a2z.com.vn', 'email','{"sub":"00e00000-0000-0000-0000-000000000001","email":"viet.nq@a2z.com.vn"}', NOW(),NOW(),NOW()),
-  ('00e00000-0000-0000-0000-000000000002','00e00000-0000-0000-0000-000000000002','tam.tm@a2z.com.vn',  'email','{"sub":"00e00000-0000-0000-0000-000000000002","email":"tam.tm@a2z.com.vn"}',  NOW(),NOW(),NOW()),
-  ('00e00000-0000-0000-0000-000000000003','00e00000-0000-0000-0000-000000000003','dung.lh@a2z.com.vn', 'email','{"sub":"00e00000-0000-0000-0000-000000000003","email":"dung.lh@a2z.com.vn"}', NOW(),NOW(),NOW()),
-  ('00e00000-0000-0000-0000-000000000004','00e00000-0000-0000-0000-000000000004','huong.pt@a2z.com.vn','email','{"sub":"00e00000-0000-0000-0000-000000000004","email":"huong.pt@a2z.com.vn"}',NOW(),NOW(),NOW()),
-  ('00e00000-0000-0000-0000-000000000005','00e00000-0000-0000-0000-000000000005','khoa.vd@a2z.com.vn', 'email','{"sub":"00e00000-0000-0000-0000-000000000005","email":"khoa.vd@a2z.com.vn"}', NOW(),NOW(),NOW()),
-  ('00e00000-0000-0000-0000-000000000006','00e00000-0000-0000-0000-000000000006','linh.dn@a2z.com.vn', 'email','{"sub":"00e00000-0000-0000-0000-000000000006","email":"linh.dn@a2z.com.vn"}', NOW(),NOW(),NOW())
-ON CONFLICT (id) DO NOTHING;
+-- Auth users được tạo thủ công qua Supabase Dashboard hoặc script migrate_auth_users.ps1
+-- (Không thể INSERT vào auth.users qua migrations trên Supabase cloud)
 
 -- ─── USER PROFILES ───────────────────────────────────────────────────────────
 -- Hồ sơ người dùng trong bảng public.users — khớp với auth.users ở trên
@@ -102,7 +75,7 @@ UPDATE centers SET director_id = '00e00000-0000-0000-0000-000000000002'
 -- Nhóm Revit thuộc phòng BIM, do Dũng dẫn
 INSERT INTO teams (id, org_id, dept_id, name, code, description, leader_id, is_active)
 VALUES (
-  'te000000-0000-0000-0000-000000000001',
+  'ee000000-0000-0000-0000-000000000001',
   'a2a00000-0000-0000-0000-000000000001',
   'de000000-0000-0000-0000-000000000001',
   'Nhóm Revit', 'REV', 'Mô hình kết cấu & MEP bằng Revit',
@@ -110,7 +83,7 @@ VALUES (
 ) ON CONFLICT (id) DO NOTHING;
 
 -- Cập nhật team_id cho nhân viên BIM
-UPDATE users SET team_id = 'te000000-0000-0000-0000-000000000001'
+UPDATE users SET team_id = 'ee000000-0000-0000-0000-000000000001'
   WHERE id IN (
     '00e00000-0000-0000-0000-000000000003',
     '00e00000-0000-0000-0000-000000000005'
@@ -119,12 +92,12 @@ UPDATE users SET team_id = 'te000000-0000-0000-0000-000000000001'
 -- ─── CẤU HÌNH KPI & KHOÁN ────────────────────────────────────────────────────
 -- Bộ trọng số KPI mặc định cho tổ chức
 INSERT INTO kpi_configs (id, org_id, progress_weight, ontime_weight, volume_weight)
-VALUES ('kc000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001', 0.50, 0.30, 0.20)
+VALUES ('ca000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001', 0.50, 0.30, 0.20)
 ON CONFLICT (id) DO NOTHING;
 
 -- Bộ trọng số chia khoán 4 chiều (V+Q+D+A = 1.0)
 INSERT INTO allocation_configs (id, org_id, name, weight_volume, weight_quality, weight_difficulty, weight_ahead)
-VALUES ('ac000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001','Cấu hình mặc định', 0.40, 0.30, 0.20, 0.10)
+VALUES ('cb000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001','Cấu hình mặc định', 0.40, 0.30, 0.20, 0.10)
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── QUYỀN HỆ THỐNG ──────────────────────────────────────────────────────────
@@ -163,34 +136,34 @@ ON CONFLICT (id) DO NOTHING;
 -- Vai trò tùy chỉnh: BIM Manager (mở rộng từ head) và Senior Engineer (mở rộng từ staff)
 INSERT INTO custom_roles (id, org_id, name, description, color, base_role)
 VALUES
-  ('cr000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001','BIM Manager',    'Nhóm trưởng BIM nâng cao', '#3b82f6','head'),
-  ('cr000000-0000-0000-0000-000000000002','a2a00000-0000-0000-0000-000000000001','Senior Engineer','Kỹ sư cao cấp',             '#10b981','staff')
+  ('cc000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001','BIM Manager',    'Nhóm trưởng BIM nâng cao', '#3b82f6','head'),
+  ('cc000000-0000-0000-0000-000000000002','a2a00000-0000-0000-0000-000000000001','Senior Engineer','Kỹ sư cao cấp',             '#10b981','staff')
 ON CONFLICT (id) DO NOTHING;
 
 -- Quyền BIM Manager: xem dept, tạo/sửa task, chấm KPI, quản lý dự án, goals
 INSERT INTO role_permissions (role_id, permission_id) VALUES
-  ('cr000000-0000-0000-0000-000000000001','task.view_dept'),
-  ('cr000000-0000-0000-0000-000000000001','task.create'),
-  ('cr000000-0000-0000-0000-000000000001','task.edit_others'),
-  ('cr000000-0000-0000-0000-000000000001','task.score_kpi'),
-  ('cr000000-0000-0000-0000-000000000001','task.approve'),
-  ('cr000000-0000-0000-0000-000000000001','project.view_all'),
-  ('cr000000-0000-0000-0000-000000000001','project.edit'),
-  ('cr000000-0000-0000-0000-000000000001','project.manage_members'),
-  ('cr000000-0000-0000-0000-000000000001','kpi.view_dept'),
-  ('cr000000-0000-0000-0000-000000000001','settings.templates'),
-  ('cr000000-0000-0000-0000-000000000001','goals.create'),
-  ('cr000000-0000-0000-0000-000000000001','goals.view_all'),
+  ('cc000000-0000-0000-0000-000000000001','task.view_dept'),
+  ('cc000000-0000-0000-0000-000000000001','task.create'),
+  ('cc000000-0000-0000-0000-000000000001','task.edit_others'),
+  ('cc000000-0000-0000-0000-000000000001','task.score_kpi'),
+  ('cc000000-0000-0000-0000-000000000001','task.approve'),
+  ('cc000000-0000-0000-0000-000000000001','project.view_all'),
+  ('cc000000-0000-0000-0000-000000000001','project.edit'),
+  ('cc000000-0000-0000-0000-000000000001','project.manage_members'),
+  ('cc000000-0000-0000-0000-000000000001','kpi.view_dept'),
+  ('cc000000-0000-0000-0000-000000000001','settings.templates'),
+  ('cc000000-0000-0000-0000-000000000001','goals.create'),
+  ('cc000000-0000-0000-0000-000000000001','goals.view_all'),
   -- Quyền Senior Engineer: xem dept, cập nhật tiến độ, chấm KPI, xem dự án
-  ('cr000000-0000-0000-0000-000000000002','task.view_dept'),
-  ('cr000000-0000-0000-0000-000000000002','task.update_progress'),
-  ('cr000000-0000-0000-0000-000000000002','task.score_kpi'),
-  ('cr000000-0000-0000-0000-000000000002','kpi.view_self'),
-  ('cr000000-0000-0000-0000-000000000002','project.view_all')
+  ('cc000000-0000-0000-0000-000000000002','task.view_dept'),
+  ('cc000000-0000-0000-0000-000000000002','task.update_progress'),
+  ('cc000000-0000-0000-0000-000000000002','task.score_kpi'),
+  ('cc000000-0000-0000-0000-000000000002','kpi.view_self'),
+  ('cc000000-0000-0000-0000-000000000002','project.view_all')
 ON CONFLICT DO NOTHING;
 
 -- Gán custom role BIM Manager cho Dũng
-UPDATE users SET custom_role_id = 'cr000000-0000-0000-0000-000000000001'
+UPDATE users SET custom_role_id = 'cc000000-0000-0000-0000-000000000001'
   WHERE id = '00e00000-0000-0000-0000-000000000003';
 
 -- ─── DỰ ÁN ───────────────────────────────────────────────────────────────────
@@ -240,29 +213,29 @@ ON CONFLICT (project_id, user_id) DO NOTHING;
 INSERT INTO goals (id, org_id, title, goal_type, status, owner_id, dept_id, period_label, start_date, due_date, progress, color)
 VALUES
   -- Mục tiêu công ty Q2/2026
-  ('go000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001',
+  ('b0000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001',
    'Đạt 90% KPI Q2/2026','company','on_track',
    '00e00000-0000-0000-0000-000000000001',NULL,'Q2/2026','2026-04-01','2026-06-30',35.00,'#6366f1'),
   -- Mục tiêu phòng BIM: hoàn thành 100% mô hình đúng tiến độ
-  ('go000000-0000-0000-0000-000000000002','a2a00000-0000-0000-0000-000000000001',
+  ('b0000000-0000-0000-0000-000000000002','a2a00000-0000-0000-0000-000000000001',
    'Hoàn thành 100% mô hình BIM các dự án','department','on_track',
    '00e00000-0000-0000-0000-000000000002','de000000-0000-0000-0000-000000000001','Q2/2026','2026-04-01','2026-06-30',20.00,'#3b82f6'),
   -- Mục tiêu cá nhân Khoa: review 10 plugins Revit
-  ('go000000-0000-0000-0000-000000000003','a2a00000-0000-0000-0000-000000000001',
+  ('b0000000-0000-0000-0000-000000000003','a2a00000-0000-0000-0000-000000000001',
    'Nâng cao kỹ năng Revit API','personal','at_risk',
    '00e00000-0000-0000-0000-000000000005','de000000-0000-0000-0000-000000000001','Q2/2026','2026-04-01','2026-06-30',30.00,'#f59e0b')
 ON CONFLICT (id) DO NOTHING;
 
 -- Mục tiêu phòng là sub-goal của mục tiêu công ty
-UPDATE goals SET parent_goal_id = 'go000000-0000-0000-0000-000000000001'
-  WHERE id = 'go000000-0000-0000-0000-000000000002';
+UPDATE goals SET parent_goal_id = 'b0000000-0000-0000-0000-000000000001'
+  WHERE id = 'b0000000-0000-0000-0000-000000000002';
 
 -- Chỉ tiêu đo lường cho từng goal
 INSERT INTO goal_targets (id, goal_id, title, target_type, current_value, target_value, unit)
 VALUES
-  ('gt000000-0000-0000-0000-000000000001','go000000-0000-0000-0000-000000000001','Điểm KPI TB >= 85','percentage',72,85,'%'),
-  ('gt000000-0000-0000-0000-000000000002','go000000-0000-0000-0000-000000000002','Tasks BIM hoàn thành','task_completion',8,50,'tasks'),
-  ('gt000000-0000-0000-0000-000000000003','go000000-0000-0000-0000-000000000003','Review plugins Revit','number',3,10,'plugins')
+  ('b1000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000001','Điểm KPI TB >= 85','percentage',72,85,'%'),
+  ('b1000000-0000-0000-0000-000000000002','b0000000-0000-0000-0000-000000000002','Tasks BIM hoàn thành','task_completion',8,50,'tasks'),
+  ('b1000000-0000-0000-0000-000000000003','b0000000-0000-0000-0000-000000000003','Review plugins Revit','number',3,10,'plugins')
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── CÔNG VIỆC (Tasks) ───────────────────────────────────────────────────────
@@ -281,7 +254,7 @@ INSERT INTO tasks (
 VALUES
   -- Task 1: Hoàn thành + KPI đã chấm (NHC / BIM)
   ('dd000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001',
-   'de000000-0000-0000-0000-000000000001','bb000000-0000-0000-0000-000000000001','te000000-0000-0000-0000-000000000001',
+   'de000000-0000-0000-0000-000000000001','bb000000-0000-0000-0000-000000000001','ee000000-0000-0000-0000-000000000001',
    'Mô hình địa hình khu vực nút giao NHC',
    'Tạo mô hình địa hình 3D từ dữ liệu khảo sát LIDAR và bản đồ số',
    '00e00000-0000-0000-0000-000000000005','00e00000-0000-0000-0000-000000000003',
@@ -292,7 +265,7 @@ VALUES
 
   -- Task 2: Đang thực hiện 65% (NHC / BIM)
   ('dd000000-0000-0000-0000-000000000002','a2a00000-0000-0000-0000-000000000001',
-   'de000000-0000-0000-0000-000000000001','bb000000-0000-0000-0000-000000000001','te000000-0000-0000-0000-000000000001',
+   'de000000-0000-0000-0000-000000000001','bb000000-0000-0000-0000-000000000001','ee000000-0000-0000-0000-000000000001',
    'Mô hình kết cấu dầm hộp cầu vượt',
    'Mô hình 3D kết cấu dầm hộp BTCT DƯL nhịp chính L=45m bằng Revit Structure',
    '00e00000-0000-0000-0000-000000000005','00e00000-0000-0000-0000-000000000003',
@@ -325,7 +298,7 @@ VALUES
 
   -- Task 5: Chờ duyệt review (NHC / BIM)
   ('dd000000-0000-0000-0000-000000000005','a2a00000-0000-0000-0000-000000000001',
-   'de000000-0000-0000-0000-000000000001','bb000000-0000-0000-0000-000000000001','te000000-0000-0000-0000-000000000001',
+   'de000000-0000-0000-0000-000000000001','bb000000-0000-0000-0000-000000000001','ee000000-0000-0000-0000-000000000001',
    'Clash detection mô hình MEP vs kết cấu',
    'Kiểm tra va chạm giữa hệ thống MEP và kết cấu trên mô hình BIM tổng hợp',
    '00e00000-0000-0000-0000-000000000005','00e00000-0000-0000-0000-000000000003',
@@ -358,7 +331,7 @@ VALUES
 
   -- Task 8: Đang thực hiện 20% (TPBL / BIM)
   ('dd000000-0000-0000-0000-000000000008','a2a00000-0000-0000-0000-000000000001',
-   'de000000-0000-0000-0000-000000000001','bb000000-0000-0000-0000-000000000002','te000000-0000-0000-0000-000000000001',
+   'de000000-0000-0000-0000-000000000001','bb000000-0000-0000-0000-000000000002','ee000000-0000-0000-0000-000000000001',
    'Mô hình BIM cầu vượt Km14+500',
    'Mô hình 3D kết cấu cầu vượt tại lý trình Km14+500 gồm mố, trụ, dầm I',
    '00e00000-0000-0000-0000-000000000005','00e00000-0000-0000-0000-000000000003',
@@ -409,9 +382,9 @@ ON CONFLICT DO NOTHING;
 -- Đợt khoán tháng 3/2026 cho dự án NHC — trạng thái draft chờ tính
 INSERT INTO allocation_periods (id, org_id, config_id, name, project_id, total_fund, period_start, period_end, mode, status)
 VALUES (
-  'ap000000-0000-0000-0000-000000000001',
+  'ab000000-0000-0000-0000-000000000001',
   'a2a00000-0000-0000-0000-000000000001',
-  'ac000000-0000-0000-0000-000000000001',
+  'cb000000-0000-0000-0000-000000000001',
   'Khoán tháng 3/2026 - NHC',
   'bb000000-0000-0000-0000-000000000001',
   80000000, '2026-03-01', '2026-03-31',
@@ -444,3 +417,5 @@ INSERT INTO notifications (org_id, user_id, title, body, type, is_read, created_
 ON CONFLICT DO NOTHING;
 
 SELECT '✅ 005_seed_data: Dữ liệu mẫu đã tạo xong' AS status;
+
+

@@ -5,20 +5,22 @@
 -- ─── AUTH HELPERS ────────────────────────────────────────────────────────────
 -- Các hàm lấy thông tin user hiện tại, SECURITY DEFINER để bypass RLS
 
-CREATE OR REPLACE FUNCTION auth.user_org_id() RETURNS UUID AS $$
+-- Các helper lấy thông tin user hiện tại trong public schema
+-- Supabase cloud không cho phép tạo function trong schema auth qua migrations
+CREATE OR REPLACE FUNCTION public.user_org_id() RETURNS UUID AS $$
   SELECT org_id FROM users WHERE id = auth.uid();
 $$ LANGUAGE SQL SECURITY DEFINER STABLE;
 
-CREATE OR REPLACE FUNCTION auth.user_dept_id() RETURNS UUID AS $$
+CREATE OR REPLACE FUNCTION public.user_dept_id() RETURNS UUID AS $$
   SELECT dept_id FROM users WHERE id = auth.uid();
 $$ LANGUAGE SQL SECURITY DEFINER STABLE;
 
-CREATE OR REPLACE FUNCTION auth.user_role() RETURNS user_role AS $$
+CREATE OR REPLACE FUNCTION public.user_role() RETURNS user_role AS $$
   SELECT role FROM users WHERE id = auth.uid();
 $$ LANGUAGE SQL SECURITY DEFINER STABLE;
 
 -- Lấy center_id user hiện tại, SECURITY DEFINER tránh vòng lặp RLS
-CREATE OR REPLACE FUNCTION auth.user_center_id() RETURNS UUID
+CREATE OR REPLACE FUNCTION public.user_center_id() RETURNS UUID
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
 AS $$
   SELECT center_id FROM users WHERE id = auth.uid();
@@ -445,7 +447,7 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ─── TRIGGERS ────────────────────────────────────────────────────────────────
 

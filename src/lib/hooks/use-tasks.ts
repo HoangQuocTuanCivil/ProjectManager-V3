@@ -204,7 +204,7 @@ export function useEvaluateKPI() {
         p_ahd: params.actual_ahead,
         p_qual: params.actual_quality,
         p_diff: params.actual_difficulty,
-        p_note: params.note || null,
+        p_note: params.note ?? undefined,
       });
       if (error) throw error;
       return data;

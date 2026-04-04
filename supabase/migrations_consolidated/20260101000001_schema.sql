@@ -1,10 +1,9 @@
 -- A2Z WORKHUB 
 -- Chỉ chứa: enums, bảng, indexes. Không có functions/triggers/RLS/seed.
-
 -- ============================================================
 -- EXTENSIONS
 -- ============================================================
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- uuid-ossp không cần thiết khi dùng gen_random_uuid() built-in
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
 
@@ -39,7 +38,7 @@ CREATE TYPE workflow_scope AS ENUM ('global', 'department', 'project', 'task_typ
 
 -- Tổ chức
 CREATE TABLE organizations (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name        TEXT NOT NULL,
   domain      TEXT UNIQUE,
   logo_url    TEXT,
@@ -50,7 +49,7 @@ CREATE TABLE organizations (
 
 -- Phòng ban (center_id sẽ thêm FK sau khi tạo bảng centers)
 CREATE TABLE departments (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name          TEXT NOT NULL,
   code          TEXT NOT NULL,
@@ -100,7 +99,7 @@ ALTER TABLE users ADD CONSTRAINT fk_user_invited FOREIGN KEY (invited_by) REFERE
 -- TRUNG TÂM (cấp trên phòng ban)
 -- ============================================================
 CREATE TABLE centers (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name          TEXT NOT NULL,
   code          TEXT,
@@ -123,7 +122,7 @@ ALTER TABLE users ADD CONSTRAINT fk_user_center FOREIGN KEY (center_id) REFERENC
 -- ĐỘI NHÓM
 -- ============================================================
 CREATE TABLE teams (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   dept_id     UUID NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
@@ -144,7 +143,7 @@ ALTER TABLE users ADD CONSTRAINT fk_user_team FOREIGN KEY (team_id) REFERENCES t
 -- DỰ ÁN
 -- ============================================================
 CREATE TABLE projects (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id          UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   code            TEXT NOT NULL,
   name            TEXT NOT NULL,
@@ -167,7 +166,7 @@ CREATE TABLE projects (
 
 -- Thành viên dự án
 CREATE TABLE project_members (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id  UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role        project_member_role DEFAULT 'engineer',
@@ -189,7 +188,7 @@ CREATE TABLE project_departments (
 -- MỤC TIÊU & OKR
 -- ============================================================
 CREATE TABLE goals (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id          UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   parent_goal_id  UUID REFERENCES goals(id) ON DELETE SET NULL,
   title           TEXT NOT NULL,
@@ -212,7 +211,7 @@ CREATE TABLE goals (
 
 -- Chỉ tiêu mục tiêu
 CREATE TABLE goal_targets (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   goal_id         UUID NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
   title           TEXT NOT NULL,
   target_type     target_type NOT NULL DEFAULT 'number',
@@ -237,7 +236,7 @@ CREATE TABLE goal_projects (
 -- CỘT MỐC
 -- ============================================================
 CREATE TABLE milestones (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id  UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   title       TEXT NOT NULL,
   description TEXT,
@@ -253,7 +252,7 @@ CREATE TABLE milestones (
 -- CÔNG VIỆC (kèm KPI E/A)
 -- ============================================================
 CREATE TABLE tasks (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id            UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   dept_id           UUID REFERENCES departments(id) ON DELETE SET NULL,
   project_id        UUID REFERENCES projects(id) ON DELETE SET NULL,
@@ -314,7 +313,7 @@ CREATE TABLE tasks (
 -- ĐỀ XUẤT CÔNG VIỆC
 -- ============================================================
 CREATE TABLE task_proposals (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   proposed_by   UUID NOT NULL REFERENCES users(id),
   approver_id   UUID NOT NULL REFERENCES users(id),
@@ -341,7 +340,7 @@ CREATE TABLE task_proposals (
 
 -- Bình luận
 CREATE TABLE task_comments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id),
   content TEXT NOT NULL,
@@ -351,7 +350,7 @@ CREATE TABLE task_comments (
 
 -- Đính kèm
 CREATE TABLE task_attachments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   uploaded_by UUID NOT NULL REFERENCES users(id),
   file_name TEXT NOT NULL,
@@ -364,7 +363,7 @@ CREATE TABLE task_attachments (
 
 -- Lịch sử trạng thái
 CREATE TABLE task_status_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   changed_by UUID NOT NULL REFERENCES users(id),
   old_status task_status,
@@ -375,7 +374,7 @@ CREATE TABLE task_status_logs (
 
 -- Chấm điểm
 CREATE TABLE task_scores (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   scored_by UUID NOT NULL REFERENCES users(id),
   score_type TEXT NOT NULL CHECK (score_type IN ('quality','difficulty')),
@@ -387,7 +386,7 @@ CREATE TABLE task_scores (
 
 -- Phụ thuộc giữa các task
 CREATE TABLE task_dependencies (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   depends_on_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   dependency_type dependency_type NOT NULL DEFAULT 'blocking',
@@ -398,7 +397,7 @@ CREATE TABLE task_dependencies (
 
 -- Danh sách kiểm tra
 CREATE TABLE task_checklists (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   title TEXT NOT NULL DEFAULT 'Checklist',
   sort_order INT DEFAULT 0,
@@ -407,7 +406,7 @@ CREATE TABLE task_checklists (
 
 -- Mục kiểm tra
 CREATE TABLE checklist_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   checklist_id UUID NOT NULL REFERENCES task_checklists(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   is_checked BOOLEAN DEFAULT FALSE,
@@ -420,7 +419,7 @@ CREATE TABLE checklist_items (
 
 -- Chấm công theo giờ
 CREATE TABLE time_entries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id),
   start_time TIMESTAMPTZ,
@@ -437,7 +436,7 @@ CREATE TABLE time_entries (
 
 -- Cấu hình KPI
 CREATE TABLE kpi_configs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   progress_weight NUMERIC(3,2) DEFAULT 0.50,
   ontime_weight NUMERIC(3,2) DEFAULT 0.30,
@@ -450,7 +449,7 @@ CREATE TABLE kpi_configs (
 
 -- Cấu hình chia khoán (trọng số 4 chiều)
 CREATE TABLE allocation_configs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name TEXT NOT NULL DEFAULT 'Cấu hình mặc định',
   weight_volume NUMERIC(4,2) NOT NULL DEFAULT 0.40,
@@ -466,7 +465,7 @@ CREATE TABLE allocation_configs (
 
 -- Đợt chia khoán
 CREATE TABLE allocation_periods (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   config_id UUID NOT NULL REFERENCES allocation_configs(id),
   name TEXT NOT NULL,
@@ -490,7 +489,7 @@ ALTER TABLE tasks ADD CONSTRAINT fk_task_alloc FOREIGN KEY (allocation_id) REFER
 
 -- Kết quả chia khoán
 CREATE TABLE allocation_results (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   period_id UUID NOT NULL REFERENCES allocation_periods(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id),
   project_id UUID REFERENCES projects(id),
@@ -510,7 +509,7 @@ CREATE TABLE allocation_results (
 
 -- Bản ghi KPI theo kỳ
 CREATE TABLE kpi_records (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   dept_id UUID REFERENCES departments(id) ON DELETE CASCADE,
@@ -529,7 +528,7 @@ CREATE TABLE kpi_records (
 
 -- Tổng hợp KPI theo dự án
 CREATE TABLE project_kpi_summary (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   period period_type NOT NULL,
@@ -550,7 +549,7 @@ CREATE TABLE project_kpi_summary (
 
 -- Tổng hợp KPI toàn cầu
 CREATE TABLE global_kpi_summary (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   period period_type NOT NULL,
@@ -573,7 +572,7 @@ CREATE TABLE global_kpi_summary (
 -- THÔNG BÁO
 -- ============================================================
 CREATE TABLE notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -590,7 +589,7 @@ CREATE TABLE notifications (
 
 -- Phiên đăng nhập
 CREATE TABLE user_sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL,
   ip_address INET,
@@ -604,7 +603,7 @@ CREATE TABLE user_sessions (
 
 -- Nhật ký kiểm toán
 CREATE TABLE audit_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id),
   action audit_action NOT NULL,
@@ -619,7 +618,7 @@ CREATE TABLE audit_logs (
 
 -- Lời mời người dùng
 CREATE TABLE user_invitations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   role user_role NOT NULL DEFAULT 'staff',
@@ -646,7 +645,7 @@ CREATE TABLE permissions (
 
 -- Vai trò tùy chỉnh
 CREATE TABLE custom_roles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
@@ -675,7 +674,7 @@ CREATE TABLE role_permissions (
 
 -- Mẫu workflow
 CREATE TABLE workflow_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
@@ -694,7 +693,7 @@ CREATE TABLE workflow_templates (
 
 -- Bước workflow
 CREATE TABLE workflow_steps (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   template_id UUID NOT NULL REFERENCES workflow_templates(id) ON DELETE CASCADE,
   step_order INT NOT NULL,
   name TEXT NOT NULL,
@@ -715,7 +714,7 @@ CREATE TABLE workflow_steps (
 
 -- Chuyển tiếp giữa các bước
 CREATE TABLE workflow_transitions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   template_id UUID NOT NULL REFERENCES workflow_templates(id) ON DELETE CASCADE,
   from_step_id UUID NOT NULL REFERENCES workflow_steps(id) ON DELETE CASCADE,
   to_step_id UUID NOT NULL REFERENCES workflow_steps(id) ON DELETE CASCADE,
@@ -727,7 +726,7 @@ CREATE TABLE workflow_transitions (
 
 -- Trạng thái workflow hiện tại của task
 CREATE TABLE task_workflow_state (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE UNIQUE,
   template_id UUID NOT NULL REFERENCES workflow_templates(id),
   current_step_id UUID NOT NULL REFERENCES workflow_steps(id),
@@ -740,7 +739,7 @@ CREATE TABLE task_workflow_state (
 
 -- Lịch sử workflow
 CREATE TABLE workflow_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   step_id UUID NOT NULL REFERENCES workflow_steps(id),
   action TEXT NOT NULL,
@@ -756,7 +755,7 @@ CREATE TABLE workflow_history (
 
 -- Mẫu công việc
 CREATE TABLE task_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
@@ -778,7 +777,7 @@ CREATE TABLE task_templates (
 
 -- Mẫu dự án
 CREATE TABLE project_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
@@ -793,7 +792,7 @@ CREATE TABLE project_templates (
 
 -- Biểu mẫu nhập liệu
 CREATE TABLE intake_forms (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
@@ -812,7 +811,7 @@ CREATE TABLE intake_forms (
 
 -- Bài nộp biểu mẫu
 CREATE TABLE form_submissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   form_id UUID NOT NULL REFERENCES intake_forms(id) ON DELETE CASCADE,
   submitted_by UUID REFERENCES users(id),
   data JSONB NOT NULL,
@@ -822,7 +821,7 @@ CREATE TABLE form_submissions (
 
 -- Cập nhật trạng thái dự án/mục tiêu
 CREATE TABLE status_updates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   goal_id UUID REFERENCES goals(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -841,7 +840,7 @@ CREATE TABLE status_updates (
 
 -- Bảng điều khiển
 CREATE TABLE dashboards (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
@@ -854,7 +853,7 @@ CREATE TABLE dashboards (
 
 -- Widget bảng điều khiển
 CREATE TABLE dashboard_widgets (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   dashboard_id UUID NOT NULL REFERENCES dashboards(id) ON DELETE CASCADE,
   widget_type TEXT NOT NULL,
   title TEXT,
@@ -870,7 +869,7 @@ CREATE TABLE dashboard_widgets (
 
 -- Quy tắc tự động
 CREATE TABLE automation_rules (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
@@ -889,7 +888,7 @@ CREATE TABLE automation_rules (
 
 -- Nhật ký tự động hóa
 CREATE TABLE automation_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   rule_id UUID NOT NULL REFERENCES automation_rules(id) ON DELETE CASCADE,
   trigger_data JSONB,
   actions_executed JSONB,
@@ -902,7 +901,7 @@ CREATE TABLE automation_logs (
 -- CÀI ĐẶT TỔ CHỨC
 -- ============================================================
 CREATE TABLE org_settings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   key TEXT NOT NULL,
@@ -1024,3 +1023,4 @@ CREATE INDEX idx_pd_project ON project_departments(project_id);
 CREATE INDEX idx_pd_dept ON project_departments(dept_id);
 
 SELECT '✅ 001_schema: Tất cả bảng, enum, index đã tạo xong' AS status;
+

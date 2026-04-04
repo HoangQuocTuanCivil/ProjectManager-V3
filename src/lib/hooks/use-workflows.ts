@@ -90,7 +90,7 @@ export function useAdvanceWorkflow() {
         p_task: taskId,
         p_actor: user!.id,
         p_result: result,
-        p_note: note || null,
+        p_note: note ?? undefined,
       });
       if (error) throw error;
       return data;
