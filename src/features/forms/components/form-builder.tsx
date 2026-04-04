@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, Toggle } from "@/components/shared";
 import { cn } from "@/lib/utils/cn";
 import { FIELD_TYPE_CONFIG, type FormField, type FieldType, type FormFieldOption } from "../types/form.types";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 
 interface FormBuilderProps {
   initialName?: string;

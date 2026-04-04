@@ -9,7 +9,7 @@ import { useUsers } from "@/lib/hooks/use-users";
 import { useTeams } from "@/lib/hooks/use-teams";
 import { useUIStore, useAuthStore, type TaskSortKey } from "@/lib/stores";
 import { StatusBadge, PriorityBadge, ProgressBar, UserAvatar, KPIRing, FilterChip, Button, EmptyState } from "@/components/shared";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { Dialog, DialogContent } from "@/components/shared/dialog";
 import { cn } from "@/lib/utils/cn";
 import { ROLE_CONFIG, STATUS_CONFIG, PRIORITY_CONFIG, formatDate, formatRelativeDate } from "@/lib/utils/kpi";

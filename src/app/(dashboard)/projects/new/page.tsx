@@ -10,7 +10,7 @@ import { canCreateProject } from "@/lib/utils/permissions";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/shared";
 import { toast } from "sonner";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import type { UserRole, Department } from "@/lib/types";
 
 const supabase = createClient();

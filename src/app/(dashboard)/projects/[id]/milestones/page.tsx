@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useProject, useCreateMilestone, useUpdateMilestone, useDeleteMilestone } from "@/lib/hooks/use-projects";
 import { Section, Button, EmptyState } from "@/components/shared";
 import { formatDate } from "@/lib/utils/kpi";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, { label: string; color: string; bg: string }> = {

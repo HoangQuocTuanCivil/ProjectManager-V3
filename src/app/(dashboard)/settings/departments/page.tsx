@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Section, Button, UserAvatar, Toggle, EmptyState } from "@/components/shared";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { toast } from "sonner";
 

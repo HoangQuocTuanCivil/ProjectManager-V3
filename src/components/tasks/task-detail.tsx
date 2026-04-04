@@ -11,7 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { TaskMessenger } from "./task-messenger";
 import { TaskAttachments } from "./task-attachments";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 
 export function TaskDetail({ taskId, onClose }: { taskId: string; onClose: () => void }) {
   const { data: task, isLoading, error } = useTask(taskId);

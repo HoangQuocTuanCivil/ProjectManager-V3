@@ -5,7 +5,7 @@ import { useUsers, useUpdateUser, useDeleteUser, useResetPassword, useCreateUser
 import { useCustomRoles } from "@/lib/hooks/use-org-settings";
 import { useAllTeams, useCenters } from "@/lib/hooks/use-teams";
 import { Section, Button, UserAvatar, RoleBadge, Toggle, EmptyState } from "@/components/shared";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";
 import type { UserRole } from "@/lib/types";
 import { toast } from "sonner";

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useWorkflow, useToggleWorkflow, useUpdateWorkflow, useDeleteWorkflow } from "@/lib/hooks/use-workflows";
 import { Section, Toggle, Button, EmptyState, StatCard } from "@/components/shared";
 import { toast } from "sonner";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 
 const STEP_TYPE_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
   create: { icon: "✏️", color: "#38bdf8", label: "Tạo" },

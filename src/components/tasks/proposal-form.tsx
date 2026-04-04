@@ -7,7 +7,7 @@ import { useProjects } from "@/lib/hooks/use-projects";
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/shared";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { toast } from "sonner";
 import type { UserRole } from "@/lib/types";

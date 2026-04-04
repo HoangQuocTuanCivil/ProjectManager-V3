@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   StatCard, Section, Button, EmptyState, UserAvatar, KPIRing, KPIScoreBar, VerdictBadge, ProgressBar,
 } from "@/components/shared";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { AllocationTable, UserKPICard } from "@/components/kpi";
 import { ROLE_CONFIG, VERDICT_CONFIG, formatVND, formatDate, formatPercent, getVerdict, calcKPIScore } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";

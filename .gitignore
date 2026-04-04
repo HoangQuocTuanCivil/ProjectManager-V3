@@ -12,6 +12,11 @@ dist/
 build/
 *.tsbuildinfo
 next-env.d.ts
+build_check.log
+build_error.log
+
+# ─── Supabase Migration Backups ───────────────────────────────────────────
+supabase/migrations/_backup/
 
 # ─── Environment ───────────────────────────────────────────────────────────
 .env

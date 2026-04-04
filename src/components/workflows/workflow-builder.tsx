@@ -5,7 +5,7 @@ import { useCreateWorkflow } from "@/lib/hooks/use-workflows";
 import { Button, Toggle } from "@/components/shared";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import type { WorkflowStepType, UserRole, WorkflowStep } from "@/lib/types";
 
 const STEP_TYPES: { id: WorkflowStepType; label: string; icon: string; color: string }[] = [

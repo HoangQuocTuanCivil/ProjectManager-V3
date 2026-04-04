@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Section, Button, EmptyState, KPIRing } from "@/components/shared";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { PRIORITY_CONFIG } from "@/lib/utils/kpi";
 import type { TaskTemplate, TaskPriority, TaskType } from "@/lib/types";
 import { toast } from "sonner";

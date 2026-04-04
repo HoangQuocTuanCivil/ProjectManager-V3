@@ -8,7 +8,7 @@ import { useAuthStore } from "@/lib/stores";
 import { goalKeys } from "@/lib/hooks/use-goals";
 import { Section, ProgressBar, UserAvatar, EmptyState, StatCard, Button } from "@/components/shared";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { toast } from "sonner";
 import type { Goal, GoalTarget, GoalType, GoalStatus } from "@/lib/types";
 

@@ -1,6 +1,5 @@
 import type { Task, KPIScores, KPIComparison, KPIVerdict } from '@/lib/types';
-
-export const KPI_WEIGHTS = { volume: 0.40, quality: 0.30, difficulty: 0.20, ahead: 0.10 };
+import { KPI_WEIGHTS } from '@/lib/constants/kpi';
 
 export function calcKPIScore(vol: number, qual: number, diff: number, ahd: number): number {
   return Math.round(vol * KPI_WEIGHTS.volume + qual * KPI_WEIGHTS.quality + diff * KPI_WEIGHTS.difficulty + ahd * KPI_WEIGHTS.ahead);
@@ -41,14 +40,6 @@ export function getVerdict(variance: number | null): KPIVerdict {
   return 'below_target';
 }
 
-export const VERDICT_CONFIG: Record<KPIVerdict, { label: string; color: string; bg: string }> = {
-  exceptional: { label: 'Đặc biệt XS', color: '#10b981', bg: '#ecfdf5' },
-  exceeded:    { label: 'Vượt kỳ vọng', color: '#3b82f6', bg: '#eff6ff' },
-  near_target: { label: 'Gần đạt', color: '#f59e0b', bg: '#fffbeb' },
-  below_target:{ label: 'Dưới KV', color: '#ef4444', bg: '#fef2f2' },
-  pending:     { label: 'Chưa đánh giá', color: '#94a3b8', bg: '#f1f5f9' },
-};
-
 export function calcWeightedAvg(tasks: Task[], field: keyof Task): number {
   const totalW = tasks.reduce((s, t) => s + t.kpi_weight, 0);
   if (totalW === 0) return 0;
@@ -68,54 +59,6 @@ export function calcAllocation(
   }));
 }
 
-export function formatVND(n: number): string {
-  return Math.round(n).toLocaleString('vi-VN') + 'đ';
-}
-
-export function formatPercent(n: number, decimals = 1): string {
-  return n.toFixed(decimals) + '%';
-}
-
-export function formatDate(d: string | null): string {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-export function formatRelativeDate(d: string): string {
-  const now = new Date();
-  const date = new Date(d);
-  const diff = Math.floor((now.getTime() - date.getTime()) / 86400000);
-  if (diff === 0) return 'Hôm nay';
-  if (diff === 1) return 'Hôm qua';
-  if (diff < 7) return `${diff} ngày trước`;
-  return formatDate(d);
-}
-
-export function daysBetween(a: string, b: string): number {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
-}
-
-export const STATUS_CONFIG = {
-  pending:     { label: 'Chờ xử lý', color: '#94a3b8', bg: '#f1f5f9', icon: '○' },
-  in_progress: { label: 'Đang làm', color: '#3b82f6', bg: '#eff6ff', icon: '◉' },
-  review:      { label: 'Chờ duyệt', color: '#f59e0b', bg: '#fffbeb', icon: '◈' },
-  completed:   { label: 'Hoàn thành', color: '#10b981', bg: '#ecfdf5', icon: '●' },
-  overdue:     { label: 'Quá hạn', color: '#ef4444', bg: '#fef2f2', icon: '⊘' },
-  cancelled:   { label: 'Hủy', color: '#6b7280', bg: '#f3f4f6', icon: '✕' },
-} as const;
-
-export const PRIORITY_CONFIG = {
-  low:    { label: 'Thấp', color: '#94a3b8', icon: '▽' },
-  medium: { label: 'TB', color: '#6366f1', icon: '●' },
-  high:   { label: 'Cao', color: '#f59e0b', icon: '▲' },
-  urgent: { label: 'Khẩn', color: '#ef4444', icon: '⬆' },
-} as const;
-
-export const ROLE_CONFIG = {
-  admin:       { label: 'Admin', color: '#ef4444' },
-  director:    { label: 'GĐ Trung tâm', color: '#a855f7' },
-  leader:      { label: 'Lãnh đạo', color: '#f59e0b' },
-  head:        { label: 'Trưởng phòng', color: '#3b82f6' },
-  team_leader: { label: 'Trưởng nhóm', color: '#8b5cf6' },
-  staff:       { label: 'Nhân viên', color: '#10b981' },
-} as const;
+// Backward-compatible re-exports: constants and formatting moved to dedicated modules
+export { KPI_WEIGHTS, VERDICT_CONFIG, STATUS_CONFIG, PRIORITY_CONFIG, ROLE_CONFIG } from '@/lib/constants/kpi';
+export { formatVND, formatPercent, formatDate, formatRelativeDate, daysBetween } from './format';

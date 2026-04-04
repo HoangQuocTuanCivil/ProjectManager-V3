@@ -1,0 +1,16 @@
+export type UserRole = 'admin' | 'director' | 'leader' | 'head' | 'team_leader' | 'staff';
+export type TaskStatus = 'pending' | 'in_progress' | 'review' | 'completed' | 'overdue' | 'cancelled';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TaskType = 'task' | 'product';
+export type PeriodType = 'week' | 'month' | 'quarter' | 'year';
+export type AllocationMode = 'per_project' | 'global';
+export type AllocationStatus = 'draft' | 'calculated' | 'approved' | 'paid' | 'rejected';
+export type ProjectStatus = 'planning' | 'active' | 'paused' | 'completed' | 'archived';
+export type GoalType = 'company' | 'center' | 'department' | 'team' | 'personal';
+export type GoalStatus = 'on_track' | 'at_risk' | 'off_track' | 'achieved' | 'cancelled';
+export type HealthScore = 'green' | 'yellow' | 'red' | 'gray';
+export type DependencyType = 'blocking' | 'waiting_on' | 'related';
+export type WorkflowStepType = 'create' | 'assign' | 'execute' | 'submit' | 'review' | 'approve' | 'reject' | 'revise' | 'calculate' | 'notify' | 'archive' | 'custom';
+export type KPIVerdict = 'exceptional' | 'exceeded' | 'near_target' | 'below_target' | 'pending';
+export type TaskView = 'grid' | 'kanban' | 'gantt' | 'calendar' | 'workload';
+export type SettingsTab = 'accounts' | 'roles' | 'depts' | 'teams' | 'workflows' | 'kpi' | 'templates' | 'notifications' | 'security';

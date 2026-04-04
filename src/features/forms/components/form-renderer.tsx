@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/shared";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { FIELD_TYPE_CONFIG, type FormField, type IntakeForm } from "../types/form.types";
 
 interface FormRendererProps {

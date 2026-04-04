@@ -7,7 +7,7 @@ import { useCreateGoal } from "@/lib/hooks/use-goals";
 import { useAuthStore } from "@/lib/stores";
 import { getAllowedGoalTypes } from "@/lib/utils/permissions";
 import { Button } from "@/components/shared";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { GoalType, UserRole } from "@/lib/types";

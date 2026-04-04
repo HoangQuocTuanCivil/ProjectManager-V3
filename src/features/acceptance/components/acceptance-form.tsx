@@ -8,7 +8,7 @@ import { useUpdatePayment } from "../hooks/use-acceptance-records";
 import { PaymentStatusBadge } from "./payment-status";
 import type { AcceptanceRecord } from "../types/acceptance.types";
 import type { PaymentStatus } from "../types/acceptance.types";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 
 
 export function AcceptanceEvalForm({

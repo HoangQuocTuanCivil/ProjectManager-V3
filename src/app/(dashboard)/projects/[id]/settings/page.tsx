@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useProject, useUpdateProject } from "@/lib/hooks/use-projects";
 import { Section, Button } from "@/components/shared";
 import { formatDate, formatVND } from "@/lib/utils/kpi";
-import { SearchSelect } from "@/shared/ui/search-select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { toast } from "sonner";
 
 export default function ProjectSettingsPage() {

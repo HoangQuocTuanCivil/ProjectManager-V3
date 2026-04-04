@@ -1,0 +1,40 @@
+"use client";
+
+import { cn } from "@/lib/utils/cn";
+
+export function StatCard({
+  label,
+  value,
+  subtitle,
+  color,
+  accentColor,
+  onClick,
+}: {
+  label: string;
+  value: string | number;
+  subtitle?: string;
+  color?: string;
+  accentColor?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <div
+      className={cn("bg-card border border-border rounded-xl p-4 relative overflow-hidden", onClick && "cursor-pointer hover:shadow-md hover:border-primary/30 transition-all focus-ring rounded-xl")}
+      onClick={onClick}
+      /* When onClick is present, the div acts as a button — add keyboard and ARIA support */
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+      aria-label={onClick ? `${label}: ${value}` : undefined}
+    >
+      {accentColor && (
+        <div className="absolute top-0 left-0 right-0 h-[2.5px]" style={{ background: accentColor }} />
+      )}
+      <p className="text-xs text-muted-foreground font-medium uppercase tracking-[0.6px]">{label}</p>
+      <p className="text-[26px] font-bold font-mono mt-1.5 -tracking-[0.5px]" style={{ color: accentColor ?? color }}>
+        {value}
+      </p>
+      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+    </div>
+  );
+}
