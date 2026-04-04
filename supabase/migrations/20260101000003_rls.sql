@@ -247,7 +247,16 @@ CREATE POLICY "ar_m" ON allocation_results FOR ALL
     AND public.user_role() IN ('admin', 'leader', 'director'));
 
 -- ─── DEPT BUDGET ALLOCATIONS ─────────────────────────────────────────────────
-CREATE POLICY "dba_r" ON dept_budget_allocations FOR SELECT USING (org_id = public.user_org_id());
+-- Admin/leader/director: xem tất cả + quản lý
+-- Head/team_leader/staff: chỉ xem ngân sách phòng ban mình
+CREATE POLICY "dba_r" ON dept_budget_allocations FOR SELECT
+  USING (
+    org_id = public.user_org_id()
+    AND (
+      public.user_role() IN ('admin', 'leader', 'director')
+      OR dept_id = public.user_dept_id()
+    )
+  );
 CREATE POLICY "dba_m" ON dept_budget_allocations FOR ALL
   USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
 

@@ -43,6 +43,8 @@ export default function BudgetAssignPage() {
   const remove = useDeleteDeptBudgetAllocation();
 
   const canManage = user && ["admin", "leader", "director"].includes(user.role);
+  // Dept heads only see their own department (RLS enforces this server-side too)
+  const isDeptScoped = user && !["admin", "leader", "director"].includes(user.role);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -226,23 +228,32 @@ export default function BudgetAssignPage() {
                       <h4 className="text-sm font-bold">
                         {project?.code} — {project?.name}
                       </h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {t.kpi.allocationFund}: {formatVND(projFund)}
-                        {" · "}
-                        {t.kpi.totalAssigned}: {formatVND(total)}
-                        {" · "}
-                        {t.kpi.remaining}: <span className={total > projFund ? "text-destructive font-semibold" : "text-primary font-semibold"}>{formatVND(projFund - total)}</span>
-                      </p>
+                      {/* Full budget info only for managers */}
+                      {!isDeptScoped ? (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {t.kpi.allocationFund}: {formatVND(projFund)}
+                          {" · "}
+                          {t.kpi.totalAssigned}: {formatVND(total)}
+                          {" · "}
+                          {t.kpi.remaining}: <span className={total > projFund ? "text-destructive font-semibold" : "text-primary font-semibold"}>{formatVND(projFund - total)}</span>
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {t.kpi.budgetAssignTab}
+                        </p>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs text-muted-foreground">{items.length} {t.kpi.deptName}</div>
-                      <div className="h-1.5 w-24 bg-secondary rounded-full overflow-hidden mt-1">
-                        <div
-                          className={`h-full rounded-full ${total > projFund ? "bg-destructive" : "bg-primary"}`}
-                          style={{ width: `${Math.min((total / (projFund || 1)) * 100, 100)}%` }}
-                        />
+                    {!isDeptScoped && (
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">{items.length} {t.kpi.deptName}</div>
+                        <div className="h-1.5 w-24 bg-secondary rounded-full overflow-hidden mt-1">
+                          <div
+                            className={`h-full rounded-full ${total > projFund ? "bg-destructive" : "bg-primary"}`}
+                            style={{ width: `${Math.min((total / (projFund || 1)) * 100, 100)}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -252,7 +263,7 @@ export default function BudgetAssignPage() {
                     <tr className="border-b border-border/50 text-muted-foreground">
                       <th className="text-left px-4 py-2 font-medium">{t.kpi.deptName}</th>
                       <th className="text-right px-4 py-2 font-medium">{t.kpi.amount}</th>
-                      <th className="text-right px-4 py-2 font-medium">%</th>
+                      {!isDeptScoped && <th className="text-right px-4 py-2 font-medium">%</th>}
                       <th className="text-left px-4 py-2 font-medium">{t.kpi.note}</th>
                       {canManage && <th className="text-right px-4 py-2 font-medium w-20">{t.kpi.actions}</th>}
                     </tr>
@@ -265,9 +276,11 @@ export default function BudgetAssignPage() {
                           {a.department?.name}
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono font-semibold">{formatVND(Number(a.allocated_amount))}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
-                          {projFund > 0 ? ((Number(a.allocated_amount) / projFund) * 100).toFixed(1) : "—"}%
-                        </td>
+                        {!isDeptScoped && (
+                          <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">
+                            {projFund > 0 ? ((Number(a.allocated_amount) / projFund) * 100).toFixed(1) : "—"}%
+                          </td>
+                        )}
                         <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[200px]">{a.note || "—"}</td>
                         {canManage && (
                           <td className="px-4 py-2.5 text-right">
@@ -287,16 +300,18 @@ export default function BudgetAssignPage() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="border-t border-border bg-secondary/20">
-                      <td className="px-4 py-2 font-bold">{t.kpi.totalAssigned}</td>
-                      <td className="px-4 py-2 text-right font-mono font-bold">{formatVND(total)}</td>
-                      <td className="px-4 py-2 text-right font-mono font-bold">
-                        {projFund > 0 ? ((total / projFund) * 100).toFixed(1) : "—"}%
-                      </td>
-                      <td colSpan={canManage ? 2 : 1} />
-                    </tr>
-                  </tfoot>
+                  {!isDeptScoped && (
+                    <tfoot>
+                      <tr className="border-t border-border bg-secondary/20">
+                        <td className="px-4 py-2 font-bold">{t.kpi.totalAssigned}</td>
+                        <td className="px-4 py-2 text-right font-mono font-bold">{formatVND(total)}</td>
+                        <td className="px-4 py-2 text-right font-mono font-bold">
+                          {projFund > 0 ? ((total / projFund) * 100).toFixed(1) : "—"}%
+                        </td>
+                        <td colSpan={canManage ? 2 : 1} />
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             );
