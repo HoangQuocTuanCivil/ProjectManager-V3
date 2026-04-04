@@ -19,7 +19,7 @@ export function useContracts(projectId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("contracts")
-        .select("*, project:projects(id, code, name, budget), creator:users!created_by(id, full_name)")
+        .select("*, project:projects(id, code, name, budget), creator:users!created_by(id, full_name), addendums:contract_addendums(*, creator:users!created_by(id, full_name)), milestones:billing_milestones(*)")
         .order("created_at", { ascending: false });
       if (projectId) query = query.eq("project_id", projectId);
       const { data, error } = await query;

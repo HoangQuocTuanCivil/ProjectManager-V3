@@ -196,6 +196,42 @@ export default function ContractsPage() {
   );
 }
 
+/* ───── PDF / File Viewer ───────────────────────────────────────── */
+
+function ContractFileViewer({ url, label }: { url: string; label: string }) {
+  const [showViewer, setShowViewer] = useState(false);
+  const isPdf = /\.pdf(\?|$)/i.test(url);
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground text-xs">{label}:</span>
+        {isPdf ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowViewer(!showViewer); }}
+            className="text-xs text-primary hover:underline font-medium"
+          >
+            {showViewer ? "Ẩn PDF" : "Xem PDF"}
+          </button>
+        ) : (
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Xem file</a>
+        )}
+        <a href={url} download className="text-xs text-muted-foreground hover:underline">Tải về</a>
+      </div>
+      {showViewer && isPdf && (
+        <div className="mt-2 rounded-lg border border-border overflow-hidden bg-secondary/30">
+          <iframe
+            src={`${url}#toolbar=1&navpanes=0`}
+            className="w-full h-[500px]"
+            title="Contract PDF"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ───── Contract Card (expandable) ─────────────────────────────── */
 
 function ContractCard({ contract: c, canManage, uploadFile }: {
@@ -273,9 +309,8 @@ function ContractCard({ contract: c, canManage, uploadFile }: {
               </div>
             )}
             {c.file_url && (
-              <div>
-                <span className="text-muted-foreground">{t.contracts.file}</span>
-                <p><a href={c.file_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Xem file</a></p>
+              <div className="col-span-4">
+                <ContractFileViewer url={c.file_url} label={t.contracts.file} />
               </div>
             )}
             {c.notes && (
