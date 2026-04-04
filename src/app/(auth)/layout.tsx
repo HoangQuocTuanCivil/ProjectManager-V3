@@ -1,13 +1,17 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import { ParticleNetwork } from "@/components/shared/particle-network";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative">
-      {/* Background pattern */}
+    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
+      {/* Animated particle network background */}
+      <ParticleNetwork />
+
+      {/* Radial gradient overlay for depth */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(var(--primary)/0.08),transparent_60%)]" />
 
       {/* Theme toggle */}
