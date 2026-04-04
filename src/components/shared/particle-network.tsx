@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * Animated particle network background — floating nodes that form
  * connection lines when near each other. Optimized for performance:
  * - Throttled to 30fps to reduce CPU load
  * - Spatial grid partitioning avoids O(n²) distance checks
- * - Pauses when tab is hidden or component unmounts
+ * - Pauses when tab is hidden, resumes when visible
+ * - Stable animation loop that never re-initializes on parent re-renders
  */
 
 interface Particle {
@@ -22,41 +23,17 @@ interface Particle {
 const CONNECTION_DISTANCE = 250;
 const BASE_SPEED = 1.5;
 const PARTICLE_DENSITY = 15000;
-const FRAME_INTERVAL = 33; // ~30fps throttle
+const FRAME_INTERVAL = 33;
 
 export function ParticleNetwork({ className }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particlesRef = useRef<Particle[]>([]);
-  const animFrameRef = useRef<number>(0);
-  const lastTimeRef = useRef<number>(0);
 
-  /** Detects dark mode and returns appropriate opacity and color for rendering */
-  const getThemeOpacity = useCallback(() => {
-    const isDark = document.documentElement.classList.contains("dark");
-    return {
-      particle: isDark ? 1.8 : 1.0,
-      line: isDark ? 2.5 : 1.0,
-      color: isDark ? "210, 100%, 70%" : "217, 91%, 60%",
-    };
-  }, []);
-
-  /** Creates particles with randomized position, velocity, and size */
-  const initParticles = useCallback((width: number, height: number) => {
-    const count = Math.floor((width * height) / PARTICLE_DENSITY);
-    const particles: Particle[] = [];
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * BASE_SPEED * 2,
-        vy: (Math.random() - 0.5) * BASE_SPEED * 2,
-        radius: Math.random() * 3 + 1.5,
-        opacity: Math.random() * 0.4 + 0.3,
-      });
-    }
-    return particles;
-  }, []);
-
+  /**
+   * Single useEffect with empty deps [] ensures the animation loop
+   * starts once on mount and never re-initializes during parent re-renders
+   * (e.g., when user types in the login form). This prevents the
+   * "particles flash then disappear" issue.
+   */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -64,28 +41,54 @@ export function ParticleNetwork({ className }: { className?: string }) {
     if (!ctx) return;
 
     let destroyed = false;
+    let animFrame = 0;
+    let lastTime = 0;
+    let particles: Particle[] = [];
 
+    /** Detects dark mode for adjusting particle brightness */
+    const getTheme = () => {
+      const isDark = document.documentElement.classList.contains("dark");
+      return {
+        particle: isDark ? 1.8 : 1.0,
+        line: isDark ? 2.5 : 1.0,
+        color: isDark ? "210, 100%, 70%" : "217, 91%, 60%",
+      };
+    };
+
+    /** Creates particles distributed randomly with randomized size and velocity */
+    const initParticles = (w: number, h: number) => {
+      const count = Math.floor((w * h) / PARTICLE_DENSITY);
+      const arr: Particle[] = [];
+      for (let i = 0; i < count; i++) {
+        arr.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          vx: (Math.random() - 0.5) * BASE_SPEED * 2,
+          vy: (Math.random() - 0.5) * BASE_SPEED * 2,
+          radius: Math.random() * 3 + 1.5,
+          opacity: Math.random() * 0.4 + 0.3,
+        });
+      }
+      return arr;
+    };
+
+    /** Matches canvas resolution to display size, re-creates particles on resize */
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      particlesRef.current = initParticles(rect.width, rect.height);
+      particles = initParticles(rect.width, rect.height);
     };
 
-    /**
-     * Builds a spatial grid that partitions particles into cells.
-     * Only particles in the same or neighboring cells need distance checks,
-     * reducing connection lookup from O(n²) to roughly O(n).
-     */
-    const buildGrid = (particles: Particle[], w: number, h: number) => {
+    /** Partitions particles into a spatial grid for efficient neighbor lookups */
+    const buildGrid = (w: number, h: number) => {
       const cellSize = CONNECTION_DISTANCE;
       const cols = Math.ceil(w / cellSize);
       const rows = Math.ceil(h / cellSize);
       const grid: number[][] = new Array(cols * rows);
       for (let i = 0; i < grid.length; i++) grid[i] = [];
-
       for (let i = 0; i < particles.length; i++) {
         const col = Math.min(Math.floor(particles[i].x / cellSize), cols - 1);
         const row = Math.min(Math.floor(particles[i].y / cellSize), rows - 1);
@@ -94,25 +97,24 @@ export function ParticleNetwork({ className }: { className?: string }) {
       return { grid, cols, rows };
     };
 
+    /** Main render loop — moves particles, draws connections and dots */
     const animate = (timestamp: number) => {
       if (destroyed) return;
 
-      // Throttle to ~30fps
-      if (timestamp - lastTimeRef.current < FRAME_INTERVAL) {
-        animFrameRef.current = requestAnimationFrame(animate);
+      if (timestamp - lastTime < FRAME_INTERVAL) {
+        animFrame = requestAnimationFrame(animate);
         return;
       }
-      lastTimeRef.current = timestamp;
+      lastTime = timestamp;
 
       const rect = canvas.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
-      const theme = getThemeOpacity();
-      const particles = particlesRef.current;
+      const theme = getTheme();
 
       ctx.clearRect(0, 0, w, h);
 
-      // Move particles and bounce off edges
+      // Move particles, bounce off edges
       for (const p of particles) {
         p.x += p.vx;
         p.y += p.vy;
@@ -120,26 +122,21 @@ export function ParticleNetwork({ className }: { className?: string }) {
         if (p.y < 0 || p.y > h) p.vy *= -1;
       }
 
-      // Use spatial grid to efficiently find nearby particles for connections
-      const { grid, cols, rows } = buildGrid(particles, w, h);
+      // Draw connection lines using spatial grid neighbor lookup
+      const { grid, cols, rows } = buildGrid(w, h);
       const connDist2 = CONNECTION_DISTANCE * CONNECTION_DISTANCE;
 
       ctx.lineWidth = 0.8;
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
           const cell = grid[row * cols + col];
-          // Check connections within this cell and with 3 forward neighbors (right, below, below-right)
-          // to avoid duplicate pair checks
-          const neighborOffsets = [
-            [0, 0], [1, 0], [0, 1], [1, 1],
-          ];
+          const neighborOffsets = [[0, 0], [1, 0], [0, 1], [1, 1]];
           for (const [dc, dr] of neighborOffsets) {
             const nc = col + dc;
             const nr = row + dr;
             if (nc >= cols || nr >= rows) continue;
             const neighbor = grid[nr * cols + nc];
             const isSame = dc === 0 && dr === 0;
-
             for (let ii = 0; ii < cell.length; ii++) {
               const startJ = isSame ? ii + 1 : 0;
               for (let jj = startJ; jj < neighbor.length; jj++) {
@@ -171,18 +168,19 @@ export function ParticleNetwork({ className }: { className?: string }) {
         ctx.fill();
       }
 
-      animFrameRef.current = requestAnimationFrame(animate);
+      animFrame = requestAnimationFrame(animate);
     };
 
     resize();
-    animFrameRef.current = requestAnimationFrame(animate);
+    animFrame = requestAnimationFrame(animate);
 
+    /** Pauses rendering when tab is hidden, resumes when visible */
     const handleVisibility = () => {
       if (document.hidden) {
-        cancelAnimationFrame(animFrameRef.current);
+        cancelAnimationFrame(animFrame);
       } else {
-        lastTimeRef.current = 0;
-        animFrameRef.current = requestAnimationFrame(animate);
+        lastTime = 0;
+        animFrame = requestAnimationFrame(animate);
       }
     };
 
@@ -191,11 +189,12 @@ export function ParticleNetwork({ className }: { className?: string }) {
 
     return () => {
       destroyed = true;
-      cancelAnimationFrame(animFrameRef.current);
+      cancelAnimationFrame(animFrame);
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [initParticles, getThemeOpacity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <canvas
