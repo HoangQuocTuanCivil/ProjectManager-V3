@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useUsers, useUpdateUser, useDeleteUser, useResetPassword, useCreateUser } from "@/lib/hooks/use-users";
+import { useUsers, useUpdateUser, useDeleteUser, useCreateUser } from "@/lib/hooks/use-users";
 import { useCustomRoles } from "@/lib/hooks/use-org-settings";
 import { useAllTeams, useCenters } from "@/lib/hooks/use-teams";
 import { Section, Button, UserAvatar, RoleBadge, Toggle, EmptyState } from "@/components/shared";
@@ -41,12 +41,9 @@ export default function AccountsSettingsPage() {
   const { data: allCenters = [] } = useCenters();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
-  const resetPassword = useResetPassword();
   const createUser = useCreateUser();
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
-  const [resetPwUser, setResetPwUser] = useState<any>(null);
-  const [newPassword, setNewPassword] = useState("");
   const [search, setSearch] = useState("");
 
   //  Cascading filter states 
@@ -275,45 +272,6 @@ export default function AccountsSettingsPage() {
         />
       )}
 
-      {/* Reset Password Modal */}
-      {resetPwUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-card rounded-xl shadow-xl w-full max-w-sm p-6 border border-border">
-            <h3 className="text-lg font-semibold mb-1">Đặt lại mật khẩu</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Tài khoản: <span className="font-medium text-foreground">{resetPwUser.full_name}</span> ({resetPwUser.email})
-            </p>
-            <label className="text-sm text-muted-foreground font-medium">Mật khẩu mới</label>
-            <input
-              type="text"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
-              className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2 mt-5">
-              <Button size="sm" variant="ghost" onClick={() => setResetPwUser(null)}>Hủy</Button>
-              <Button
-                size="sm"
-                disabled={newPassword.length < 6 || resetPassword.isPending}
-                onClick={() => {
-                  resetPassword.mutate({ id: resetPwUser.id, password: newPassword }, {
-                    onSuccess: () => {
-                      toast.success(`Đã đặt lại mật khẩu cho "${resetPwUser.full_name}"`);
-                      setResetPwUser(null);
-                    },
-                    onError: (err: any) => toast.error(err.message || "Lỗi đặt lại mật khẩu"),
-                  });
-                }}
-              >
-                {resetPassword.isPending ? "Đang xử lý..." : "Xác nhận"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Search + Cascading Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative">
@@ -424,12 +382,6 @@ export default function AccountsSettingsPage() {
                           className="text-sm text-primary hover:underline"
                         >
                           Sửa
-                        </button>
-                        <button
-                          onClick={() => { setResetPwUser(u); setNewPassword(""); }}
-                          className="text-sm text-amber-600 hover:underline"
-                        >
-                          Đặt lại MK
                         </button>
                         <button
                           onClick={() => {
