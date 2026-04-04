@@ -48,13 +48,13 @@ export function ParticleNetwork({ className }: { className?: string }) {
     let width = 0;
     let height = 0;
 
-    /** Detects dark mode for adjusting particle brightness */
+    /** Detects dark mode for adjusting particle contrast against background */
     const getTheme = () => {
       const isDark = document.documentElement.classList.contains("dark");
       return {
-        particle: isDark ? 1.8 : 1.0,
-        line: isDark ? 2.5 : 1.0,
-        color: isDark ? "210, 100%, 70%" : "217, 91%, 60%",
+        particle: isDark ? 1.8 : 1.4,
+        line: isDark ? 2.5 : 2.0,
+        color: isDark ? "210, 100%, 70%" : "215, 80%, 45%",
       };
     };
 
