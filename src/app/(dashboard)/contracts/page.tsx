@@ -69,14 +69,13 @@ export default function ContractsPage() {
     }
   };
 
-  // File upload handler
+  // File upload — stores the storage path (not public URL) since bucket is private
   const uploadFile = async (file: File, prefix: string): Promise<string | null> => {
     const ext = file.name.split(".").pop();
     const path = `${prefix}/${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("contract-files").upload(path, file, { cacheControl: "3600" });
     if (error) { toast.error("Lỗi upload file"); return null; }
-    const { data } = supabase.storage.from("contract-files").getPublicUrl(path);
-    return data.publicUrl;
+    return path;
   };
 
   return (
@@ -198,39 +197,43 @@ export default function ContractsPage() {
 
 /* ───── PDF / File Viewer ───────────────────────────────────────── */
 
-/** Extract storage path from a Supabase public/signed URL */
-function extractStoragePath(url: string): string | null {
-  const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/contract-files\/(.+?)(?:\?|$)/);
-  return match ? match[1] : null;
+/**
+ * Resolve file_url to a storage path.
+ * Handles both cases: raw path ("contracts/xxx/123.pdf") or
+ * legacy full URL (".../storage/v1/object/public/contract-files/xxx").
+ */
+function toStoragePath(fileUrl: string): string {
+  const match = fileUrl.match(/\/storage\/v1\/object\/(?:public|sign)\/contract-files\/(.+?)(?:\?|$)/);
+  return match ? match[1] : fileUrl;
 }
 
-function ContractFileViewer({ url, label }: { url: string; label: string }) {
+function ContractFileViewer({ fileUrl, label }: { fileUrl: string; label: string }) {
   const [showViewer, setShowViewer] = useState(false);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const isPdf = /\.pdf(\?|$)/i.test(url);
+  const path = toStoragePath(fileUrl);
+  const isPdf = /\.pdf$/i.test(path);
+
+  const getSignedUrl = async (expiresIn = 3600) => {
+    const { data } = await supabase.storage.from("contract-files").createSignedUrl(path, expiresIn);
+    return data?.signedUrl || null;
+  };
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (showViewer) { setShowViewer(false); return; }
-
-    // Generate a signed URL for the private bucket
     setLoading(true);
-    const path = extractStoragePath(url);
-    if (path) {
-      const { data } = await supabase.storage.from("contract-files").createSignedUrl(path, 3600);
-      setSignedUrl(data?.signedUrl || null);
-    }
+    const url = await getSignedUrl();
+    setSignedUrl(url);
     setLoading(false);
     setShowViewer(true);
   };
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
-    const path = extractStoragePath(url);
-    if (!path) return;
-    const { data } = await supabase.storage.from("contract-files").createSignedUrl(path, 300);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    e.stopPropagation();
+    const url = await getSignedUrl(300);
+    if (url) window.open(url, "_blank");
   };
 
   return (
@@ -334,7 +337,7 @@ function ContractCard({ contract: c, canManage, uploadFile }: {
             )}
             {c.file_url && (
               <div className="col-span-4">
-                <ContractFileViewer url={c.file_url} label={t.contracts.file} />
+                <ContractFileViewer fileUrl={c.file_url!} label={t.contracts.file} />
               </div>
             )}
             {c.notes && (
