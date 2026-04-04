@@ -134,6 +134,12 @@ const en: Translations = {
     paid: "Paid",
     rejected: "Rejected",
     panelDesc: "Click a task to view details",
+    kpiRanking: "KPI Staff Ranking",
+    kpiRankingCenter: "Center",
+    kpiRankingDept: "Department",
+    kpiRankingAll: "All",
+    kpiRankingEmpty: "No KPI data available",
+    kpiRankingScore: "Score",
   },
   tasks: {
     newTask: "+ New Task",

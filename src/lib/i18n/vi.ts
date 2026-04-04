@@ -140,6 +140,12 @@ const vi = {
     paid: "Đã chi",
     rejected: "Từ chối",
     panelDesc: "Nhấn vào công việc để xem chi tiết",
+    kpiRanking: "Xếp hạng KPI nhân sự",
+    kpiRankingCenter: "Trung tâm",
+    kpiRankingDept: "Phòng",
+    kpiRankingAll: "Tất cả",
+    kpiRankingEmpty: "Chưa có dữ liệu KPI",
+    kpiRankingScore: "Điểm",
   },
   //  Tasks 
   tasks: {

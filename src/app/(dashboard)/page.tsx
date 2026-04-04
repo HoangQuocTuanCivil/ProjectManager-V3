@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
+import { useCenters } from "@/lib/hooks";
+import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -12,6 +15,23 @@ import {
 import { TaskListPanel, type StatPanelType } from "@/components/shared/task-list-panel";
 import { ROLE_CONFIG, STATUS_CONFIG, formatDate, formatRelativeDate, formatVND, getVerdict, VERDICT_CONFIG } from "@/lib/utils/kpi";
 import { useRouter } from "next/navigation";
+
+const supabase = createClient();
+
+function useDepartments() {
+  return useQuery({
+    queryKey: ["departments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("departments")
+        .select("id, name, code, center_id")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -22,6 +42,11 @@ export default function DashboardPage() {
   const { data: tasks = [], isLoading: tasksLoading } = useTasks(taskFilters);
   const { data: projects = [] } = useProjects();
   const { data: periods = [] } = useAllocationPeriods();
+  const { data: centers = [] } = useCenters();
+  const { data: departments = [] } = useDepartments();
+
+  const [kpiGroupBy, setKpiGroupBy] = useState<"center" | "department">("center");
+  const [kpiFilterId, setKpiFilterId] = useState("all");
 
   const activeTasks = tasks.filter((t) => !["completed", "cancelled"].includes(t.status));
   const overdue = tasks.filter((t) => t.status === "overdue");
@@ -37,6 +62,60 @@ export default function DashboardPage() {
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
     .slice(0, 8);
   const activeProjects = projects.filter((p) => p.status === "active");
+
+  // KPI ranking: aggregate weighted average score per user
+  const kpiRanking = useMemo(() => {
+    const userMap = new Map<string, {
+      id: string; name: string; avatar: string | null; role: string;
+      deptId: string | null; centerId: string | null;
+      totalWeight: number; weightedScore: number;
+    }>();
+
+    for (const task of tasks) {
+      if (!task.assignee_id || !task.assignee) continue;
+      const score = task.actual_score ?? task.expect_score ?? 0;
+      const weight = task.kpi_weight || 0;
+      if (weight === 0) continue;
+
+      if (!userMap.has(task.assignee_id)) {
+        // Derive center_id from the task's department join
+        const deptId = task.dept_id ?? null;
+        const centerId = task.department?.center_id ?? null;
+        userMap.set(task.assignee_id, {
+          id: task.assignee_id,
+          name: task.assignee.full_name,
+          avatar: task.assignee.avatar_url ?? null,
+          role: task.assignee.role,
+          deptId,
+          centerId,
+          totalWeight: 0,
+          weightedScore: 0,
+        });
+      }
+      const entry = userMap.get(task.assignee_id)!;
+      entry.totalWeight += weight;
+      entry.weightedScore += score * weight;
+    }
+
+    return Array.from(userMap.values())
+      .map((u) => ({
+        ...u,
+        score: u.totalWeight > 0 ? Math.round(u.weightedScore / u.totalWeight) : 0,
+      }))
+      .filter((u) => {
+        if (kpiFilterId === "all") return true;
+        return kpiGroupBy === "center" ? u.centerId === kpiFilterId : u.deptId === kpiFilterId;
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [tasks, kpiGroupBy, kpiFilterId]);
+
+  // Filter options based on groupBy mode
+  const kpiFilterOptions = useMemo(() => {
+    if (kpiGroupBy === "center") {
+      return centers.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name }));
+    }
+    return departments.map((d: { id: string; name: string }) => ({ id: d.id, name: d.name }));
+  }, [kpiGroupBy, centers, departments]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -81,9 +160,9 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[5fr_4fr_3fr] gap-5">
         {/* Recent Tasks */}
-        <div className="lg:col-span-2">
+        <div>
           <Section
             title={t.dashboard.recentTasks}
             action={
@@ -127,6 +206,79 @@ export default function DashboardPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </Section>
+        </div>
+
+        {/* KPI Ranking */}
+        <div>
+          <Section
+            title={t.dashboard.kpiRanking}
+            action={
+              <button onClick={() => router.push("/kpi")} className="text-sm text-primary hover:underline">
+                {t.common.viewAll} →
+              </button>
+            }
+          >
+            {/* Group-by toggle + filter select */}
+            <div className="px-4 py-2.5 flex items-center gap-2 border-b border-border/40">
+              <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+                <button
+                  onClick={() => { setKpiGroupBy("center"); setKpiFilterId("all"); }}
+                  className={`px-2.5 py-1 transition-colors ${kpiGroupBy === "center" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+                >
+                  {t.dashboard.kpiRankingCenter}
+                </button>
+                <button
+                  onClick={() => { setKpiGroupBy("department"); setKpiFilterId("all"); }}
+                  className={`px-2.5 py-1 transition-colors ${kpiGroupBy === "department" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+                >
+                  {t.dashboard.kpiRankingDept}
+                </button>
+              </div>
+              <select
+                value={kpiFilterId}
+                onChange={(e) => setKpiFilterId(e.target.value)}
+                className="flex-1 text-xs bg-secondary border border-border rounded-lg px-2 py-1 outline-none"
+              >
+                <option value="all">{t.dashboard.kpiRankingAll}</option>
+                {kpiFilterOptions.map((opt: { id: string; name: string }) => (
+                  <option key={opt.id} value={opt.id}>{opt.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Ranking list */}
+            {kpiRanking.length === 0 ? (
+              <div className="p-6">
+                <EmptyState icon="🏆" title={t.dashboard.kpiRankingEmpty} />
+              </div>
+            ) : (
+              <div className="divide-y divide-border/40 max-h-[420px] overflow-y-auto">
+                {kpiRanking.map((item, idx) => {
+                  const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
+                  const scoreColor = item.score >= 80 ? "text-green-500" : item.score >= 50 ? "text-amber-500" : "text-red-500";
+                  return (
+                    <div key={item.id} className="flex items-center gap-2.5 px-4 py-2 hover:bg-secondary/30 transition-colors">
+                      <span className="w-6 text-center text-xs font-mono text-muted-foreground shrink-0">
+                        {medal ?? idx + 1}
+                      </span>
+                      <UserAvatar
+                        name={item.name}
+                        src={item.avatar}
+                        color={ROLE_CONFIG[item.role as keyof typeof ROLE_CONFIG]?.color}
+                        size="xs"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.name}</p>
+                      </div>
+                      <span className={`text-sm font-mono font-bold ${scoreColor}`}>
+                        {item.score}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </Section>
