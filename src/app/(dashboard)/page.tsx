@@ -122,7 +122,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div>
         <h1 className="text-xl font-bold">
-          {t.dashboard.greeting}, {user?.full_name?.split(" ").pop() || "bạn"} {t.dashboard.greetingSuffix}
+          {t.dashboard.greeting}, {user?.full_name?.split(" ").pop() || "bạn"}
         </h1>
         <p className="text-base text-muted-foreground mt-0.5">
           {t.dashboard.subtitle}
@@ -256,12 +256,11 @@ export default function DashboardPage() {
             ) : (
               <div className="divide-y divide-border/40 max-h-[420px] overflow-y-auto">
                 {kpiRanking.map((item, idx) => {
-                  const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
                   const scoreColor = item.score >= 80 ? "text-green-500" : item.score >= 50 ? "text-amber-500" : "text-red-500";
                   return (
                     <div key={item.id} className="flex items-center gap-2.5 px-4 py-2 hover:bg-secondary/30 transition-colors">
                       <span className="w-6 text-center text-xs font-mono text-muted-foreground shrink-0">
-                        {medal ?? idx + 1}
+                        {idx + 1}
                       </span>
                       <UserAvatar
                         name={item.name}

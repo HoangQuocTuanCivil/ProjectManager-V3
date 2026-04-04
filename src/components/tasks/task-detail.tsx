@@ -104,7 +104,7 @@ export function TaskDetail({ taskId, onClose }: { taskId: string; onClose: () =>
 
   const isAssignee = user && task.assignee_id === user.id;
   const canManage = user && (["admin", "leader", "head", "team_leader"].includes(user.role) || isTaskTeamLeader || isAssignee);
-  const canUpdateProgress = user && (user.role === 'admin' || isAssignee);
+  const canUpdateProgress = user && (user.role === "admin" || isAssignee);
   const canEvaluate = canManage && !task.kpi_evaluated_at && task.status === "review";
   const verdict = getVerdict(task.kpi_variance);
   const verdictCfg = VERDICT_CONFIG[verdict];
