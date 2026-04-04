@@ -11,4 +11,5 @@ export { useGoals, useCreateGoal, goalKeys } from "./use-goals";
 export { useOrgSettings, useUpdateSetting, usePermissions, useCustomRoles, useCreateRole, useUpdateRole, useDeleteRole, settingsKeys } from "./use-org-settings";
 export { useProposals, useProposalPendingCount, useCreateProposal, useApproveProposal, useRejectProposal, proposalKeys } from "./use-proposals";
 export { useContracts, useContract, useCreateContract, useUpdateContract, useDeleteContract, useCreateAddendum, useDeleteAddendum, useCreateBillingMilestone, useUpdateBillingMilestone, useDeleteBillingMilestone, contractKeys } from "./use-contracts";
+export { useRevenueEntries, useCreateRevenueEntry, useDeleteRevenueEntry, useInternalRevenue, useCreateInternalRevenue, useUpdateInternalRevenue, useDeleteInternalRevenue, useCostEntries, useCreateCostEntry, useDeleteCostEntry, revenueKeys } from "./use-revenue";
 export { useDebounce } from "./use-debounce";

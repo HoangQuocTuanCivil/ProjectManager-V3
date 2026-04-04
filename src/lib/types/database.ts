@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      revenue_entries: {
+        Row: { id: string; org_id: string; project_id: string | null; contract_id: string | null; dept_id: string | null; dimension: string; method: string; source: string; source_id: string | null; amount: number; description: string; period_start: string | null; period_end: string | null; notes: string | null; created_by: string; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; org_id: string; project_id?: string | null; contract_id?: string | null; dept_id?: string | null; dimension?: string; method?: string; source?: string; source_id?: string | null; amount?: number; description: string; period_start?: string | null; period_end?: string | null; notes?: string | null; created_by: string; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; org_id?: string; project_id?: string | null; contract_id?: string | null; dept_id?: string | null; dimension?: string; method?: string; source?: string; source_id?: string | null; amount?: number; description?: string; period_start?: string | null; period_end?: string | null; notes?: string | null; created_by?: string; created_at?: string | null; updated_at?: string | null }
+        Relationships: [
+          { foreignKeyName: "revenue_entries_org_id_fkey"; columns: ["org_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+          { foreignKeyName: "revenue_entries_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "revenue_entries_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "users"; referencedColumns: ["id"] },
+        ]
+      }
+      internal_revenue: {
+        Row: { id: string; org_id: string; project_id: string | null; dept_id: string; product_name: string; unit_price: number; quantity: number; total_amount: number; status: string; period_start: string | null; period_end: string | null; notes: string | null; created_by: string; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; org_id: string; project_id?: string | null; dept_id: string; product_name: string; unit_price?: number; quantity?: number; total_amount?: number; status?: string; period_start?: string | null; period_end?: string | null; notes?: string | null; created_by: string; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; org_id?: string; project_id?: string | null; dept_id?: string; product_name?: string; unit_price?: number; quantity?: number; total_amount?: number; status?: string; period_start?: string | null; period_end?: string | null; notes?: string | null; created_by?: string; created_at?: string | null; updated_at?: string | null }
+        Relationships: [
+          { foreignKeyName: "internal_revenue_org_id_fkey"; columns: ["org_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+          { foreignKeyName: "internal_revenue_dept_id_fkey"; columns: ["dept_id"]; isOneToOne: false; referencedRelation: "departments"; referencedColumns: ["id"] },
+          { foreignKeyName: "internal_revenue_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "users"; referencedColumns: ["id"] },
+        ]
+      }
+      cost_entries: {
+        Row: { id: string; org_id: string; project_id: string | null; contract_id: string | null; dept_id: string | null; category: string; description: string; amount: number; budget_amount: number; period_start: string | null; period_end: string | null; notes: string | null; created_by: string; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; org_id: string; project_id?: string | null; contract_id?: string | null; dept_id?: string | null; category?: string; description: string; amount?: number; budget_amount?: number; period_start?: string | null; period_end?: string | null; notes?: string | null; created_by: string; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; org_id?: string; project_id?: string | null; contract_id?: string | null; dept_id?: string | null; category?: string; description?: string; amount?: number; budget_amount?: number; period_start?: string | null; period_end?: string | null; notes?: string | null; created_by?: string; created_at?: string | null; updated_at?: string | null }
+        Relationships: [
+          { foreignKeyName: "cost_entries_org_id_fkey"; columns: ["org_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+          { foreignKeyName: "cost_entries_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
+          { foreignKeyName: "cost_entries_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "users"; referencedColumns: ["id"] },
+        ]
+      }
       contracts: {
         Row: {
           id: string

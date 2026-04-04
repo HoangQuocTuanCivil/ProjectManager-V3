@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ClipboardList, Building2, Target, Rocket,
-  Zap, BarChart3,
+  Zap, BarChart3, FileText, TrendingUp,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -11,7 +11,7 @@ export interface NavSubItem {
 export interface NavItemConfig {
   href: string;
   icon: React.ReactNode;
-  tKey: "overview" | "tasks" | "projects" | "kpi" | "goals" | "workflow" | "reports";
+  tKey: "overview" | "tasks" | "projects" | "kpi" | "contractManagement" | "revenue" | "goals" | "workflow" | "reports";
   badge?: string;
   roles?: string[];
   /** Sub-navigation items displayed beneath the parent when active */
@@ -29,9 +29,26 @@ export const NAV_ITEMS: NavItemConfig[] = [
     children: [
       { href: "/kpi", tKey: "kpiOverview" },
       { href: "/kpi/allocation", tKey: "kpiAllocation" },
-      { href: "/kpi/budget-assign", tKey: "budgetAssignTab" },
-      { href: "/kpi/contracts", tKey: "contracts" },
       { href: "/kpi/config", tKey: "kpiConfig" },
+    ],
+  },
+  {
+    href: "/contracts",
+    icon: <FileText size={20} />,
+    tKey: "contractManagement",
+    children: [
+      { href: "/contracts", tKey: "contracts" },
+      { href: "/contracts/budget-assign", tKey: "budgetAssignTab" },
+    ],
+  },
+  {
+    href: "/revenue",
+    icon: <TrendingUp size={20} />,
+    tKey: "revenue",
+    children: [
+      { href: "/revenue", tKey: "companyRevenue" },
+      { href: "/revenue/internal", tKey: "internalRevenue" },
+      { href: "/revenue/costs", tKey: "costs" },
     ],
   },
   { href: "/goals", icon: <Rocket size={20} />, tKey: "goals" },
@@ -46,8 +63,11 @@ export const PAGE_TITLE_KEYS: Record<string, string> = {
   "/kpi": "kpiAllocation",
   "/kpi/allocation": "kpiAllocation",
   "/kpi/config": "kpiAllocation",
-  "/kpi/budget-assign": "kpiAllocation",
-  "/kpi/contracts": "kpiAllocation",
+  "/contracts": "contractManagement",
+  "/contracts/budget-assign": "contractManagement",
+  "/revenue": "revenueManagement",
+  "/revenue/internal": "revenueManagement",
+  "/revenue/costs": "revenueManagement",
   "/goals": "goalsOkr",
   "/workflows": "workflowApproval",
   "/reports": "reports",

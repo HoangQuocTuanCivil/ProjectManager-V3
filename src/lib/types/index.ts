@@ -4,6 +4,7 @@ export * from './project';
 export * from './task';
 export * from './kpi';
 export * from './contract';
+export * from './revenue';
 export * from './goal';
 export * from './workflow';
 export * from './notification';
