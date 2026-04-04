@@ -123,7 +123,10 @@ export function useCreateProposal() {
 export function useApproveProposal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (proposalId: string) => {
+    mutationFn: async ({ proposalId, overrides }: {
+      proposalId: string;
+      overrides?: { kpi_weight?: number; expect_volume?: number; expect_quality?: number; expect_difficulty?: number; expect_ahead?: number; deadline?: string };
+    }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Chưa đăng nhập');
 
@@ -149,14 +152,16 @@ export function useApproveProposal() {
           team_id: proposal.team_id || null,
           priority: proposal.priority,
           task_type: proposal.task_type,
-          kpi_weight: proposal.kpi_weight,
+          kpi_weight: overrides?.kpi_weight ?? proposal.kpi_weight,
           start_date: proposal.start_date,
-          deadline: proposal.deadline,
+          deadline: overrides?.deadline ?? proposal.deadline,
           assigner_id: user.id,
           assignee_id: proposal.proposed_by,
           status: 'pending',
-          expect_volume: 100,
-          expect_ahead: 100,
+          expect_volume: overrides?.expect_volume ?? 100,
+          expect_quality: overrides?.expect_quality ?? 80,
+          expect_difficulty: overrides?.expect_difficulty ?? 50,
+          expect_ahead: overrides?.expect_ahead ?? 100,
         } as TablesInsert<'tasks'>)
         .select()
         .single();

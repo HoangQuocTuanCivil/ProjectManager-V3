@@ -56,6 +56,10 @@ export function ProposalForm({ onClose }: { onClose: () => void }) {
     priority: "medium",
     task_type: "task" as "task" | "product",
     kpi_weight: 5,
+    expect_volume: 100,
+    expect_quality: 80,
+    expect_difficulty: 50,
+    expect_ahead: 100,
     start_date: new Date().toISOString().slice(0, 10),
     deadline: "",
   });
@@ -190,6 +194,37 @@ export function ProposalForm({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setForm({ ...form, kpi_weight: parseInt(e.target.value) || 5 })}
                 className={inputClass}
               />
+            </div>
+          </div>
+
+          {/* KPI Expected Scores */}
+          <div>
+            <label className={labelClass}>KPI kỳ vọng</label>
+            <div className="grid grid-cols-4 gap-2 mt-1">
+              <div>
+                <label className="text-[10px] text-muted-foreground">Khối lượng</label>
+                <input type="number" min={0} max={100} value={form.expect_volume}
+                  onChange={(e) => setForm({ ...form, expect_volume: +e.target.value || 0 })}
+                  className={inputClass + " text-center"} />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Chất lượng</label>
+                <input type="number" min={0} max={100} value={form.expect_quality}
+                  onChange={(e) => setForm({ ...form, expect_quality: +e.target.value || 0 })}
+                  className={inputClass + " text-center"} />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Độ khó</label>
+                <input type="number" min={0} max={100} value={form.expect_difficulty}
+                  onChange={(e) => setForm({ ...form, expect_difficulty: +e.target.value || 0 })}
+                  className={inputClass + " text-center"} />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Vượt TĐ</label>
+                <input type="number" min={0} max={100} value={form.expect_ahead}
+                  onChange={(e) => setForm({ ...form, expect_ahead: +e.target.value || 0 })}
+                  className={inputClass + " text-center"} />
+              </div>
             </div>
           </div>
 

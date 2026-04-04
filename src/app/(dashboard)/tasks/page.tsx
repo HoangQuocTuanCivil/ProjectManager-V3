@@ -720,7 +720,7 @@ function TaskTimeline({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: strin
 
   const todayPos = getPos(today.toISOString());
   const statusColors: Record<string, string> = {
-    pending: "#94a3b8", in_progress: "#3b82f6", review: "#f59e0b", completed: "#10b981", overdue: "#ef4444",
+    pending: "#94a3b8", in_progress: "#f59e0b", review: "#f59e0b", completed: "#10b981", overdue: "#ef4444",
   };
 
   return (
@@ -766,12 +766,12 @@ function TaskTimeline({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: strin
               {/* Bar column */}
               <div className="flex-1 relative h-10 min-w-0">
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 h-5 rounded-full opacity-80 hover:opacity-100 transition-opacity"
+                  className="absolute top-1/2 -translate-y-1/2 h-5 rounded opacity-80 hover:opacity-100 transition-opacity"
                   style={{ left: `${left}%`, width: `${Math.max(width, 2)}%`, background: color }}
                   title={`${task.title}\n${formatDate(start)} → ${formatDate(end)}\n${t.tasks.progress}: ${task.progress}%`}
                 >
                   {width > 5 && (
-                    <div className="h-full rounded-full bg-white/20" style={{ width: `${task.progress}%` }} />
+                    <div className="h-full rounded bg-white/20" style={{ width: `${task.progress}%` }} />
                   )}
                 </div>
               </div>

@@ -23,14 +23,45 @@ export function ProposalList({ onClose }: { onClose: () => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState<string | null>(null);
+  // Editable overrides for approver
+  const [editKpiWeight, setEditKpiWeight] = useState<number | null>(null);
+  const [editVolume, setEditVolume] = useState<number | null>(null);
+  const [editQuality, setEditQuality] = useState<number | null>(null);
+  const [editDifficulty, setEditDifficulty] = useState<number | null>(null);
+  const [editAhead, setEditAhead] = useState<number | null>(null);
+  const [editDeadline, setEditDeadline] = useState<string | null>(null);
 
   const selectedProposal = proposals.find((p: any) => p.id === selectedId);
+
+  // Initialize edit fields when selecting a proposal
+  const handleSelect = (id: string) => {
+    const p = proposals.find((p: any) => p.id === id) as any;
+    setSelectedId(id);
+    if (p) {
+      setEditKpiWeight(p.kpi_weight ?? 5);
+      setEditVolume(p.expect_volume ?? 100);
+      setEditQuality(p.expect_quality ?? 80);
+      setEditDifficulty(p.expect_difficulty ?? 50);
+      setEditAhead(p.expect_ahead ?? 100);
+      setEditDeadline(p.deadline ? p.deadline.slice(0, 10) : "");
+    }
+  };
   const isApprover = (p: any) => user && p.approver_id === user.id;
   const isProposer = (p: any) => user && p.proposed_by === user.id;
 
   const handleApprove = async (id: string) => {
     try {
-      await approveProposal.mutateAsync(id);
+      await approveProposal.mutateAsync({
+        proposalId: id,
+        overrides: {
+          kpi_weight: editKpiWeight ?? undefined,
+          expect_volume: editVolume ?? undefined,
+          expect_quality: editQuality ?? undefined,
+          expect_difficulty: editDifficulty ?? undefined,
+          expect_ahead: editAhead ?? undefined,
+          deadline: editDeadline || undefined,
+        },
+      });
       setSelectedId(null);
     } catch (err: any) {
       toast.error(err.message || "Lỗi duyệt");
@@ -164,9 +195,53 @@ export function ProposalList({ onClose }: { onClose: () => void }) {
                 </div>
               )}
 
-              {/* Approve/Reject buttons (only for approver, only if pending) */}
+              {/* Approver editable fields */}
               {isApprover(selectedProposal) && selectedProposal.status === "pending" && (
                 <div className="space-y-3 pt-2 border-t border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Chỉnh sửa trước khi duyệt</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-muted-foreground">Trọng số KPI</label>
+                      <input type="number" min={1} max={10} value={editKpiWeight ?? ""} onChange={(e) => setEditKpiWeight(+e.target.value || 5)}
+                        className="w-full h-8 px-2 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground">Deadline</label>
+                      <input type="date" value={editDeadline ?? ""} onChange={(e) => setEditDeadline(e.target.value)}
+                        className="w-full h-8 px-2 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">KPI kỳ vọng</label>
+                    <div className="grid grid-cols-4 gap-2 mt-1">
+                      <div>
+                        <label className="text-[9px] text-muted-foreground">Khối lượng</label>
+                        <input type="number" min={0} max={100} value={editVolume ?? ""} onChange={(e) => setEditVolume(+e.target.value || 0)}
+                          className="w-full h-7 px-1 rounded border border-border bg-secondary text-xs text-center focus:border-primary focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-muted-foreground">Chất lượng</label>
+                        <input type="number" min={0} max={100} value={editQuality ?? ""} onChange={(e) => setEditQuality(+e.target.value || 0)}
+                          className="w-full h-7 px-1 rounded border border-border bg-secondary text-xs text-center focus:border-primary focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-muted-foreground">Độ khó</label>
+                        <input type="number" min={0} max={100} value={editDifficulty ?? ""} onChange={(e) => setEditDifficulty(+e.target.value || 0)}
+                          className="w-full h-7 px-1 rounded border border-border bg-secondary text-xs text-center focus:border-primary focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-muted-foreground">Vượt TĐ</label>
+                        <input type="number" min={0} max={100} value={editAhead ?? ""} onChange={(e) => setEditAhead(+e.target.value || 0)}
+                          className="w-full h-7 px-1 rounded border border-border bg-secondary text-xs text-center focus:border-primary focus:outline-none" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Approve/Reject buttons (only for approver, only if pending) */}
+              {isApprover(selectedProposal) && selectedProposal.status === "pending" && (
+                <div className="space-y-3">
                   {showRejectForm === selectedProposal.id ? (
                     <div className="space-y-2">
                       <textarea
@@ -207,7 +282,7 @@ export function ProposalList({ onClose }: { onClose: () => void }) {
                 return (
                   <button
                     key={p.id}
-                    onClick={() => setSelectedId(p.id)}
+                    onClick={() => handleSelect(p.id)}
                     className="w-full px-5 py-3 flex items-center gap-3 hover:bg-secondary/30 transition-colors text-left"
                   >
                     <div className="flex-shrink-0">
