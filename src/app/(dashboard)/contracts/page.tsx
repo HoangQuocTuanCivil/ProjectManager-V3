@@ -230,13 +230,14 @@ function ContractFileViewer({ fileUrl, label }: { fileUrl: string; label: string
       return;
     }
     setLoading(true);
-    const signed = await getSignedUrl();
-    if (signed) {
-      // Fetch PDF as blob to bypass X-Frame-Options header
-      const res = await fetch(signed);
-      const blob = await res.blob();
-      setBlobUrl(URL.createObjectURL(blob));
+    try {
+      // Use Supabase SDK download — handles auth + CORS correctly
+      const { data, error } = await supabase.storage.from("contract-files").download(path);
+      if (error) throw error;
+      setBlobUrl(URL.createObjectURL(data));
       setShowViewer(true);
+    } catch (err: any) {
+      toast.error(`Lỗi tải PDF: ${err.message}`);
     }
     setLoading(false);
   };
