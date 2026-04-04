@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils/cn";
 import { useI18n } from "@/lib/i18n";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Tooltip, TooltipProvider } from "@/components/shared/tooltip";
-import { NAV_ITEMS, SETTINGS_ITEM } from "./nav-config";
+import { NAV_ITEMS } from "./nav-config";
 
 function SidebarContent({
   collapsed,
@@ -28,17 +28,8 @@ function SidebarContent({
     onNavClick?.();
   };
 
-  // Build nav sections with translated labels
-  const navSections = [
-    {
-      title: t.nav.main,
-      items: NAV_ITEMS.map((item) => ({ ...item, label: t.nav[item.tKey], roles: undefined as string[] | undefined })),
-    },
-    {
-      title: t.nav.settingsSection,
-      items: [{ ...SETTINGS_ITEM, label: t.nav[SETTINGS_ITEM.tKey] }],
-    },
-  ];
+  // Build nav items with translated labels (settings removed — accessible via topbar account menu)
+  const navItems = NAV_ITEMS.map((item) => ({ ...item, label: t.nav[item.tKey], roles: undefined as string[] | undefined }));
 
   return (
     <>
@@ -65,57 +56,48 @@ function SidebarContent({
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-4" role="navigation" aria-label="Menu">
-        {navSections.map((section) => (
-          <div key={section.title} className="mb-6">
-            {!collapsed && (
-              <p className="text-[11px] uppercase tracking-[1.6px] text-muted-foreground px-3 py-2 font-semibold">
-                {section.title}
-              </p>
-            )}
-            <div className="space-y-1.5">
-            {section.items
-              .filter((item) => !item.roles || (user && item.roles.includes(user.role)))
-              .map((item) => {
-                const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
-                const isHome = item.href === "/" && pathname === "/";
-                const active = isActive || isHome;
-                const navButton = (
-                  <button
-                    key={item.href}
-                    onClick={() => handleNav(item.href)}
-                    className={cn(
-                      "w-full flex items-center gap-3 rounded-lg text-sm font-[450] transition-all",
-                      collapsed ? "px-0 py-3 justify-center" : "px-3 py-3",
-                      active
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    )}
-                  >
-                    <span className="w-5 flex items-center justify-center flex-shrink-0">{item.icon}</span>
-                    {!collapsed && (
-                      <>
-                        <span className="truncate">{item.label}</span>
-                        {"badge" in item && item.badge === "tasks" && unreadCount > 0 && (
-                          <span className="ml-auto bg-destructive text-white text-[11px] px-1.5 py-0.5 rounded-full font-semibold">
-                            {unreadCount}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </button>
+        <div className="space-y-1.5">
+          {navItems
+            .filter((item) => !item.roles || (user && item.roles.includes(user.role)))
+            .map((item) => {
+              const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+              const isHome = item.href === "/" && pathname === "/";
+              const active = isActive || isHome;
+              const navButton = (
+                <button
+                  key={item.href}
+                  onClick={() => handleNav(item.href)}
+                  className={cn(
+                    "w-full flex items-center gap-3 rounded-lg text-sm font-[450] transition-all",
+                    collapsed ? "px-0 py-3 justify-center" : "px-3 py-3",
+                    active
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  )}
+                >
+                  <span className="w-5 flex items-center justify-center flex-shrink-0">{item.icon}</span>
+                  {!collapsed && (
+                    <>
+                      <span className="truncate">{item.label}</span>
+                      {"badge" in item && item.badge === "tasks" && unreadCount > 0 && (
+                        <span className="ml-auto bg-destructive text-white text-[11px] px-1.5 py-0.5 rounded-full font-semibold">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </button>
+              );
+              if (collapsed) {
+                return (
+                  <Tooltip key={item.href} content={item.label} side="right">
+                    {navButton}
+                  </Tooltip>
                 );
-                if (collapsed) {
-                  return (
-                    <Tooltip key={item.href} content={item.label} side="right">
-                      {navButton}
-                    </Tooltip>
-                  );
-                }
-                return navButton;
-              })}
-            </div>
-          </div>
-        ))}
+              }
+              return navButton;
+            })}
+        </div>
       </nav>
 
       {/* Bottom spacer */}

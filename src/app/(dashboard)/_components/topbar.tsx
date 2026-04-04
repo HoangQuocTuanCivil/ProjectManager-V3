@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore, useNotifStore } from "@/lib/stores";
 import { useSignOut } from "@/lib/hooks/use-users";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
-import { Search, Bell, Menu, Settings, LogOut, User } from "lucide-react";
+import { Search, Bell, Menu, Settings, LogOut, User, Building2, Users, Building, UsersRound, ShieldCheck, Target, FileText, Landmark } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -66,22 +66,30 @@ function UserMenu() {
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
 
-          {/* Menu items */}
-          <div className="py-1">
-            <button
-              onClick={() => { router.push("/settings/profile"); setOpen(false); }}
-              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
-            >
-              <User size={15} className="text-muted-foreground" />
-              Hồ sơ cá nhân
-            </button>
-            <button
-              onClick={() => { router.push("/settings"); setOpen(false); }}
-              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
-            >
-              <Settings size={15} className="text-muted-foreground" />
-              Cài đặt
-            </button>
+          {/* Settings menu items — filtered by user role */}
+          <div className="py-1 max-h-[320px] overflow-y-auto">
+            {[
+              { href: "/settings/profile", label: "Hồ sơ cá nhân", icon: <User size={15} />, roles: ["admin", "leader", "director", "head", "team_leader", "staff"] },
+              { href: "/settings/organization", label: "Tổ chức", icon: <Building2 size={15} />, roles: ["admin", "leader", "head"] },
+              { href: "/settings/accounts", label: "Tài khoản", icon: <Users size={15} />, roles: ["admin", "leader", "head"] },
+              { href: "/settings/centers", label: "Trung tâm", icon: <Landmark size={15} />, roles: ["admin", "leader"] },
+              { href: "/settings/departments", label: "Phòng ban", icon: <Building size={15} />, roles: ["admin", "leader"] },
+              { href: "/settings/teams", label: "Nhóm", icon: <UsersRound size={15} />, roles: ["admin", "leader", "head"] },
+              { href: "/settings/roles", label: "Vai trò & Phân quyền", icon: <ShieldCheck size={15} />, roles: ["admin", "leader"] },
+              { href: "/settings/kpi", label: "Cấu hình KPI", icon: <Target size={15} />, roles: ["admin", "leader"] },
+              { href: "/settings/templates", label: "Mẫu công việc", icon: <FileText size={15} />, roles: ["admin", "leader", "head"] },
+            ]
+              .filter((item) => user && item.roles.includes(user.role))
+              .map((item) => (
+                <button
+                  key={item.href}
+                  onClick={() => { router.push(item.href); setOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+                >
+                  <span className="text-muted-foreground">{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
           </div>
 
           {/* Logout */}

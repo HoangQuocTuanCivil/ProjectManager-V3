@@ -21,12 +21,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { href: "/reports", icon: <BarChart3 size={20} />, tKey: "reports" },
 ];
 
-export const SETTINGS_ITEM: NavItemConfig = {
-  href: "/settings/profile",
-  icon: <Settings size={20} />,
-  tKey: "settings",
-  roles: ["admin", "leader", "head", "team_leader"],
-};
+// Settings removed from sidebar — accessible only via user account dropdown in topbar
 
 export const PAGE_TITLE_KEYS: Record<string, string> = {
   "/": "overview",
