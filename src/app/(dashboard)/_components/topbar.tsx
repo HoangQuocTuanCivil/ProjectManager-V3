@@ -26,7 +26,18 @@ function UserMenu() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  if (!user) return null;
+  // Show placeholder avatar while auth state is loading
+  if (!user) {
+    return (
+      <div className="flex items-center gap-2.5 h-10 pl-2 pr-3">
+        <div className="w-8 h-8 rounded-full bg-secondary animate-pulse" />
+        <div className="hidden md:block space-y-1">
+          <div className="w-20 h-3 bg-secondary rounded animate-pulse" />
+          <div className="w-12 h-2 bg-secondary rounded animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   const initials = user.full_name.split(" ").map((w) => w[0]).slice(-2).join("");
   const roleColor = ROLE_CONFIG[user.role]?.color ?? "#6366f1";
