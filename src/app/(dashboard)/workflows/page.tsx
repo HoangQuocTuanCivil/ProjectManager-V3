@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useWorkflows, usePendingApprovals, useToggleWorkflow, useAdvanceWorkflow, useDeleteWorkflow } from "@/lib/hooks/use-workflows";
+import { useWorkflows, useToggleWorkflow, useDeleteWorkflow } from "@/lib/hooks/use-workflows";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/stores";
 import { Button, Toggle, FilterChip, EmptyState, Section, StatCard, UserAvatar } from "@/components/shared";
@@ -27,18 +27,14 @@ const STEP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
   custom: { icon: "⚙️", color: "#94a3b8" },
 };
 
-type TabKey = "templates" | "pending";
 
 export default function WorkflowsPage() {
   const router = useRouter();
   const { t } = useI18n();
   const { user } = useAuthStore();
   const { data: workflows = [], isLoading } = useWorkflows();
-  const { data: pendingApprovals = [] } = usePendingApprovals();
   const toggleWorkflow = useToggleWorkflow();
-  const advanceWorkflow = useAdvanceWorkflow();
   const deleteWf = useDeleteWorkflow();
-  const [tab, setTab] = useState<TabKey>("templates");
   const [showBuilder, setShowBuilder] = useState(false);
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
@@ -56,7 +52,7 @@ export default function WorkflowsPage() {
         <div>
           <h1 className="text-xl font-bold">{t.workflows.pageTitle}</h1>
           <p className="text-base text-muted-foreground mt-0.5">
-            {t.workflows.stats.replace("{total}", String(workflows.length)).replace("{pending}", String(pendingApprovals.length))}
+            {t.workflows.stats.replace("{total}", String(workflows.length)).replace("{pending}", String(0))}
           </p>
         </div>
         <Button variant="primary" onClick={() => setShowBuilder(true)}>
@@ -68,81 +64,35 @@ export default function WorkflowsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label={t.workflows.totalWorkflows} value={workflows.length} accentColor="hsl(var(--primary))" />
         <StatCard label={t.workflows.activeWf} value={activeCount} accentColor="#10b981" />
-        <StatCard label={t.workflows.pendingApproval} value={pendingApprovals.length} accentColor="#f59e0b" />
+        <StatCard label={t.workflows.pendingApproval} value={0} accentColor="#f59e0b" />
         <StatCard label={t.workflows.disabledWf} value={workflows.length - activeCount} accentColor="#94a3b8" />
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-border">
-        <button
-          onClick={() => setTab("templates")}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            tab === "templates" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          ⚡ {t.workflows.workflowsTab} ({workflows.length})
-        </button>
-        <button
-          onClick={() => setTab("pending")}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors relative ${
-            tab === "pending" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          📋 {t.workflows.approvalsTab}
-          {pendingApprovals.length > 0 && (
-            <span className="ml-1.5 bg-destructive text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-              {pendingApprovals.length}
-            </span>
-          )}
-        </button>
+      {/* Filter chips */}
+      <div className="flex items-center gap-2">
+        <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>{t.workflows.filterAll}</FilterChip>
+        <FilterChip active={filter === "active"} onClick={() => setFilter("active")}>{t.workflows.filterEnabled}</FilterChip>
+        <FilterChip active={filter === "inactive"} onClick={() => setFilter("inactive")}>{t.workflows.filterDisabled}</FilterChip>
       </div>
 
-      {/* Tab: Templates */}
-      {tab === "templates" && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>{t.workflows.filterAll}</FilterChip>
-            <FilterChip active={filter === "active"} onClick={() => setFilter("active")}>{t.workflows.filterEnabled}</FilterChip>
-            <FilterChip active={filter === "inactive"} onClick={() => setFilter("inactive")}>{t.workflows.filterDisabled}</FilterChip>
-          </div>
-
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => <div key={i} className="h-32 bg-card border border-border rounded-xl animate-pulse" />)}
-            </div>
-          ) : filtered.length === 0 ? (
-            <EmptyState icon="⚡" title={t.workflows.noWorkflows} subtitle={t.workflows.noWorkflowsSub} />
-          ) : (
-            <div className="space-y-3">
-              {filtered.map((wf: any) => (
-                <WorkflowCard
-                  key={wf.id}
-                  workflow={wf}
-                  onToggle={(active) => toggleWorkflow.mutate({ id: wf.id, is_active: active })}
-                  onClick={() => router.push(`/workflows/${wf.id}`)}
-                  onDelete={() => setDeleteTarget(wf)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Pending Approvals */}
-      {tab === "pending" && (
+      {/* Templates List */}
+      {isLoading ? (
         <div className="space-y-3">
-          {pendingApprovals.length === 0 ? (
-            <EmptyState icon="✅" title={t.workflows.noApprovals} subtitle={t.workflows.noApprovalsSub} />
-          ) : (
-            pendingApprovals.map((item: any) => (
-              <PendingApprovalCard
-                key={`${item.task_id}-${item.current_step_id}`}
-                item={item}
-                onAdvance={(result, note) => advanceWorkflow.mutate({ taskId: item.task_id, result, note })}
-                isPending={advanceWorkflow.isPending}
-              />
-            ))
-          )}
+          {[1, 2, 3].map((i) => <div key={i} className="h-32 bg-card border border-border rounded-xl animate-pulse" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon="⚡" title={t.workflows.noWorkflows} subtitle={t.workflows.noWorkflowsSub} />
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((wf: any) => (
+            <WorkflowCard
+              key={wf.id}
+              workflow={wf}
+              onToggle={(active) => toggleWorkflow.mutate({ id: wf.id, is_active: active })}
+              onClick={() => router.push(`/workflows/${wf.id}`)}
+              onDelete={() => setDeleteTarget(wf)}
+            />
+          ))}
         </div>
       )}
 

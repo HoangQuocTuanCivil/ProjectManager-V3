@@ -408,7 +408,7 @@ function TaskGrid({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: string) =
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
-        <table style={{ tableLayout: "fixed", width: colWidths.reduce((s, w) => s + w, 0) }}>
+        <table style={{ tableLayout: "fixed", width: "100%", minWidth: colWidths.reduce((s, w) => s + w, 0) }}>
           <thead>
             <tr className="border-b border-border bg-secondary/50 sticky top-0 z-10">
               {headers.map((h, idx) => (
