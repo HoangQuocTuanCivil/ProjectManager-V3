@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getVerdict } from "@/lib/utils/kpi";
 import type { Task } from "@/lib/types";
-import type { AcceptanceRecord, AcceptanceFilter, AcceptanceSummary } from "../types/acceptance.types";
+import type { AcceptanceRecord, AcceptanceFilter, AcceptanceSummary, PaymentStatus } from "../types/acceptance.types";
 
 const supabase = createClient();
 
@@ -28,10 +28,10 @@ function toAcceptanceRecord(task: Task): AcceptanceRecord {
     submitted_at: task.updated_at, // approximation
     evaluated_at: task.kpi_evaluated_at,
     deadline: task.deadline,
-    payment_status: task.metadata?.payment_status ?? "unpaid",
-    payment_amount: task.metadata?.payment_amount ?? null,
-    payment_date: task.metadata?.payment_date ?? null,
-    payment_note: task.metadata?.payment_note ?? null,
+    payment_status: (task.metadata?.payment_status as PaymentStatus) ?? "unpaid",
+    payment_amount: (task.metadata?.payment_amount as number | null) ?? null,
+    payment_date: (task.metadata?.payment_date as string | null) ?? null,
+    payment_note: (task.metadata?.payment_note as string | null) ?? null,
   };
 }
 

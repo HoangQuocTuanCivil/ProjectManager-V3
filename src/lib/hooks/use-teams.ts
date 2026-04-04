@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { userKeys } from "./use-users";
-import type { Team } from "@/lib/types";
+import type { Team, CenterUpdateInput, TeamUpdateInput } from "@/lib/types";
 
 const supabase = createClient();
 
@@ -54,7 +54,7 @@ export function useCreateCenter() {
       qc.invalidateQueries({ queryKey: centerKeys.all });
       toast.success("Đã tạo trung tâm");
     },
-    onError: (e: any) => toast.error(e.message || "Lỗi tạo trung tâm"),
+    onError: (e: Error) => toast.error(e.message || "Lỗi tạo trung tâm"),
   });
 }
 
@@ -65,7 +65,7 @@ export function useUpdateCenter() {
     mutationFn: async ({
       id,
       ...updates
-    }: { id: string } & Record<string, any>) => {
+    }: { id: string } & CenterUpdateInput) => {
       if (updates.director_id === "") updates.director_id = null;
       const res = await fetch(`/api/centers/${id}`, {
         method: "PATCH",
@@ -80,7 +80,7 @@ export function useUpdateCenter() {
       qc.invalidateQueries({ queryKey: centerKeys.all });
       toast.success("Đã cập nhật trung tâm");
     },
-    onError: (e: any) => toast.error(e.message || "Lỗi cập nhật trung tâm"),
+    onError: (e: Error) => toast.error(e.message || "Lỗi cập nhật trung tâm"),
   });
 }
 
@@ -109,9 +109,9 @@ export function useTeams(deptId?: string) {
 
       // Lấy thông tin trưởng nhóm riêng để tránh lỗi FK naming
       const leaderIds = [
-        ...new Set(data.map((t: any) => t.leader_id).filter(Boolean)),
+        ...new Set(data.map((t) => t.leader_id).filter((id): id is string => id != null)),
       ];
-      let leaders: any[] = [];
+      let leaders: Array<{ id: string; full_name: string; avatar_url: string | null; role: string; email: string }> = [];
       if (leaderIds.length > 0) {
         const { data: leaderData } = await supabase
           .from("users")
@@ -120,10 +120,10 @@ export function useTeams(deptId?: string) {
         leaders = leaderData || [];
       }
 
-      return data.map((t: any) => ({
+      return data.map((t) => ({
         ...t,
-        leader: leaders.find((u: any) => u.id === t.leader_id) || null,
-      })) as Team[];
+        leader: leaders.find((u) => u.id === t.leader_id) || null,
+      })) as unknown as Team[];
     },
   });
 }
@@ -141,10 +141,10 @@ export function useAllTeams() {
       if (!data || data.length === 0) return [] as Team[];
 
       const leaderIds = [
-        ...new Set(data.map((t: any) => t.leader_id).filter(Boolean)),
+        ...new Set(data.map((t) => t.leader_id).filter((id): id is string => id != null)),
       ];
       const deptIds = [
-        ...new Set(data.map((t: any) => t.dept_id).filter(Boolean)),
+        ...new Set(data.map((t) => t.dept_id).filter((id): id is string => id != null)),
       ];
 
       const [leadersRes, deptsRes] = await Promise.all([
@@ -153,23 +153,23 @@ export function useAllTeams() {
               .from("users")
               .select("id, full_name, avatar_url, role, email")
               .in("id", leaderIds)
-          : { data: [] },
+          : { data: [] as { id: string; full_name: string; avatar_url: string | null; role: string; email: string }[] },
         deptIds.length > 0
           ? supabase
               .from("departments")
               .select("id, name, code")
               .in("id", deptIds)
-          : { data: [] },
+          : { data: [] as { id: string; name: string; code: string }[] },
       ]);
 
-      return data.map((t: any) => ({
+      return data.map((t) => ({
         ...t,
         leader:
-          (leadersRes.data || []).find((u: any) => u.id === t.leader_id) ||
+          (leadersRes.data || []).find((u) => u.id === t.leader_id) ||
           null,
         department:
-          (deptsRes.data || []).find((d: any) => d.id === t.dept_id) || null,
-      })) as Team[];
+          (deptsRes.data || []).find((d) => d.id === t.dept_id) || null,
+      })) as unknown as Team[];
     },
   });
 }
@@ -209,7 +209,7 @@ export function useCreateTeam() {
       qc.invalidateQueries({ queryKey: teamKeys.all });
       toast.success("Đã tạo nhóm");
     },
-    onError: (e: any) => toast.error(e.message || "Lỗi tạo nhóm"),
+    onError: (e: Error) => toast.error(e.message || "Lỗi tạo nhóm"),
   });
 }
 
@@ -220,7 +220,7 @@ export function useUpdateTeam() {
     mutationFn: async ({
       id,
       ...updates
-    }: { id: string } & Record<string, any>) => {
+    }: { id: string } & TeamUpdateInput) => {
       if (updates.leader_id === "") updates.leader_id = null;
       const { data, error } = await supabase
         .from("teams")
@@ -235,7 +235,7 @@ export function useUpdateTeam() {
       qc.invalidateQueries({ queryKey: teamKeys.all });
       toast.success("Đã cập nhật nhóm");
     },
-    onError: (e: any) => toast.error(e.message || "Lỗi cập nhật nhóm"),
+    onError: (e: Error) => toast.error(e.message || "Lỗi cập nhật nhóm"),
   });
 }
 
@@ -253,6 +253,6 @@ export function useDeleteTeam() {
       qc.invalidateQueries({ queryKey: userKeys.list() });
       toast.success("Đã xóa nhóm");
     },
-    onError: (e: any) => toast.error(e.message || "Lỗi xóa nhóm"),
+    onError: (e: Error) => toast.error(e.message || "Lỗi xóa nhóm"),
   });
 }

@@ -44,7 +44,7 @@ export default function ProjectMilestonesPage() {
     if (!form.title || !form.due_date) { toast.error("Nhập tên và ngày"); return; }
     try {
       if (editItem) {
-        await updateMilestone.mutateAsync({ id: editItem.id, project_id: projectId, ...form });
+        await updateMilestone.mutateAsync({ id: editItem.id, project_id: projectId, ...form, status: form.status as 'upcoming' | 'reached' | 'missed' });
         toast.success("Cập nhật milestone thành công!");
       } else {
         await createMilestone.mutateAsync({ project_id: projectId, ...form });

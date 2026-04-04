@@ -59,7 +59,7 @@ export function useGoals() {
       const roots: typeof enriched = [];
       for (const g of enriched) {
         if (g.parent_goal_id && goalMap.has(g.parent_goal_id)) {
-          goalMap.get(g.parent_goal_id)!.sub_goals.push(g as Goal);
+          goalMap.get(g.parent_goal_id)!.sub_goals.push(g as unknown as Goal);
         } else {
           roots.push(g);
         }

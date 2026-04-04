@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { AllocationPeriod, AllocationConfig } from "@/lib/types";
+import type { TablesInsert } from "@/lib/types/database";
 
 const supabase = createClient();
 
@@ -113,7 +114,7 @@ export function useCreateAllocationPeriod() {
           ...input,
           org_id: profile.org_id,
           config_id: config!.id,
-        } as any)
+        } as TablesInsert<'allocation_periods'>)
         .select()
         .single();
       if (error) throw error;
@@ -137,7 +138,7 @@ export function useCalculateAllocation() {
       const { data, error } = (await supabase.rpc("fn_allocate_smart", {
         p_period_id: periodId,
         p_use_actual: useActual,
-      })) as { data: any; error: any };
+      })) as { data: { user_count?: number; error?: string } | null; error: { message: string } | null };
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       return data as { user_count?: number; error?: string } | null;
@@ -153,7 +154,7 @@ export function useCalculateAllocation() {
         );
       }
     },
-    onError: (e: any) => toast.error(e.message || "Lỗi tính khoán"),
+    onError: (e: Error) => toast.error(e.message || "Lỗi tính khoán"),
   });
 }
 
@@ -198,6 +199,6 @@ export function useDeleteAllocationPeriod() {
       qc.invalidateQueries({ queryKey: kpiKeys.periods() });
       toast.success("Đã xóa đợt khoán");
     },
-    onError: (e: any) => toast.error(e.message || "Lỗi xóa đợt khoán"),
+    onError: (e: Error) => toast.error(e.message || "Lỗi xóa đợt khoán"),
   });
 }

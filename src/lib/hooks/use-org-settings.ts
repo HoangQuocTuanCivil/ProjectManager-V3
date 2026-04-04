@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import type { Json } from "@/lib/types/database";
 
 const supabase = createClient();
 
@@ -37,7 +38,7 @@ export function useUpdateSetting() {
     }: {
       category: string;
       key: string;
-      value: any;
+      value: Json;
     }) => {
       const {
         data: { user },

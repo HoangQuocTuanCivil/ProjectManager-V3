@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import type { UserUpdateInput } from "@/lib/types";
+import type { TablesInsert } from "@/lib/types/database";
 
 const supabase = createClient();
 
@@ -51,7 +53,7 @@ export function useUpdateUser() {
     mutationFn: async ({
       id,
       ...updates
-    }: { id: string } & Record<string, any>) => {
+    }: { id: string } & UserUpdateInput) => {
       if (updates.dept_id === "") updates.dept_id = null;
       if (updates.custom_role_id === "") updates.custom_role_id = null;
       if (updates.manager_id === "") updates.manager_id = null;
@@ -158,7 +160,7 @@ export function useInviteUser() {
           invited_by: user!.id,
           token,
           expires_at: expires.toISOString(),
-        } as any)
+        } as TablesInsert<'user_invitations'>)
         .select()
         .single();
       if (error) throw error;

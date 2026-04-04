@@ -49,7 +49,7 @@ export function useTasks(filters: TaskFilters = {}) {
       if (!data || data.length === 0) return [] as Task[];
 
       // Fetch team names separately (new FK not auto-detected by PostgREST)
-      const teamIds = [...new Set(data.map((t) => t.team_id).filter(Boolean))];
+      const teamIds = [...new Set(data.map((t) => t.team_id).filter((id): id is string => id != null))];
       let teamsMap: Record<string, { id: string; name: string; code: string | null }> = {};
       if (teamIds.length > 0) {
         const { data: teamsData } = await supabase.from('teams').select('id, name, code').in('id', teamIds);
@@ -71,7 +71,7 @@ export function useTasks(filters: TaskFilters = {}) {
           project: Array.isArray(t.project) ? t.project[0] || null : t.project,
           department: dept,
         };
-      }) as Task[];
+      }) as unknown as Task[];
     },
     staleTime: 30_000,
   });

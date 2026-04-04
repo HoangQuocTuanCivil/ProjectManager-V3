@@ -40,7 +40,7 @@ export function AllocationTable({
         </thead>
         <tbody>
           {sorted.map((r, i) => {
-            const eScore = r.breakdown?.expect_score ?? 0;
+            const eScore = (r.breakdown?.expect_score as number) ?? 0;
             const variance = r.weighted_score - eScore;
             return (
               <tr key={r.id} className="border-b border-border/30 hover:bg-secondary/20">
