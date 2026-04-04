@@ -198,25 +198,35 @@ export default function ContractsPage() {
 /* ───── PDF / File Viewer ───────────────────────────────────────── */
 
 /**
- * Resolve file_url to a storage path.
- * Handles both cases: raw path ("contracts/xxx/123.pdf") or
- * legacy full URL (".../storage/v1/object/public/contract-files/xxx").
+ * Resolve file_url → storage path inside "contract-files" bucket.
+ * Supports: raw path, public URL, signed URL, URL-encoded path.
  */
 function toStoragePath(fileUrl: string): string {
-  const match = fileUrl.match(/\/storage\/v1\/object\/(?:public|sign)\/contract-files\/(.+?)(?:\?|$)/);
-  return match ? match[1] : fileUrl;
+  // Full URL: extract everything after "contract-files/"
+  const full = fileUrl.match(/contract-files\/(.+?)(?:\?|$)/);
+  if (full) return decodeURIComponent(full[1]);
+  // Already a raw path
+  return fileUrl;
 }
 
 function ContractFileViewer({ fileUrl, label }: { fileUrl: string; label: string }) {
   const [showViewer, setShowViewer] = useState(false);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const path = toStoragePath(fileUrl);
   const isPdf = /\.pdf$/i.test(path);
 
-  const getSignedUrl = async (expiresIn = 3600) => {
-    const { data } = await supabase.storage.from("contract-files").createSignedUrl(path, expiresIn);
-    return data?.signedUrl || null;
+  const getSignedUrl = async (expiresIn = 3600): Promise<string | null> => {
+    const { data, error: err } = await supabase.storage.from("contract-files").createSignedUrl(path, expiresIn);
+    if (err) {
+      console.error("Signed URL error:", err.message, "path:", path);
+      setError(err.message);
+      toast.error(`Lỗi tạo link: ${err.message}`);
+      return null;
+    }
+    setError(null);
+    return data.signedUrl;
   };
 
   const handleToggle = async (e: React.MouseEvent) => {
@@ -226,7 +236,7 @@ function ContractFileViewer({ fileUrl, label }: { fileUrl: string; label: string
     const url = await getSignedUrl();
     setSignedUrl(url);
     setLoading(false);
-    setShowViewer(true);
+    if (url) setShowViewer(true);
   };
 
   const handleDownload = async (e: React.MouseEvent) => {
@@ -249,6 +259,7 @@ function ContractFileViewer({ fileUrl, label }: { fileUrl: string; label: string
           <button type="button" onClick={handleDownload} className="text-xs text-primary hover:underline">Xem file</button>
         )}
         <button type="button" onClick={handleDownload} className="text-xs text-muted-foreground hover:underline">Tải về</button>
+        {error && <span className="text-[10px] text-destructive">{error}</span>}
       </div>
       {showViewer && isPdf && signedUrl && (
         <div className="mt-2 rounded-lg border border-border overflow-hidden bg-secondary/30">
