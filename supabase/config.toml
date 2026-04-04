@@ -1,4 +1,4 @@
-project_id = "dgakrkzafaocwempzdkk"
+project_id = "ebyncmikoknbskeymlno"
 
 [api]
 port = 54321
@@ -7,7 +7,7 @@ extra_search_path = ["public"]
 
 [db]
 port = 54322
-major_version = 17
+major_version = 15
 
 [auth]
 site_url = "http://localhost:3000"
