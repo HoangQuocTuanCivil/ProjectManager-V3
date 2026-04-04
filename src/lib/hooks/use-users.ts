@@ -21,7 +21,6 @@ export function useUsers() {
       const res = await fetch("/api/users");
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
-        console.error("[useUsers] API error:", err.error);
         throw new Error(err.error || "Failed to fetch users");
       }
       return res.json();

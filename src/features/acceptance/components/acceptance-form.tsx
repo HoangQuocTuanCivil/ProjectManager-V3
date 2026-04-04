@@ -45,7 +45,7 @@ export function AcceptanceEvalForm({
       <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl animate-fade-in" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <h3 className="text-base font-bold">Nghiệm thu & Chấm KPI</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded focus-ring" aria-label="Đóng">✕</button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -164,7 +164,7 @@ export function PaymentForm({
       <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl animate-fade-in" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <h3 className="text-base font-bold">Cập nhật thanh toán</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded focus-ring" aria-label="Đóng">✕</button>
         </div>
 
         <div className="p-5 space-y-4">

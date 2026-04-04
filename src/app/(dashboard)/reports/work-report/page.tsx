@@ -933,7 +933,7 @@ export default function WorkReportPage() {
                       {kpiDrill === "people" && "👥 Chi tiết nhân sự tham gia"}
                       {kpiDrill === "alerts" && "⚠️ Chi tiết cảnh báo"}
                     </h3>
-                    <button onClick={() => setKpiDrill(null)} className="text-muted-foreground hover:text-foreground text-sm">✕</button>
+                    <button onClick={() => setKpiDrill(null)} className="text-muted-foreground hover:text-foreground text-sm p-1 rounded focus-ring" aria-label="Đóng">✕</button>
                   </div>
                   <div className="max-h-[280px] overflow-y-auto">
                     {kpiDrill === "progress" && (
@@ -1821,7 +1821,7 @@ export default function WorkReportPage() {
                   <h3 className="text-base font-bold">{cfg.title}</h3>
                   <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">{cfg.tasks.length}</span>
                 </div>
-                <button onClick={() => setStaffDrill(null)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+                <button onClick={() => setStaffDrill(null)} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">✕</button>
               </div>
               {cfg.tasks.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground text-sm">Không có công việc</div>

@@ -93,7 +93,7 @@ export default function TeamsSettingsPage() {
           <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="text-base font-bold">Tạo nhóm mới</h3>
-              <button onClick={() => setShowCreate(false)} className="text-muted-foreground hover:text-foreground text-lg">&times;</button>
+              <button onClick={() => setShowCreate(false)} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
             </div>
             <div className="p-5 space-y-3">
               <div>
@@ -262,7 +262,7 @@ function EditTeamModal({ team, departments, users, onClose, onSave, isPending }:
       <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 className="text-base font-bold">Sửa nhóm: {team.name}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">&times;</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
         </div>
         <div className="p-5 space-y-3">
           <div>
@@ -346,7 +346,7 @@ function ManageMembersModal({ team, users, onClose }: {
       <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 className="text-base font-bold">Thành viên nhóm: {team.name}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">&times;</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
         </div>
         <div className="p-5 space-y-4 overflow-y-auto flex-1">
           {/* Current members */}

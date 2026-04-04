@@ -127,9 +127,9 @@ export function FormBuilder({ initialName = "", initialDescription = "", initial
                           <span>Bắt buộc</span>
                           <Toggle checked={field.is_required} onChange={(v) => updateField(field.id, { is_required: v })} />
                         </div>
-                        <button onClick={() => moveField(field.id, -1)} disabled={idx === 0} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-20">▲</button>
-                        <button onClick={() => moveField(field.id, 1)} disabled={idx === fields.length - 1} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-20">▼</button>
-                        <button onClick={() => removeField(field.id)} className="text-sm text-red-400 hover:text-red-300 ml-1">✕</button>
+                        <button onClick={() => moveField(field.id, -1)} disabled={idx === 0} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Di chuyển lên">▲</button>
+                        <button onClick={() => moveField(field.id, 1)} disabled={idx === fields.length - 1} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Di chuyển xuống">▼</button>
+                        <button onClick={() => removeField(field.id)} className="text-sm text-red-400 hover:text-red-300 ml-1" aria-label="Xóa trường">✕</button>
                       </div>
                     </div>
 

@@ -101,7 +101,7 @@ export function WorkflowBuilder({ onClose, onSave }: { onClose: () => void; onSa
         {/* Header */}
         <div className="px-6 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
           <h2 className="text-base font-bold">⚡ Tạo quy trình workflow mới</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">✕</button>
         </div>
 
         <div className="p-6 space-y-5">
@@ -165,9 +165,9 @@ export function WorkflowBuilder({ onClose, onSave }: { onClose: () => void; onSa
                           className="flex-1 bg-transparent text-base font-semibold focus:outline-none border-b border-transparent focus:border-primary"
                         />
                         <div className="flex gap-1">
-                          <button onClick={() => moveStep(idx, -1)} disabled={idx === 0} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-20">▲</button>
-                          <button onClick={() => moveStep(idx, 1)} disabled={idx === steps.length - 1} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-20">▼</button>
-                          <button onClick={() => removeStep(idx)} disabled={steps.length <= 1} className="text-sm text-red-400 hover:text-red-300 disabled:opacity-20 ml-1">✕</button>
+                          <button onClick={() => moveStep(idx, -1)} disabled={idx === 0} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Di chuyển lên">▲</button>
+                          <button onClick={() => moveStep(idx, 1)} disabled={idx === steps.length - 1} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Di chuyển xuống">▼</button>
+                          <button onClick={() => removeStep(idx)} disabled={steps.length <= 1} className="text-sm text-red-400 hover:text-red-300 disabled:opacity-20 ml-1" aria-label="Xóa bước">✕</button>
                         </div>
                       </div>
 

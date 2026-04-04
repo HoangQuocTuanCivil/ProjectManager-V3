@@ -82,7 +82,7 @@ export default function ProjectMilestonesPage() {
           <div className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="text-base font-bold">{editItem ? "Sửa milestone" : "Thêm milestone"}</h3>
-              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground text-lg">&times;</button>
+              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
             </div>
             <div className="p-5 space-y-3">
               <div>

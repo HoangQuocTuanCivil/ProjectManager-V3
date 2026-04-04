@@ -217,7 +217,7 @@ function TemplateFormModal({ title, initialForm, onClose, onSave, isPending }: {
       <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-card rounded-t-2xl">
           <h3 className="text-base font-bold">{title}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">&times;</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
         </div>
         <div className="p-5 space-y-3">
           <div className="grid grid-cols-2 gap-3">

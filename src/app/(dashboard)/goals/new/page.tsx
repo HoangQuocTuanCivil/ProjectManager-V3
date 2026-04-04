@@ -130,7 +130,6 @@ export default function NewGoalPage() {
         // @ts-ignore
         const { error: targetError } = await supabase.from("goal_targets").insert(rows);
         if (targetError) {
-          console.error("Error inserting KR:", targetError);
           toast.error("Tạo goal thành công nhưng lỗi thêm KR: " + targetError.message);
         }
       }

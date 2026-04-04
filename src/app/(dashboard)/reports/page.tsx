@@ -565,7 +565,7 @@ export default function ReportsPage() {
                   {allRiskTasks.length}
                 </span>
               </div>
-              <button onClick={() => setShowRiskPanel(false)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+              <button onClick={() => setShowRiskPanel(false)} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">✕</button>
             </div>
             <div className="divide-y divide-border/40">
               {allRiskTasks.length === 0 ? (
@@ -698,7 +698,7 @@ export default function ReportsPage() {
                   {cfg.icon}
                   <h3 className="text-base font-bold">{cfg.title}</h3>
                 </div>
-                <button onClick={() => setActivePanel(null)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+                <button onClick={() => setActivePanel(null)} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">✕</button>
               </div>
               {cfg.extra}
               {cfg.tasks.length > 0 && (

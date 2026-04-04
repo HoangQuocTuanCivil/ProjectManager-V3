@@ -423,13 +423,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden print:h-auto print:overflow-visible">
+      {/* Keyboard shortcut: lets users skip the sidebar navigation and jump directly to page content */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:text-sm focus:font-medium">
+        Chuyển đến nội dung chính
+      </a>
       <div className="print:hidden flex shrink-0 h-full">
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       </div>
       <div className="print:hidden">
         <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} />
       </div>
-      <main className="flex-1 flex flex-col overflow-hidden print:overflow-visible">
+      <main id="main-content" className="flex-1 flex flex-col overflow-hidden print:overflow-visible">
         <div className="print:hidden">
           <Topbar
             title={title}

@@ -25,7 +25,6 @@ export function useProjects() {
         .select(`*, manager:users!projects_manager_id_fkey(id, full_name, avatar_url, role)`)
         .neq("status", "archived")
         .order("created_at", { ascending: false });
-      console.log("[useProjects] data:", data?.length, "error:", error);
       if (error) throw error;
 
       // Fetch project-department assignments separately

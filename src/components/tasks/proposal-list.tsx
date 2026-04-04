@@ -64,7 +64,7 @@ export function ProposalList({ onClose }: { onClose: () => void }) {
             <FileText size={18} />
             Đề xuất giao việc
           </h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">&times;</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
         </div>
 
         {/* Tabs */}

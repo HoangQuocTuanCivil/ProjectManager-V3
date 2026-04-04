@@ -65,7 +65,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       {/* Desktop: sidebar nav */}
       <aside className="w-[220px] flex-shrink-0 hidden md:block">
         <h2 className="text-lg font-bold mb-4">{t.nav.settings}</h2>
-        <nav className="space-y-1" role="navigation" aria-label="{t.nav.settings}">
+        <nav className="space-y-1" role="navigation" aria-label={t.nav.settings}>
           {visibleNav.map((item) => {
             const isActive = pathname === item.href;
             return (

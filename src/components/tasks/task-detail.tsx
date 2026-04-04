@@ -138,7 +138,7 @@ export function TaskDetail({ taskId, onClose }: { taskId: string; onClose: () =>
                 <button onClick={() => setConfirmDelete(true)} className="text-sm text-destructive hover:underline">Xóa</button>
               </>
             )}
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg ml-2">✕</button>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg ml-2 p-1 rounded focus-ring" aria-label="Đóng">✕</button>
           </div>
         </div>
 

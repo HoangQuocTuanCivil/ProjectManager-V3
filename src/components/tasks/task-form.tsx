@@ -239,7 +239,7 @@ export function TaskForm({ onClose }: { onClose: () => void }) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
           <h2 className="text-base font-bold">Giao việc mới + KPI kỳ vọng</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">✕</button>
         </div>
 
         <div className="p-6 space-y-5">

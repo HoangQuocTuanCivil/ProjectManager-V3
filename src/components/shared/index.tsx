@@ -208,8 +208,13 @@ export function StatCard({
 }) {
   return (
     <div
-      className={cn("bg-card border border-border rounded-xl p-4 relative overflow-hidden", onClick && "cursor-pointer hover:shadow-md hover:border-primary/30 transition-all")}
+      className={cn("bg-card border border-border rounded-xl p-4 relative overflow-hidden", onClick && "cursor-pointer hover:shadow-md hover:border-primary/30 transition-all focus-ring rounded-xl")}
       onClick={onClick}
+      /* When onClick is present, the div acts as a button — add keyboard and ARIA support */
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+      aria-label={onClick ? `${label}: ${value}` : undefined}
     >
       {accentColor && (
         <div className="absolute top-0 left-0 right-0 h-[2.5px]" style={{ background: accentColor }} />
@@ -331,12 +336,16 @@ export function Button({
 }
 
 
-export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <button
       onClick={() => onChange(!checked)}
+      /* Expose toggle state to assistive technology via the switch role */
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
       className={cn(
-        "w-8 h-[18px] rounded-full relative transition-colors flex-shrink-0",
+        "w-8 h-[18px] rounded-full relative transition-colors flex-shrink-0 focus-ring",
         checked ? "bg-green-500" : "bg-muted-foreground/40"
       )}
     >
@@ -346,6 +355,24 @@ export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: 
           checked && "translate-x-[14px]"
         )}
       />
+    </button>
+  );
+}
+
+
+/**
+ * Accessible close button for modals, panels, and drawers. Replaces bare "×"
+ * characters that lack screen reader labels. The aria-label defaults to "Đóng"
+ * (Vietnamese for "Close") to match the application's primary locale.
+ */
+export function CloseButton({ onClick, label = "Đóng", className }: { onClick: () => void; label?: string; className?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className={cn("text-muted-foreground hover:text-foreground text-lg leading-none p-1 rounded focus-ring", className)}
+    >
+      ✕
     </button>
   );
 }
