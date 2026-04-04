@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle } from "react";
 import * as XLSX from "xlsx";
 import { Button, EmptyState } from "@/components/shared";
 import { toast } from "sonner";
@@ -127,12 +127,23 @@ interface ExcelImportProps {
   onComplete: () => void;
 }
 
-export function ExcelImportButton({ deptCodeMap, teamCodeMap, onComplete }: ExcelImportProps) {
+/** Methods exposed to parent via ref for triggering import and template download */
+export interface ExcelImportHandle {
+  triggerImport: () => void;
+  downloadTemplate: () => void;
+}
+
+export const ExcelImportButton = forwardRef<ExcelImportHandle, ExcelImportProps>(function ExcelImportButton({ deptCodeMap, teamCodeMap, onComplete }, ref) {
   const [showModal, setShowModal] = useState(false);
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [fileName, setFileName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    triggerImport: () => fileRef.current?.click(),
+    downloadTemplate,
+  }));
 
   /** Handles file selection — parses Excel and shows preview */
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,26 +215,13 @@ export function ExcelImportButton({ deptCodeMap, teamCodeMap, onComplete }: Exce
   const validCount = rows.filter((r) => r.errors.length === 0).length;
   const errorCount = rows.filter((r) => r.errors.length > 0).length;
 
+  /** Programmatically opens the file picker — called from parent dropdown menu */
+  const triggerFileSelect = () => fileRef.current?.click();
+
   return (
     <>
-      {/* Action buttons in the header area */}
-      <div className="flex items-center gap-2">
-        <Button size="sm" onClick={downloadTemplate}>
-          <Download size={14} /> Tải mẫu Excel
-        </Button>
-        <label className="cursor-pointer">
-          <Button size="sm" variant="primary" onClick={() => fileRef.current?.click()}>
-            <Upload size={14} /> Import Excel
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={handleFile}
-          />
-        </label>
-      </div>
+      {/* Hidden file input — triggered programmatically via triggerFileSelect() */}
+      <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
 
       {/* Preview + import modal */}
       {showModal && (
@@ -306,4 +304,4 @@ export function ExcelImportButton({ deptCodeMap, teamCodeMap, onComplete }: Exce
       )}
     </>
   );
-}
+});

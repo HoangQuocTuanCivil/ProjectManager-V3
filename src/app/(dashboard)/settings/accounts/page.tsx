@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useUsers, useUpdateUser, useDeleteUser, useCreateUser } from "@/lib/hooks/use-users";
 import { useCustomRoles } from "@/lib/hooks/use-org-settings";
 import { useAllTeams, useCenters } from "@/lib/hooks/use-teams";
@@ -12,8 +12,9 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { ExcelImportButton } from "./excel-import";
-import { FileDown } from "lucide-react";
+import { FileDown, Plus, UserPlus, Upload, Download, ChevronDown } from "lucide-react";
 import * as XLSX from "xlsx";
+import type { ExcelImportHandle } from "./excel-import";
 
 const supabase = createClient();
 
@@ -49,6 +50,18 @@ export default function AccountsSettingsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
   const [search, setSearch] = useState("");
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement>(null);
+  const excelRef = useRef<ExcelImportHandle>(null);
+
+  // Close "Thêm tài khoản" dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) setAddMenuOpen(false);
+    };
+    if (addMenuOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [addMenuOpen]);
 
   /** Maps department code → ID for Excel import to resolve dept_code column */
   const deptCodeMap = useMemo(() => {
@@ -220,16 +233,51 @@ export default function AccountsSettingsPage() {
           <h2 className="text-lg font-bold">Quản lý tài khoản</h2>
           <p className="text-base text-muted-foreground mt-0.5">{users.length} người dùng</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
           <Button size="sm" onClick={handleExportExcel} disabled={filtered.length === 0}>
             <FileDown size={14} /> Xuất Excel
           </Button>
+
+          {/* Combined "Thêm tài khoản" dropdown with 3 options */}
+          <div className="relative" ref={addMenuRef}>
+            <Button variant="primary" onClick={() => setAddMenuOpen((o) => !o)}>
+              <Plus size={14} /> Thêm tài khoản <ChevronDown size={14} className={`transition-transform ${addMenuOpen ? "rotate-180" : ""}`} />
+            </Button>
+            {addMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-56 bg-card border border-border rounded-xl shadow-lg z-50 py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+                <button
+                  onClick={() => { setShowCreate(true); setAddMenuOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
+                >
+                  <UserPlus size={15} className="text-muted-foreground" />
+                  Tạo tài khoản
+                </button>
+                <button
+                  onClick={() => { excelRef.current?.triggerImport(); setAddMenuOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
+                >
+                  <Upload size={15} className="text-muted-foreground" />
+                  Import từ Excel
+                </button>
+                <div className="border-t border-border my-1" />
+                <button
+                  onClick={() => { excelRef.current?.downloadTemplate(); setAddMenuOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                >
+                  <Download size={15} />
+                  Tải mẫu Excel
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Excel import modal (hidden, triggered via ref) */}
           <ExcelImportButton
+            ref={excelRef}
             deptCodeMap={deptCodeMap}
             teamCodeMap={teamCodeMap}
             onComplete={() => queryClient.invalidateQueries({ queryKey: ["users"] })}
           />
-          <Button variant="primary" onClick={() => setShowCreate(true)}>+ Tạo tài khoản</Button>
         </div>
       </div>
 
