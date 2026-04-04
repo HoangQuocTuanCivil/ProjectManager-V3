@@ -198,34 +198,58 @@ export default function ContractsPage() {
 
 /* ───── PDF / File Viewer ───────────────────────────────────────── */
 
+/** Extract storage path from a Supabase public/signed URL */
+function extractStoragePath(url: string): string | null {
+  const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/contract-files\/(.+?)(?:\?|$)/);
+  return match ? match[1] : null;
+}
+
 function ContractFileViewer({ url, label }: { url: string; label: string }) {
   const [showViewer, setShowViewer] = useState(false);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const isPdf = /\.pdf(\?|$)/i.test(url);
+
+  const handleToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (showViewer) { setShowViewer(false); return; }
+
+    // Generate a signed URL for the private bucket
+    setLoading(true);
+    const path = extractStoragePath(url);
+    if (path) {
+      const { data } = await supabase.storage.from("contract-files").createSignedUrl(path, 3600);
+      setSignedUrl(data?.signedUrl || null);
+    }
+    setLoading(false);
+    setShowViewer(true);
+  };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const path = extractStoragePath(url);
+    if (!path) return;
+    const { data } = await supabase.storage.from("contract-files").createSignedUrl(path, 300);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+  };
 
   return (
     <div>
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground text-xs">{label}:</span>
         {isPdf ? (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setShowViewer(!showViewer); }}
-            className="text-xs text-primary hover:underline font-medium"
-          >
-            {showViewer ? "Ẩn PDF" : "Xem PDF"}
+          <button type="button" onClick={handleToggle} disabled={loading}
+            className="text-xs text-primary hover:underline font-medium disabled:opacity-50">
+            {loading ? "..." : showViewer ? "Ẩn PDF" : "Xem PDF"}
           </button>
         ) : (
-          <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Xem file</a>
+          <button type="button" onClick={handleDownload} className="text-xs text-primary hover:underline">Xem file</button>
         )}
-        <a href={url} download className="text-xs text-muted-foreground hover:underline">Tải về</a>
+        <button type="button" onClick={handleDownload} className="text-xs text-muted-foreground hover:underline">Tải về</button>
       </div>
-      {showViewer && isPdf && (
+      {showViewer && isPdf && signedUrl && (
         <div className="mt-2 rounded-lg border border-border overflow-hidden bg-secondary/30">
-          <iframe
-            src={`${url}#toolbar=1&navpanes=0`}
-            className="w-full h-[500px]"
-            title="Contract PDF"
-          />
+          <iframe src={signedUrl} className="w-full h-[500px]" title="Contract PDF" />
         </div>
       )}
     </div>
