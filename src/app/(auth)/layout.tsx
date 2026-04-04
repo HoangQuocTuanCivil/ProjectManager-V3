@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import { Sun, Moon } from "lucide-react";
 import { ParticleNetwork } from "@/components/shared/particle-network";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -14,12 +15,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* Radial gradient overlay for depth */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(var(--primary)/0.08),transparent_60%)]" />
 
-      {/* Theme toggle */}
+      {/* Theme toggle — uses same Lucide icons as dashboard topbar */}
       <button
         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        className="fixed top-4 right-4 w-9 h-9 rounded-lg border border-border bg-card flex items-center justify-center hover:bg-secondary transition-colors z-10"
+        className="fixed top-4 right-4 w-8 h-10 rounded-lg border border-border bg-card flex items-center justify-center hover:bg-secondary transition-colors z-10"
+        aria-label={theme === "dark" ? "Chuyển sang sáng" : "Chuyển sang tối"}
       >
-        {theme === "dark" ? "☀️" : "🌙"}
+        {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
       </button>
 
       <div className="relative z-10 w-full max-w-md px-4">
