@@ -140,20 +140,26 @@ export default function TasksPage() {
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">{t.pages.taskManagement}</h1>
-          <p className="text-base text-muted-foreground mt-0.5">
-            {stats.total} {t.nav.tasks} · {stats.inProgress} {t.status.in_progress} · {stats.overdue} {t.status.overdue}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* View Switcher - fixed position */}
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-xl font-bold">{t.pages.taskManagement}</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {stats.total} {t.nav.tasks} · {stats.inProgress} {t.status.in_progress} · {stats.overdue} {t.status.overdue}
+            </p>
+          </div>
+          {/* View Switcher */}
           <div className="flex items-center border border-border rounded-lg overflow-hidden">
-            {([["grid", `📊 ${t.tasks.viewGrid}`], ["kanban", `📌 ${t.tasks.viewKanban}`], ["gantt", `📅 ${t.tasks.viewTimeline}`]] as [string, string][]).map(([v, label]) => (
+            {([
+              ["grid", t.tasks.viewGrid],
+              ["kanban", t.tasks.viewKanban],
+              ["gantt", t.tasks.viewTimeline],
+              ["calendar", t.tasks.viewCalendar],
+              ["workload", t.tasks.viewWorkload],
+            ] as [string, string][]).map(([v, label]) => (
               <button
                 key={v}
                 onClick={() => setTaskView(v as any)}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
                   taskView === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
                 }`}
               >
@@ -161,6 +167,8 @@ export default function TasksPage() {
               </button>
             ))}
           </div>
+        </div>
+        <div className="flex items-center gap-2">
           {canAssign && (
             <Button variant="primary" onClick={() => setShowForm(true)}>
               {t.tasks.newTask}
@@ -242,18 +250,6 @@ export default function TasksPage() {
           />
         )}
 
-        {/* Project */}
-        <SearchSelect
-          value={taskFilters.project_id || "all"}
-          onChange={(val) => setTaskFilters({ project_id: val })}
-          options={[
-            { value: "all", label: t.tasks.projectAll },
-            ...projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` })),
-          ]}
-          placeholder={t.tasks.projectAll}
-          className="h-8 w-40 bg-card text-xs"
-        />
-
         {/* Team */}
         {deptTeams.length > 0 && (
           <SearchSelect
@@ -267,6 +263,18 @@ export default function TasksPage() {
             className="h-8 w-36 bg-card text-xs"
           />
         )}
+
+        {/* Project */}
+        <SearchSelect
+          value={taskFilters.project_id || "all"}
+          onChange={(val) => setTaskFilters({ project_id: val })}
+          options={[
+            { value: "all", label: t.tasks.projectAll },
+            ...projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` })),
+          ]}
+          placeholder={t.tasks.projectAll}
+          className="h-8 w-40 bg-card text-xs"
+        />
 
         {/* Search */}
         <div className="relative ml-auto">
@@ -315,6 +323,10 @@ export default function TasksPage() {
         <TaskGrid tasks={tasks} onSelect={setSelectedTaskId} />
       ) : taskView === "kanban" ? (
         <TaskKanban tasks={tasks} onSelect={setSelectedTaskId} />
+      ) : taskView === "calendar" ? (
+        <TaskCalendar tasks={tasks} onSelect={setSelectedTaskId} />
+      ) : taskView === "workload" ? (
+        <TaskWorkload tasks={tasks} onSelect={setSelectedTaskId} />
       ) : (
         <TaskTimeline tasks={tasks} onSelect={setSelectedTaskId} />
       )}
@@ -787,6 +799,187 @@ function TaskTimeline({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: strin
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ───── Calendar View ──────────────────────────────────────────── */
+function TaskCalendar({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: string) => void }) {
+  const { t } = useI18n();
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  // Map tasks to their deadline day
+  const tasksByDay = new Map<number, Task[]>();
+  for (const task of tasks) {
+    if (!task.deadline) continue;
+    const d = new Date(task.deadline);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate();
+      if (!tasksByDay.has(day)) tasksByDay.set(day, []);
+      tasksByDay.get(day)!.push(task);
+    }
+  }
+
+  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
+  const weekDays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+  const statusColors: Record<string, string> = {
+    pending: "#94a3b8", in_progress: "#f59e0b", review: "#f59e0b", completed: "#10b981", overdue: "#ef4444",
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      {/* Month navigation */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <button onClick={prevMonth} className="w-7 h-7 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground">←</button>
+        <span className="text-sm font-semibold">T{month + 1}/{year}</span>
+        <button onClick={nextMonth} className="w-7 h-7 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground">→</button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 border-b border-border bg-secondary/30">
+        {weekDays.map((d) => (
+          <div key={d} className="py-2 text-center text-[11px] font-semibold text-muted-foreground">{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7">
+        {/* Empty cells before first day */}
+        {Array.from({ length: firstDay }, (_, i) => (
+          <div key={`e-${i}`} className="min-h-[80px] border-r border-b border-border/30" />
+        ))}
+
+        {/* Day cells */}
+        {Array.from({ length: daysInMonth }, (_, i) => {
+          const day = i + 1;
+          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const isToday = dateStr === todayStr;
+          const dayTasks = tasksByDay.get(day) || [];
+
+          return (
+            <div key={day} className={cn("min-h-[80px] border-r border-b border-border/30 p-1", isToday && "bg-primary/5")}>
+              <span className={cn("text-[11px] font-mono", isToday ? "text-primary font-bold" : "text-muted-foreground")}>{day}</span>
+              <div className="mt-0.5 space-y-0.5">
+                {dayTasks.slice(0, 3).map((task) => (
+                  <button
+                    key={task.id}
+                    onClick={() => onSelect(task.id)}
+                    className="w-full text-left px-1 py-0.5 rounded text-[10px] truncate hover:opacity-80 transition-opacity"
+                    style={{ background: `${statusColors[task.status] || "#6366f1"}20`, color: statusColors[task.status] || "#6366f1" }}
+                  >
+                    {task.title}
+                  </button>
+                ))}
+                {dayTasks.length > 3 && (
+                  <span className="text-[9px] text-muted-foreground px-1">+{dayTasks.length - 3}</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ───── Workload View ──────────────────────────────────────────── */
+function TaskWorkload({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: string) => void }) {
+  const { t } = useI18n();
+
+  // Group tasks by assignee
+  const userMap = new Map<string, { name: string; avatar: string | null; role: string; tasks: Task[] }>();
+  for (const task of tasks) {
+    if (!task.assignee_id || !task.assignee) continue;
+    if (!userMap.has(task.assignee_id)) {
+      userMap.set(task.assignee_id, {
+        name: task.assignee.full_name,
+        avatar: task.assignee.avatar_url ?? null,
+        role: task.assignee.role,
+        tasks: [],
+      });
+    }
+    userMap.get(task.assignee_id)!.tasks.push(task);
+  }
+
+  const users = Array.from(userMap.entries())
+    .map(([id, u]) => ({ id, ...u, count: u.tasks.length }))
+    .sort((a, b) => b.count - a.count);
+
+  const maxCount = Math.max(...users.map((u) => u.count), 1);
+
+  const statusColors: Record<string, string> = {
+    pending: "#94a3b8", in_progress: "#f59e0b", review: "#f59e0b", completed: "#10b981", overdue: "#ef4444",
+  };
+
+  if (users.length === 0) return <EmptyState title={t.tasks.noTasks} subtitle={t.tasks.noTasksSub} />;
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="divide-y divide-border/30">
+        {users.map((u) => {
+          const completed = u.tasks.filter((t) => t.status === "completed").length;
+          const inProgress = u.tasks.filter((t) => ["in_progress", "review"].includes(t.status)).length;
+          const overdue = u.tasks.filter((t) => t.status === "overdue").length;
+
+          return (
+            <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors">
+              {/* User info */}
+              <div className="w-[160px] flex-shrink-0 flex items-center gap-2">
+                <UserAvatar name={u.name} src={u.avatar} color={(ROLE_CONFIG as any)[u.role]?.color} size="sm" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold truncate">{u.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{u.count} {t.nav.tasks}</p>
+                </div>
+              </div>
+
+              {/* Stacked bar */}
+              <div className="flex-1 flex items-center gap-2">
+                <div className="flex-1 h-5 bg-secondary rounded overflow-hidden flex">
+                  {completed > 0 && (
+                    <div className="h-full" style={{ width: `${(completed / maxCount) * 100}%`, background: "#10b981" }} title={`${t.status.completed}: ${completed}`} />
+                  )}
+                  {inProgress > 0 && (
+                    <div className="h-full" style={{ width: `${(inProgress / maxCount) * 100}%`, background: "#f59e0b" }} title={`${t.status.in_progress}: ${inProgress}`} />
+                  )}
+                  {overdue > 0 && (
+                    <div className="h-full" style={{ width: `${(overdue / maxCount) * 100}%`, background: "#ef4444" }} title={`${t.status.overdue}: ${overdue}`} />
+                  )}
+                  {(u.count - completed - inProgress - overdue) > 0 && (
+                    <div className="h-full" style={{ width: `${((u.count - completed - inProgress - overdue) / maxCount) * 100}%`, background: "#94a3b8" }} title={`${t.status.pending}: ${u.count - completed - inProgress - overdue}`} />
+                  )}
+                </div>
+                <span className="text-xs font-mono text-muted-foreground w-6 text-right">{u.count}</span>
+              </div>
+
+              {/* Task chips */}
+              <div className="w-[200px] flex-shrink-0 flex flex-wrap gap-1">
+                {u.tasks.slice(0, 4).map((task) => (
+                  <button
+                    key={task.id}
+                    onClick={() => onSelect(task.id)}
+                    className="px-1.5 py-0.5 rounded text-[10px] truncate max-w-[90px] hover:opacity-80 transition-opacity"
+                    style={{ background: `${statusColors[task.status] || "#6366f1"}20`, color: statusColors[task.status] || "#6366f1" }}
+                  >
+                    {task.title}
+                  </button>
+                ))}
+                {u.tasks.length > 4 && (
+                  <span className="text-[10px] text-muted-foreground">+{u.tasks.length - 4}</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

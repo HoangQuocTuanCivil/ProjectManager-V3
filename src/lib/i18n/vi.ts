@@ -184,6 +184,8 @@ const vi = {
     viewGrid: "Bảng",
     viewKanban: "Kanban",
     viewTimeline: "Timeline",
+    viewCalendar: "Calendar",
+    viewWorkload: "Workload",
     sortBy: "Sắp xếp",
     center: "Trung tâm",
     department: "Phòng ban",

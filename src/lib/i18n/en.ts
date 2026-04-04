@@ -177,6 +177,8 @@ const en: Translations = {
     viewGrid: "Table",
     viewKanban: "Kanban",
     viewTimeline: "Timeline",
+    viewCalendar: "Calendar",
+    viewWorkload: "Workload",
     sortBy: "Sort by",
     center: "Center",
     department: "Department",
