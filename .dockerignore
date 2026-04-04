@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.github
+.vscode
+.idea
+.claude
+.env
+.env.local
+.env.*.local
+supabase/.branches
+supabase/.temp
+*.md
+LICENSE
+.gitignore
+.dockerignore
+docker-compose.yml

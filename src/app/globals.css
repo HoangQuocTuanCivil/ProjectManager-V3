@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ─── Light Theme ─────────────────────────────────────────────── */
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 213 94% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 20% 95%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 214 20% 95%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 249 56% 57%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --ring: 213 94% 52%;
+    --radius: 0.625rem;
+    --success: 152 69% 41%;
+    --warning: 36 96% 50%;
+    --chart-1: 213 94% 52%;
+    --chart-2: 152 69% 41%;
+    --chart-3: 36 96% 50%;
+    --chart-4: 249 56% 57%;
+    --chart-5: 0 72% 51%;
+  }
+
+  /* ─── Dark Theme ──────────────────────────────────────────────── */
+  .dark {
+    --background: 224 32% 8%;
+    --foreground: 210 20% 92%;
+    --card: 224 28% 11%;
+    --card-foreground: 210 20% 92%;
+    --primary: 213 94% 60%;
+    --primary-foreground: 224 32% 8%;
+    --secondary: 224 24% 16%;
+    --secondary-foreground: 210 20% 92%;
+    --muted: 224 24% 16%;
+    --muted-foreground: 215 16% 57%;
+    --accent: 249 56% 68%;
+    --accent-foreground: 224 32% 8%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 224 20% 20%;
+    --input: 224 20% 20%;
+    --popover: 224 28% 12%;
+    --popover-foreground: 210 20% 92%;
+    --ring: 213 94% 60%;
+    --radius: 0.625rem;
+    --success: 152 69% 41%;
+    --warning: 36 96% 50%;
+    --chart-1: 213 94% 60%;
+    --chart-2: 152 64% 38%;
+    --chart-3: 36 96% 50%;
+    --chart-4: 249 56% 68%;
+    --chart-5: 0 72% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
+
+/* ─── Focus Ring ─────────────────────────────────────────────────── */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-2 focus:ring-offset-background;
+}
+
+/* ─── Animations ─────────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slide-in-bottom {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+.animate-slide-in-right { animation: slide-in-right 0.25s ease-out; }
+.animate-slide-in-bottom { animation: slide-in-bottom 0.2s ease-out; }
+
+/* ─── Selection ──────────────────────────────────────────────────── */
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
+}

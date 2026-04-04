@@ -1,0 +1,27 @@
+project_id = "dgakrkzafaocwempzdkk"
+
+[api]
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/api/auth/callback"]
+jwt_expiry = 86400
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[storage]
+file_size_limit = "50MiB"
+
+[analytics]
+enabled = false
