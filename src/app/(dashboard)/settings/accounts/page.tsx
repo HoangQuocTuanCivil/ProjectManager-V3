@@ -9,8 +9,9 @@ import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";
 import type { UserRole } from "@/lib/types";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { ExcelImportButton } from "./excel-import";
 
 const supabase = createClient();
 
@@ -42,9 +43,24 @@ export default function AccountsSettingsPage() {
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const createUser = useCreateUser();
+  const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
   const [search, setSearch] = useState("");
+
+  /** Maps department code → ID for Excel import to resolve dept_code column */
+  const deptCodeMap = useMemo(() => {
+    const map = new Map<string, string>();
+    departments.forEach((d: any) => { if (d.code) map.set(d.code, d.id); });
+    return map;
+  }, [departments]);
+
+  /** Maps team code → ID for Excel import to resolve team_code column */
+  const teamCodeMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allTeams.forEach((t: any) => { if (t.code) map.set(t.code, t.id); });
+    return map;
+  }, [allTeams]);
 
   //  Cascading filter states 
   const [filterCenter, setFilterCenter] = useState<string>("all");
@@ -168,7 +184,14 @@ export default function AccountsSettingsPage() {
           <h2 className="text-lg font-bold">Quản lý tài khoản</h2>
           <p className="text-base text-muted-foreground mt-0.5">{users.length} người dùng</p>
         </div>
-        <Button variant="primary" onClick={() => setShowCreate(true)}>+ Tạo tài khoản</Button>
+        <div className="flex items-center gap-2">
+          <ExcelImportButton
+            deptCodeMap={deptCodeMap}
+            teamCodeMap={teamCodeMap}
+            onComplete={() => queryClient.invalidateQueries({ queryKey: ["users"] })}
+          />
+          <Button variant="primary" onClick={() => setShowCreate(true)}>+ Tạo tài khoản</Button>
+        </div>
       </div>
 
       {/* Create User Form */}
