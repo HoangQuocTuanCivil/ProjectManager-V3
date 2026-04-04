@@ -39,6 +39,9 @@ const cspDirectives = [
    */
   "connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co wss://*.supabase.in",
 
+  /* Allow blob: in iframes for inline PDF viewer (contract files) */
+  "frame-src 'self' blob:",
+
   /* This app never needs to be framed — block all embedding to prevent clickjacking */
   "frame-ancestors 'none'",
 
