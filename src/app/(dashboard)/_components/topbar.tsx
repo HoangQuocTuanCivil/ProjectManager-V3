@@ -70,7 +70,7 @@ function UserMenu() {
           <div className="py-1 max-h-[320px] overflow-y-auto">
             {[
               { href: "/settings/profile", label: "Hồ sơ cá nhân", icon: <User size={15} />, roles: ["admin", "leader", "director", "head", "team_leader", "staff"] },
-              { href: "/settings/security", label: "Đổi mật khẩu", icon: <KeyRound size={15} />, roles: ["admin", "leader", "director", "head", "team_leader", "staff"] },
+              { href: "/settings/security", label: "Bảo mật", icon: <KeyRound size={15} />, roles: ["admin", "leader", "director", "head", "team_leader", "staff"] },
               { href: "/settings/organization", label: "Tổ chức", icon: <Building2 size={15} />, roles: ["admin", "leader", "head"] },
               { href: "/settings/accounts", label: "Tài khoản", icon: <Users size={15} />, roles: ["admin", "leader", "head"] },
               { href: "/settings/centers", label: "Trung tâm", icon: <Landmark size={15} />, roles: ["admin", "leader"] },
