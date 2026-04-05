@@ -16,10 +16,12 @@ import { useEffect, useRef } from "react";
 
 // ─── Tuning constants ──────────────────────────────────────────
 const FRAME_INTERVAL = 33; // ~30fps
-const STAR_COUNT = 220; // background stars
-const RING_PARTICLE_COUNT = 180; // particles along orbital rings
+const STAR_COUNT = 280; // background stars
+const RING_PARTICLE_COUNT = 260; // particles along orbital rings
 const RING_COUNT = 4; // number of orbital ellipses
 const ROTATION_SPEED = 0.0003; // radians per frame — slow majestic spin
+/** Global opacity multiplier — keeps galaxy subtle, matching particle network */
+const OPACITY_SCALE = 0.45;
 
 // ─── Types ─────────────────────────────────────────────────────
 interface Star {
@@ -132,10 +134,12 @@ export function GalaxyBackground({ className }: { className?: string }) {
 
     // ── Draw the central glowing sphere ──────────────────────
     const drawCore = (cx: number, cy: number, r: number) => {
+      const os = OPACITY_SCALE;
+
       // Outer glow (large soft radial)
       const outerGlow = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 2.8);
-      outerGlow.addColorStop(0, "hsla(210, 100%, 70%, 0.25)");
-      outerGlow.addColorStop(0.3, "hsla(210, 100%, 60%, 0.08)");
+      outerGlow.addColorStop(0, `hsla(210, 100%, 70%, ${0.25 * os})`);
+      outerGlow.addColorStop(0.3, `hsla(210, 100%, 60%, ${0.08 * os})`);
       outerGlow.addColorStop(1, "hsla(210, 100%, 60%, 0)");
       ctx.fillStyle = outerGlow;
       ctx.beginPath();
@@ -144,8 +148,8 @@ export function GalaxyBackground({ className }: { className?: string }) {
 
       // Mid glow
       const midGlow = ctx.createRadialGradient(cx, cy, r * 0.05, cx, cy, r * 1.5);
-      midGlow.addColorStop(0, "hsla(200, 100%, 80%, 0.5)");
-      midGlow.addColorStop(0.5, "hsla(213, 94%, 60%, 0.15)");
+      midGlow.addColorStop(0, `hsla(200, 100%, 80%, ${0.5 * os})`);
+      midGlow.addColorStop(0.5, `hsla(213, 94%, 60%, ${0.15 * os})`);
       midGlow.addColorStop(1, "hsla(213, 94%, 60%, 0)");
       ctx.fillStyle = midGlow;
       ctx.beginPath();
@@ -161,10 +165,10 @@ export function GalaxyBackground({ className }: { className?: string }) {
         cy,
         r
       );
-      sphere.addColorStop(0, "hsla(195, 100%, 85%, 1)");
-      sphere.addColorStop(0.3, "hsla(210, 100%, 65%, 0.95)");
-      sphere.addColorStop(0.7, "hsla(220, 90%, 45%, 0.9)");
-      sphere.addColorStop(1, "hsla(230, 80%, 25%, 0.85)");
+      sphere.addColorStop(0, `hsla(195, 100%, 85%, ${1.0 * os})`);
+      sphere.addColorStop(0.3, `hsla(210, 100%, 65%, ${0.95 * os})`);
+      sphere.addColorStop(0.7, `hsla(220, 90%, 45%, ${0.9 * os})`);
+      sphere.addColorStop(1, `hsla(230, 80%, 25%, ${0.85 * os})`);
       ctx.fillStyle = sphere;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -186,7 +190,7 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.translate(cx, cy);
       ctx.rotate(ring.tilt + angle);
 
-      ctx.strokeStyle = `hsla(210, 80%, 65%, ${ring.opacity * 0.35})`;
+      ctx.strokeStyle = `hsla(210, 80%, 65%, ${ring.opacity * 0.35 * OPACITY_SCALE})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.ellipse(0, 0, a, b, 0, 0, Math.PI * 2);
@@ -226,7 +230,7 @@ export function GalaxyBackground({ className }: { className?: string }) {
       // Depth effect: particles at "back" of orbit are dimmer
       const depthFade = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(theta));
 
-      ctx.fillStyle = `hsla(210, 90%, 75%, ${alpha * depthFade})`;
+      ctx.fillStyle = `hsla(210, 90%, 75%, ${alpha * depthFade * OPACITY_SCALE})`;
       ctx.beginPath();
       ctx.arc(px, py, p.size * (0.6 + 0.4 * depthFade), 0, Math.PI * 2);
       ctx.fill();
@@ -240,9 +244,9 @@ export function GalaxyBackground({ className }: { className?: string }) {
         const alpha = s.brightness * twinkle;
 
         if (s.warm) {
-          ctx.fillStyle = `hsla(30, 90%, 65%, ${alpha * 0.8})`;
+          ctx.fillStyle = `hsla(30, 90%, 65%, ${alpha * 0.8 * OPACITY_SCALE})`;
         } else {
-          ctx.fillStyle = `hsla(215, 60%, 80%, ${alpha * 0.7})`;
+          ctx.fillStyle = `hsla(215, 60%, 80%, ${alpha * 0.7 * OPACITY_SCALE})`;
         }
         ctx.beginPath();
         ctx.arc(s.x * width, s.y * height, s.size, 0, Math.PI * 2);
@@ -264,10 +268,10 @@ export function GalaxyBackground({ className }: { className?: string }) {
 
       ctx.clearRect(0, 0, width, height);
 
-      // Galaxy center position
+      // Galaxy center position — fills entire viewport
       const cx = width * 0.5;
       const cy = height * 0.48;
-      const baseR = Math.min(width, height) * 0.085;
+      const baseR = Math.min(width, height) * 0.32;
 
       // 1. Background stars
       drawStars(timestamp);
