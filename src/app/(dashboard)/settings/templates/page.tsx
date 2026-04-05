@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Section, Button, EmptyState, KPIRing } from "@/components/shared";
+import { FileText } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { PRIORITY_CONFIG } from "@/lib/utils/kpi";
 import type { TaskTemplate, TaskPriority, TaskType } from "@/lib/types";
@@ -147,7 +148,7 @@ export default function TemplatesSettingsPage() {
       {isLoading ? (
         <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-24 bg-card border border-border rounded-xl animate-pulse" />)}</div>
       ) : templates.length === 0 ? (
-        <EmptyState icon="📄" title="Chưa có mẫu công việc" subtitle="Tạo mẫu để tái sử dụng khi giao việc" />
+        <EmptyState icon={<FileText size={32} strokeWidth={1.5} />} title="Chưa có mẫu công việc" subtitle="Tạo mẫu để tái sử dụng khi giao việc" />
       ) : (
         Object.entries(groups).map(([category, items]) => (
           <Section key={category} title={`${category} (${items.length})`}>

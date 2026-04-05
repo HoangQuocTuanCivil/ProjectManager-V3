@@ -5,6 +5,7 @@ import { useAllocationPeriods, useCreateAllocationPeriod, useCalculateAllocation
 import { useProjects } from "@/lib/hooks/use-projects";
 import { useAuthStore } from "@/lib/stores";
 import { Section, Button, EmptyState } from "@/components/shared";
+import { Coins } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { AllocationTable } from "@/components/kpi";
 import { formatVND } from "@/lib/utils/kpi";
@@ -166,7 +167,7 @@ export default function AllocationPage() {
 
       {/* Period List */}
       {visiblePeriods.length === 0 ? (
-        <EmptyState icon="💰" title={t.kpi.noAllocation} subtitle={canApprove ? t.kpi.noAllocationSub : t.kpi.approvedAllocations} />
+        <EmptyState icon={<Coins size={32} strokeWidth={1.5} />} title={t.kpi.noAllocation} subtitle={canApprove ? t.kpi.noAllocationSub : t.kpi.approvedAllocations} />
       ) : (
         <div className="space-y-6">
           {visiblePeriods.map((period) => (

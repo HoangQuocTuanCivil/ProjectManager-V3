@@ -9,6 +9,7 @@ import {
 } from "@/lib/hooks/use-contracts";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
+import { FileText } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
@@ -183,7 +184,7 @@ export default function ContractsPage() {
 
       {/* Contract List */}
       {contracts.length === 0 ? (
-        <EmptyState icon="📄" title={t.contracts.noContracts} subtitle={t.contracts.noContractsSub} />
+        <EmptyState icon={<FileText size={32} strokeWidth={1.5} />} title={t.contracts.noContracts} subtitle={t.contracts.noContractsSub} />
       ) : (
         <div className="space-y-4">
           {contracts.map((c) => (

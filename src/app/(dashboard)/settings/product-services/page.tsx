@@ -8,7 +8,7 @@ import { Button, EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";
 import { formatVND } from "@/lib/utils/format";
 import { toast } from "sonner";
-import { Pencil, Trash2, Plus, X } from "lucide-react";
+import { Pencil, Trash2, Plus, X, Package } from "lucide-react";
 import type { ProductService, ProductServiceCategory } from "@/lib/types";
 
 const CATEGORIES: { value: ProductServiceCategory; label: string; tKey: keyof any }[] = [
@@ -106,7 +106,7 @@ export default function ProductServicesPage() {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState icon="📦" title="Chưa có SP/DV" subtitle={t.revenue.productServiceSub} />
+        <EmptyState icon={<Package size={32} strokeWidth={1.5} />} title="Chưa có SP/DV" subtitle={t.revenue.productServiceSub} />
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <table className="w-full text-xs">

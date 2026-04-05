@@ -6,6 +6,7 @@ import { useContracts } from "@/lib/hooks/use-contracts";
 import { useCostEntries, useCreateCostEntry, useDeleteCostEntry } from "@/lib/hooks/use-revenue";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
+import { BarChart3 } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
@@ -217,7 +218,7 @@ export default function CostsPage() {
 
       {/* Table */}
       {entries.length === 0 ? (
-        <EmptyState icon="📊" title={t.revenue.noCosts} subtitle={t.revenue.noCostsSub} />
+        <EmptyState icon={<BarChart3 size={32} strokeWidth={1.5} />} title={t.revenue.noCosts} subtitle={t.revenue.noCostsSub} />
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <table className="w-full text-xs">

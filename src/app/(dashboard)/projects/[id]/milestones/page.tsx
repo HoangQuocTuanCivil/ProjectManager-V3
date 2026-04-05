@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useProject, useCreateMilestone, useUpdateMilestone, useDeleteMilestone } from "@/lib/hooks/use-projects";
 import { Section, Button, EmptyState } from "@/components/shared";
+import { Diamond } from "lucide-react";
 import { formatDate } from "@/lib/utils/kpi";
 import { SearchSelect } from "@/components/shared/search-select";
 import { toast } from "sonner";
@@ -120,7 +121,7 @@ export default function ProjectMilestonesPage() {
 
       {/* Milestones List */}
       {milestones.length === 0 ? (
-        <EmptyState icon="◆" title="Chưa có milestone" subtitle="Thêm milestone để theo dõi mốc tiến độ" />
+        <EmptyState icon={<Diamond size={32} strokeWidth={1.5} />} title="Chưa có milestone" subtitle="Thêm milestone để theo dõi mốc tiến độ" />
       ) : (
         <Section title="">
           <div className="p-4 space-y-3">

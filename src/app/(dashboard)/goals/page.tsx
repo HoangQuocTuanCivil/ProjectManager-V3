@@ -7,6 +7,7 @@ import { useGoals, goalKeys } from "@/lib/hooks/use-goals";
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
 import { Button, FilterChip, EmptyState, ProgressBar, UserAvatar, StatCard } from "@/components/shared";
+import { Rocket } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/shared/dialog";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
@@ -140,7 +141,7 @@ export default function GoalsPage() {
           {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-card border border-border rounded-xl animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="🚀" title={t.goals.noGoals} subtitle={t.goals.noGoalsSub} />
+        <EmptyState icon={<Rocket size={32} strokeWidth={1.5} />} title={t.goals.noGoals} subtitle={t.goals.noGoalsSub} />
       ) : view === "tree" ? (
         <GoalTree goals={filtered} onClick={(id) => router.push(`/goals/${id}`)} canManage={!!canManage} onEdit={(id) => router.push(`/goals/${id}`)} onDelete={(id) => setDeleteTarget(id)} />
       ) : (

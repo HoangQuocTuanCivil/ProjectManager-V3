@@ -4,7 +4,7 @@ import { useState, useRef, forwardRef, useImperativeHandle } from "react";
 import * as XLSX from "xlsx";
 import { Button, EmptyState } from "@/components/shared";
 import { toast } from "sonner";
-import { Download, Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Download, Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2, FileText } from "lucide-react";
 
 /**
  * Expected columns in the Excel template.
@@ -242,7 +242,7 @@ export const ExcelImportButton = forwardRef<ExcelImportHandle, ExcelImportProps>
             {/* Preview table */}
             <div className="flex-1 overflow-auto px-5 py-3">
               {rows.length === 0 ? (
-                <EmptyState icon="📄" title="File rỗng" />
+                <EmptyState icon={<FileText size={32} strokeWidth={1.5} />} title="File rỗng" />
               ) : (
                 <table className="w-full text-sm">
                   <thead>

@@ -3,6 +3,7 @@
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useUsers } from "@/lib/hooks/use-users";
 import { Section, StatCard, KPIRing, KPIScoreBar, VerdictBadge, UserAvatar, EmptyState } from "@/components/shared";
+import { Target } from "lucide-react";
 import { ROLE_CONFIG, VERDICT_CONFIG, KPI_WEIGHTS, getVerdict, formatPercent } from "@/lib/utils/kpi";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -155,7 +156,7 @@ export default function KPISummaryPage() {
       {/* Ranking Table */}
       <Section title="Bảng xếp hạng KPI">
         {userRanking.length === 0 ? (
-          <div className="p-6"><EmptyState icon="🎯" title="Chưa có dữ liệu" subtitle="Nghiệm thu task để có bảng xếp hạng" /></div>
+          <div className="p-6"><EmptyState icon={<Target size={32} strokeWidth={1.5} />} title="Chưa có dữ liệu" subtitle="Nghiệm thu task để có bảng xếp hạng" /></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

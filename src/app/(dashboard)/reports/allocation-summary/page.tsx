@@ -2,6 +2,7 @@
 
 import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
 import { Section, StatCard, EmptyState, UserAvatar } from "@/components/shared";
+import { Coins } from "lucide-react";
 import { AllocationTable } from "@/components/kpi";
 import { ROLE_CONFIG, formatVND, formatDate } from "@/lib/utils/kpi";
 import {
@@ -119,7 +120,7 @@ export default function AllocationSummaryPage() {
       {/* Period List */}
       <Section title="Danh sách đợt khoán">
         {periods.length === 0 ? (
-          <div className="p-6"><EmptyState icon="💰" title="Chưa có đợt khoán" subtitle="Tạo đợt khoán từ trang KPI" /></div>
+          <div className="p-6"><EmptyState icon={<Coins size={32} strokeWidth={1.5} />} title="Chưa có đợt khoán" subtitle="Tạo đợt khoán từ trang KPI" /></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

@@ -5,6 +5,7 @@ import { useProjects } from "@/lib/hooks/use-projects";
 import { useDeptBudgetAllocations, useUpsertDeptBudgetAllocation, useDeleteDeptBudgetAllocation } from "@/lib/hooks/use-kpi";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
+import { Coins } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { formatVND } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
@@ -214,7 +215,7 @@ export default function BudgetAssignPage() {
 
       {/* Allocation List */}
       {groupedByProject.length === 0 ? (
-        <EmptyState icon="💰" title={t.kpi.noBudgetAssign} subtitle={t.kpi.noBudgetAssignSub} />
+        <EmptyState icon={<Coins size={32} strokeWidth={1.5} />} title={t.kpi.noBudgetAssign} subtitle={t.kpi.noBudgetAssignSub} />
       ) : (
         <div className="space-y-5">
           {groupedByProject.map(({ projectId, project, items, total }) => {

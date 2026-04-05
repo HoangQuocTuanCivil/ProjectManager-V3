@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { ExcelImportButton } from "./excel-import";
-import { FileDown, Plus, UserPlus, Upload, Download, ChevronDown } from "lucide-react";
+import { FileDown, Plus, UserPlus, Upload, Download, ChevronDown, Users } from "lucide-react";
 import * as XLSX from "xlsx";
 import type { ExcelImportHandle } from "./excel-import";
 
@@ -439,7 +439,7 @@ export default function AccountsSettingsPage() {
         {isLoading ? (
           <div className="p-4 space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-12 bg-secondary rounded-lg animate-pulse" />)}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-6"><EmptyState icon="👥" title="Không tìm thấy" /></div>
+          <div className="p-6"><EmptyState icon={<Users size={32} strokeWidth={1.5} />} title="Không tìm thấy" /></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

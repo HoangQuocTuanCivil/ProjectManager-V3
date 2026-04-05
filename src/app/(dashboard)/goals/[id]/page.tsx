@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores";
 import { goalKeys } from "@/lib/hooks/use-goals";
 import { Section, ProgressBar, UserAvatar, EmptyState, StatCard, Button } from "@/components/shared";
+import { Target } from "lucide-react";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";
 import { SearchSelect } from "@/components/shared/search-select";
 import { toast } from "sonner";
@@ -199,7 +200,7 @@ export default function GoalDetailPage() {
           <Section title={`Key Results (${targets.length})`}>
             {targets.length === 0 ? (
               <div className="p-6">
-                <EmptyState icon="🎯" title="Chưa có key result" subtitle="Thêm KR để đo lường mục tiêu" />
+                <EmptyState icon={<Target size={32} strokeWidth={1.5} />} title="Chưa có key result" subtitle="Thêm KR để đo lường mục tiêu" />
               </div>
             ) : (
               <div className="divide-y divide-border/40">

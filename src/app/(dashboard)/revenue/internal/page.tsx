@@ -5,6 +5,7 @@ import { useProjects } from "@/lib/hooks/use-projects";
 import { useInternalRevenue, useCreateInternalRevenue, useUpdateInternalRevenue, useDeleteInternalRevenue } from "@/lib/hooks/use-revenue";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
+import { Factory } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
@@ -190,7 +191,7 @@ export default function InternalRevenuePage() {
 
       {/* Table */}
       {entries.length === 0 ? (
-        <EmptyState icon="🏭" title={t.revenue.noInternal} subtitle={t.revenue.noInternalSub} />
+        <EmptyState icon={<Factory size={32} strokeWidth={1.5} />} title={t.revenue.noInternal} subtitle={t.revenue.noInternalSub} />
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <table className="w-full text-xs">

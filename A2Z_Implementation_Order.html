@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A2Z WorkHub — Thứ tự Triển khai Chi tiết</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-light: #e8effc;
+    --success: #059669;
+    --success-light: #ecfdf5;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --info: #7c3aed;
+    --info-light: #f5f3ff;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; color: var(--gray-800); line-height: 1.6; background: var(--gray-50); }
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  .header { background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%); color: white; padding: 2.5rem 2rem; border-radius: 16px; margin-bottom: 2rem; }
+  .header h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+  .header p { opacity: 0.85; font-size: 0.95rem; }
+  .header .meta { display: flex; gap: 2rem; margin-top: 0.8rem; font-size: 0.85rem; opacity: 0.7; }
+
+  .section { background: white; border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--gray-200); }
+  .section h2 { font-size: 1.3rem; color: var(--gray-900); margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 2px solid var(--primary); }
+
+  /* Status badges */
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; vertical-align: middle; }
+  .b-done { background: var(--success-light); color: var(--success); }
+  .b-todo { background: var(--warning-light); color: var(--warning); }
+  .b-new { background: var(--danger-light); color: var(--danger); }
+  .b-p0 { background: #dc2626; color: white; }
+  .b-p1 { background: #d97706; color: white; }
+  .b-p2 { background: #6b7280; color: white; }
+  .b-db { background: #dbeafe; color: #1e40af; }
+  .b-api { background: #dcfce7; color: #166534; }
+  .b-ui { background: #ede9fe; color: #5b21b6; }
+  .b-test { background: #fce7f3; color: #9d174d; }
+  .b-logic { background: #fff7ed; color: #9a3412; }
+
+  /* Phase header */
+  .phase-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem 1.5rem; border-radius: 10px; }
+  .phase-header .num { font-size: 2rem; font-weight: 800; opacity: 0.2; }
+  .phase-header h3 { font-size: 1.15rem; }
+  .phase-header .time { font-size: 0.85rem; opacity: 0.7; }
+  .ph1 { background: linear-gradient(135deg, #dbeafe, #e8effc); }
+  .ph2 { background: linear-gradient(135deg, #fce7f3, #fff7ed); }
+  .ph3 { background: linear-gradient(135deg, #dcfce7, #ecfdf5); }
+  .ph4 { background: linear-gradient(135deg, #ede9fe, #f5f3ff); }
+
+  /* Step card */
+  .step { border: 1px solid var(--gray-200); border-radius: 10px; margin-bottom: 1rem; overflow: hidden; }
+  .step-head { display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1.2rem; background: var(--gray-50); border-bottom: 1px solid var(--gray-100); cursor: default; }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; color: white; flex-shrink: 0; }
+  .step-title { font-weight: 600; font-size: 0.95rem; flex: 1; }
+  .step-time { font-size: 0.8rem; color: var(--gray-500); white-space: nowrap; }
+  .step-body { padding: 1rem 1.2rem; }
+  .step-body p { font-size: 0.88rem; color: var(--gray-600); margin-bottom: 0.8rem; }
+
+  /* Task list inside step */
+  .tasks { list-style: none; }
+  .tasks li { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.4rem 0; font-size: 0.88rem; border-bottom: 1px solid var(--gray-50); }
+  .tasks li:last-child { border-bottom: none; }
+  .tasks .check { color: var(--success); flex-shrink: 0; margin-top: 2px; }
+  .tasks .todo { color: var(--gray-300); flex-shrink: 0; margin-top: 2px; }
+
+  /* Dependency */
+  .dep { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 0.6rem 1rem; margin-top: 0.8rem; font-size: 0.82rem; }
+  .dep strong { color: var(--warning); }
+
+  /* Output */
+  .output { background: var(--gray-50); border-radius: 8px; padding: 0.6rem 1rem; margin-top: 0.6rem; font-size: 0.82rem; }
+  .output strong { color: var(--primary); }
+
+  /* File ref */
+  code { background: var(--gray-100); padding: 1px 6px; border-radius: 4px; font-size: 0.82rem; }
+
+  /* Summary table */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.88rem; }
+  th { background: var(--gray-100); text-align: left; padding: 0.6rem 1rem; font-weight: 600; border-bottom: 2px solid var(--gray-200); }
+  td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+
+  /* Highlight */
+  .highlight { background: linear-gradient(135deg, #fef2f2, #fff7ed); border: 2px solid #f97316; border-radius: 10px; padding: 1.2rem; margin: 1rem 0; }
+  .highlight h4 { color: #c2410c; margin-bottom: 0.5rem; }
+
+  .formula { background: var(--gray-900); color: #a5f3fc; padding: 0.8rem 1.2rem; border-radius: 8px; font-family: 'Fira Code', monospace; font-size: 0.85rem; margin: 0.5rem 0; overflow-x: auto; }
+
+  .conn { font-size: 0.85rem; color: var(--gray-600); padding: 0.3rem 0; }
+  .conn span { font-weight: 600; color: var(--primary); }
+
+  @media (max-width: 768px) {
+    .header .meta { flex-direction: column; gap: 0.3rem; }
+    .step-head { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<div class="header">
+  <h1>Thứ tự Triển khai Chi tiết — A2Z WorkHub</h1>
+  <p>Doanh thu · Hợp đồng · Phân bổ PB · Giao khoán · Lương & Thưởng · Chi phí · DT Nội bộ</p>
+  <div class="meta">
+    <span>Tổng: 4 Phase · 19 Steps · ~42 ngày</span>
+    <span>Ngày: 05/04/2026</span>
+    <span>v3.0 — Salary-as-Advance model</span>
+  </div>
+</div>
+
+<!-- OVERVIEW -->
+<div class="section">
+  <h2>Tổng quan Hiện trạng</h2>
+  <table>
+    <tr><th>Module</th><th>DB Schema</th><th>API</th><th>UI</th><th>Trạng thái</th></tr>
+    <tr><td>Hợp đồng</td><td><span class="badge b-done">Có</span> contracts, addendums, milestones</td><td><span class="badge b-done">Có</span></td><td><span class="badge b-done">Có</span> /contracts</td><td>Hoạt động, thiếu triggers tự động</td></tr>
+    <tr><td>Doanh thu</td><td><span class="badge b-done">Có</span> revenue_entries + enhanced</td><td><span class="badge b-done">Có</span> CRUD + analytics</td><td><span class="badge b-done">Có</span> /revenue + sub-pages</td><td>Hoạt động, thiếu auto-triggers</td></tr>
+    <tr><td>Phân bổ PB</td><td><span class="badge b-done">Có</span> dept_budget + dept_revenue_alloc</td><td><span class="badge b-todo">Thiếu</span></td><td><span class="badge b-todo">Thiếu</span></td><td>Schema có, chưa có logic tự động</td></tr>
+    <tr><td>Giao khoán</td><td><span class="badge b-done">Có</span> alloc_configs/periods/results</td><td><span class="badge b-done">Có</span> /kpi/allocation</td><td><span class="badge b-done">Có</span> /kpi/allocation</td><td>Hoạt động, thiếu liên kết DT + quỹ</td></tr>
+    <tr><td>Lương & Thưởng</td><td><span class="badge b-new">Chưa có</span></td><td><span class="badge b-new">Chưa có</span></td><td><span class="badge b-new">Chưa có</span></td><td><strong>Hoàn toàn mới</strong></td></tr>
+    <tr><td>Chi phí</td><td><span class="badge b-done">Có</span> cost_entries</td><td><span class="badge b-todo">Thiếu</span> riêng</td><td><span class="badge b-done">Có</span> /revenue/costs</td><td>Cơ bản, chưa tích hợp quỹ khoán</td></tr>
+    <tr><td>DT Nội bộ</td><td><span class="badge b-done">Có</span> internal_revenue</td><td><span class="badge b-todo">Thiếu</span></td><td><span class="badge b-done">Có</span> /revenue/internal</td><td>Cơ bản, chưa tích hợp quỹ khoán</td></tr>
+    <tr><td>Cron Jobs</td><td>—</td><td><span class="badge b-done">Có</span> 3 cron routes</td><td>—</td><td>Routes có, cần kiểm tra logic</td></tr>
+  </table>
+
+  <div class="highlight">
+    <h4>Nguyên tắc triển khai</h4>
+    <p style="font-size:0.9rem;">
+      Mỗi step theo thứ tự: <span class="badge b-db">DB</span> → <span class="badge b-api">API</span> → <span class="badge b-ui">UI</span> → <span class="badge b-test">Test</span>. Step sau phụ thuộc step trước. Không nhảy cóc.<br>
+      Mỗi step kết thúc bằng <strong>kiểm tra chạy được</strong> trước khi qua step tiếp.
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHASE 1 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="phase-header ph1">
+    <div class="num">01</div>
+    <div>
+      <h3>Phase 1: DB Triggers & Tự động hóa Doanh thu</h3>
+      <div class="time">Tuần 1–2 · ~10 ngày · Ưu tiên P0</div>
+    </div>
+  </div>
+
+  <!-- Step 1.1 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #1e40af;">1</div>
+      <div class="step-title">Migration: revenue_enhanced (nếu chưa apply)</div>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">1 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Kiểm tra và apply migration <code>20260101000008_revenue_enhanced.sql</code> nếu chưa có trên DB thật. File này tạo: product_services, revenue_adjustments, dept_revenue_allocations, mở rộng revenue_entries (status, recognition_date, product_service_id, completion_percentage).</p>
+      <ul class="tasks">
+        <li><span class="check">✓</span> File migration đã tồn tại trong repo</li>
+        <li><span class="todo">○</span> Kiểm tra đã apply trên Supabase chưa (<code>supabase migration list</code>)</li>
+        <li><span class="todo">○</span> Apply migration lên staging</li>
+        <li><span class="todo">○</span> Verify bảng mới tồn tại + cột mới trên revenue_entries</li>
+      </ul>
+      <div class="output"><strong>Output:</strong> Bảng product_services, revenue_adjustments, dept_revenue_allocations hoạt động. revenue_entries có status, recognition_date.</div>
+    </div>
+  </div>
+
+  <!-- Step 1.2 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #1e40af;">2</div>
+      <div class="step-title">DB Function: fn_allocate_dept_revenue()</div>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">1.5 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Hàm phân bổ doanh thu cho phòng ban. Được gọi bởi các trigger ở step 3, 4.</p>
+      <ul class="tasks">
+        <li><span class="todo">○</span> Tạo migration mới <code>20260405000001_fn_allocate_dept_revenue.sql</code></li>
+        <li><span class="todo">○</span> Input: revenue_entry_id</li>
+        <li><span class="todo">○</span> Lấy project_id từ revenue_entry → tìm dept_budget_allocations cho project đó</li>
+        <li><span class="todo">○</span> Nếu có % → INSERT dept_revenue_allocations theo % mỗi PB</li>
+        <li><span class="todo">○</span> Nếu không có → chia đều cho các PB tham gia project</li>
+        <li><span class="todo">○</span> Set revenue_entries.dept_id = PB có % cao nhất</li>
+        <li><span class="todo">○</span> Test: tạo revenue thủ công → kiểm tra dept_revenue_allocations được tạo đúng</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 1 (bảng dept_revenue_allocations phải tồn tại)</div>
+      <div class="output"><strong>Output:</strong> Hàm fn_allocate_dept_revenue() hoạt động, test pass</div>
+    </div>
+  </div>
+
+  <!-- Step 1.3 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #1e40af;">3</div>
+      <div class="step-title">DB Trigger: Billing Paid → Auto Revenue</div>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">1.5 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Khi billing_milestone chuyển status sang <code>paid</code> → tự tạo revenue_entries + phân bổ PB.</p>
+      <ul class="tasks">
+        <li><span class="todo">○</span> Tạo <code>fn_revenue_from_billing()</code> — TRIGGER FUNCTION</li>
+        <li><span class="todo">○</span> Condition: NEW.status = 'paid' AND OLD.status != 'paid'</li>
+        <li><span class="todo">○</span> Check không trùng: source='billing_milestone' AND source_id=milestone.id</li>
+        <li><span class="todo">○</span> INSERT revenue_entries (dimension='contract', method='acceptance', source='billing_milestone')</li>
+        <li><span class="todo">○</span> amount = milestone.amount, recognition_date = milestone.paid_date, status = 'confirmed'</li>
+        <li><span class="todo">○</span> Gọi fn_allocate_dept_revenue(new_entry_id)</li>
+        <li><span class="todo">○</span> CREATE TRIGGER trg_billing_paid ON billing_milestones AFTER UPDATE</li>
+        <li><span class="todo">○</span> Test end-to-end: UPDATE milestone status → kiểm tra revenue + allocation tự động</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 2 (fn_allocate_dept_revenue)</div>
+      <div class="output"><strong>Output:</strong> Billing paid → revenue + dept allocation hoàn toàn tự động</div>
+    </div>
+  </div>
+
+  <!-- Step 1.4 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #1e40af;">4</div>
+      <div class="step-title">DB Trigger: Task Acceptance Paid → Auto Revenue</div>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">1 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Khi task được nghiệm thu (kpi_evaluated_at) VÀ metadata.payment_status = 'paid' → tạo revenue.</p>
+      <ul class="tasks">
+        <li><span class="todo">○</span> Tạo <code>fn_revenue_from_acceptance()</code></li>
+        <li><span class="todo">○</span> Condition: metadata->>'payment_status' = 'paid' AND kpi_evaluated_at IS NOT NULL</li>
+        <li><span class="todo">○</span> amount = metadata->>'payment_amount'</li>
+        <li><span class="todo">○</span> source = 'acceptance', source_id = task.id</li>
+        <li><span class="todo">○</span> CREATE TRIGGER trg_task_acceptance_paid ON tasks AFTER UPDATE</li>
+        <li><span class="todo">○</span> Test: update task metadata → kiểm tra revenue tự động</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 2</div>
+    </div>
+  </div>
+
+  <!-- Step 1.5 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #1e40af;">5</div>
+      <div class="step-title">DB Trigger: Addendum → Revenue Adjustment</div>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">1.5 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Thêm phụ lục → tự tạo bản ghi điều chỉnh doanh thu + cập nhật contract_value.</p>
+      <ul class="tasks">
+        <li><span class="todo">○</span> Tạo <code>fn_revenue_adjustment()</code></li>
+        <li><span class="todo">○</span> INSERT revenue_adjustments (old_amount, new_amount, reason)</li>
+        <li><span class="todo">○</span> UPDATE contracts SET contract_value += addendum.value_change</li>
+        <li><span class="todo">○</span> Nếu value_change > 0: tạo revenue_entry draft cho phần tăng</li>
+        <li><span class="todo">○</span> Nếu value_change < 0: tạo revenue_entry âm (điều chỉnh giảm)</li>
+        <li><span class="todo">○</span> CREATE TRIGGER trg_addendum_created ON contract_addendums AFTER INSERT</li>
+        <li><span class="todo">○</span> Test: thêm phụ lục tăng/giảm → kiểm tra adjustments + contract value</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 1</div>
+    </div>
+  </div>
+
+  <!-- Step 1.6 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #1e40af;">6</div>
+      <div class="step-title">Kiểm tra & Cải tiến Revenue API</div>
+      <span class="badge b-api">API</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">1.5 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>API revenue đã có. Cần kiểm tra tương thích với các cột mới + bổ sung logic confirm/cancel.</p>
+      <ul class="tasks">
+        <li><span class="check">✓</span> <code>/api/revenue</code> CRUD routes đã có</li>
+        <li><span class="check">✓</span> <code>/api/revenue/[id]/confirm</code> + <code>cancel</code> đã có</li>
+        <li><span class="todo">○</span> Kiểm tra POST/PATCH gửi đúng: status, recognition_date, product_service_id</li>
+        <li><span class="todo">○</span> Kiểm tra GET trả về đúng cột mới (status, source, recognition_date)</li>
+        <li><span class="todo">○</span> Cancel logic: tạo bản ghi đối ứng amount âm (không xóa)</li>
+        <li><span class="todo">○</span> Bổ sung filter: status, source, recognition_date range</li>
+        <li><span class="todo">○</span> Test: CRUD + confirm + cancel hoạt động đúng</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 1</div>
+    </div>
+  </div>
+
+  <!-- Step 1.7 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #1e40af;">7</div>
+      <div class="step-title">Cải tiến UI Revenue Dashboard</div>
+      <span class="badge b-ui">UI</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">2 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Cập nhật trang /revenue hiện có: hiển thị status, source, recognition_date. Bổ sung filters.</p>
+      <ul class="tasks">
+        <li><span class="check">✓</span> Trang /revenue, components, hooks đã có</li>
+        <li><span class="todo">○</span> Thêm cột Status (badge màu), Source, Recognition Date vào revenue-table</li>
+        <li><span class="todo">○</span> Thêm filter: status, source, method, date range vào revenue-filters</li>
+        <li><span class="todo">○</span> Cập nhật revenue-summary-cards: thêm card "Đã ghi nhận vs Dự kiến"</li>
+        <li><span class="todo">○</span> Hiển thị nhãn "Tự động" cho revenue có source != 'manual'</li>
+        <li><span class="todo">○</span> Test UI: tạo billing paid → verify revenue tự xuất hiện trên dashboard</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 3, 6</div>
+      <div class="output"><strong>Kết thúc Phase 1:</strong> Billing paid / Task acceptance → Revenue tự động + phân bổ PB + hiển thị trên dashboard</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHASE 2 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="phase-header ph2">
+    <div class="num">02</div>
+    <div>
+      <h3>Phase 2: Giao khoán, Lương & Quỹ</h3>
+      <div class="time">Tuần 3–4 · ~14 ngày · Ưu tiên P0</div>
+    </div>
+  </div>
+
+  <!-- Step 2.1 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #db2777;">8</div>
+      <div class="step-title">Migration: Bảng Lương & Cấu hình Kỳ khoán</div>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">1.5 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Tạo các bảng hoàn toàn mới cho mô hình Lương = Ứng trước.</p>
+      <div class="formula">-- 3 bảng mới + mở rộng allocation_results
+salary_records         — Lương tháng cá nhân
+salary_deductions      — Công nợ khoán âm, trừ dần
+allocation_cycle_config — Kỳ khoán toàn công ty (3/6 tháng)</div>
+      <ul class="tasks">
+        <li><span class="todo">○</span> Tạo migration <code>20260405000002_salary_and_cycle.sql</code></li>
+        <li><span class="todo">○</span> <strong>salary_records:</strong> id, org_id, user_id, dept_id, month (DATE), base_salary, deduction_applied, net_salary, notes, created_at</li>
+        <li><span class="todo">○</span> <strong>salary_deductions:</strong> id, org_id, user_id, period_id (FK allocation_periods), total_amount, remaining_amount, monthly_deduction, status (active/completed), created_at</li>
+        <li><span class="todo">○</span> <strong>allocation_cycle_config:</strong> id, org_id, cycle_months (3 or 6), start_month (1-12), is_active, created_at. UNIQUE(org_id)</li>
+        <li><span class="todo">○</span> ALTER allocation_results ADD: total_salary_paid NUMERIC, bonus_amount NUMERIC, deduction_id UUID FK</li>
+        <li><span class="todo">○</span> Indexes + RLS + constraints</li>
+        <li><span class="todo">○</span> Apply migration staging → verify</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Phase 1 hoàn thành</div>
+    </div>
+  </div>
+
+  <!-- Step 2.2 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #db2777;">9</div>
+      <div class="step-title">Migration: Hệ số khó & Quỹ dự kiến</div>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">1 ngày</div>
+    </div>
+    <div class="step-body">
+      <ul class="tasks">
+        <li><span class="todo">○</span> Tạo bảng <code>project_dept_factors</code>: project_id, dept_id, difficulty_factor NUMERIC(4,2) DEFAULT 1.0</li>
+        <li><span class="todo">○</span> Tạo VIEW <code>v_expected_fund</code>: Tổng hợp quỹ dự kiến = SUM(contract_value × dept_budget_% × factor) GROUP BY dept</li>
+        <li><span class="todo">○</span> Test: seed data hệ số → kiểm tra view trả đúng</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 8</div>
+    </div>
+  </div>
+
+  <!-- Step 2.3 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #db2777;">10</div>
+      <div class="step-title">DB Function: fn_calc_actual_fund()</div>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-logic">Logic</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">2 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Hàm cốt lõi: tính quỹ khoán thực tế cho 1 PB trong 1 kỳ.</p>
+      <div class="formula">fn_calc_actual_fund(dept_id, period_start, period_end) → NUMERIC
+
+= SUM(dept_revenue_allocations.allocated_amount
+      WHERE revenue.status = 'confirmed'
+      AND revenue.recognition_date BETWEEN period_start AND period_end)
+  × COALESCE(difficulty_factor, 1.0)
+  − SUM(cost_entries WHERE dept_id AND period)
+  + SUM(internal_revenue WHERE dept_id AND status='approved' AND period)</div>
+      <ul class="tasks">
+        <li><span class="todo">○</span> Tạo function fn_calc_actual_fund(p_dept UUID, p_start DATE, p_end DATE)</li>
+        <li><span class="todo">○</span> SUM confirmed dept_revenue_allocations trong kỳ</li>
+        <li><span class="todo">○</span> × AVG difficulty_factor cho các project trong kỳ</li>
+        <li><span class="todo">○</span> − SUM cost_entries trong kỳ cho dept</li>
+        <li><span class="todo">○</span> + SUM internal_revenue approved trong kỳ cho dept</li>
+        <li><span class="todo">○</span> Tạo VIEW <code>v_dept_fund_summary</code>: dự kiến vs thực tế vs đã chi vs còn lại</li>
+        <li><span class="todo">○</span> Test: seed data → kiểm tra kết quả tính đúng</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 9 (difficulty_factor), Step 1 (dept_revenue_allocations), Phase 1 triggers</div>
+    </div>
+  </div>
+
+  <!-- Step 2.4 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #db2777;">11</div>
+      <div class="step-title">DB Function: fn_calc_bonus() — Tính Thưởng khoán</div>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-logic">Logic</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">2 ngày</div>
+    </div>
+    <div class="step-body">
+      <p><strong>Hàm quan trọng nhất:</strong> Tính thưởng khoán cho từng cá nhân trong 1 đợt khoán.</p>
+      <div class="formula">fn_calc_bonus(period_id) → void  (cập nhật allocation_results)
+
+FOR EACH user IN allocation_results WHERE period_id:
+  1. salary_paid = SUM(salary_records.net_salary WHERE user AND month BETWEEN period)
+  2. bonus = allocated_amount − salary_paid
+  3. UPDATE allocation_results SET total_salary_paid, bonus_amount
+  4. IF bonus < 0:
+     → INSERT salary_deductions (remaining = ABS(bonus), monthly = remaining / next_cycle_months)
+     → UPDATE allocation_results.deduction_id</div>
+      <ul class="tasks">
+        <li><span class="todo">○</span> Tạo fn_calc_bonus(p_period UUID)</li>
+        <li><span class="todo">○</span> Loop qua allocation_results của period</li>
+        <li><span class="todo">○</span> SUM salary_records cho mỗi user trong khoảng period_start → period_end</li>
+        <li><span class="todo">○</span> bonus = allocated_amount − total_salary</li>
+        <li><span class="todo">○</span> Nếu âm → INSERT salary_deductions + set monthly trừ dần</li>
+        <li><span class="todo">○</span> Tạo fn_apply_deductions(): khi INSERT salary_records → tự trừ deduction nếu có</li>
+        <li><span class="todo">○</span> Tạo VIEW <code>v_employee_bonus</code>: user, sản lượng, lương kỳ, thưởng/nợ</li>
+        <li><span class="todo">○</span> Test: khoán dương + khoán âm + trừ lương kỳ sau</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 8 (salary_records), Step 10 (fn_calc_actual_fund)</div>
+      <div class="output"><strong>Output:</strong> Toàn bộ logic tính toán backend hoàn thành</div>
+    </div>
+  </div>
+
+  <!-- Step 2.5 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #db2777;">12</div>
+      <div class="step-title">API: Salary + Allocation Cycle + Bonus</div>
+      <span class="badge b-api">API</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">2.5 ngày</div>
+    </div>
+    <div class="step-body">
+      <ul class="tasks">
+        <li><span class="todo">○</span> <strong>GET/POST /api/salary</strong> — CRUD lương tháng (nhập hàng loạt cho PB)</li>
+        <li><span class="todo">○</span> <strong>GET /api/salary/by-user/[id]</strong> — Lịch sử lương cá nhân</li>
+        <li><span class="todo">○</span> <strong>GET /api/salary/deductions</strong> — Danh sách công nợ khoán âm</li>
+        <li><span class="todo">○</span> <strong>GET/PATCH /api/allocation-cycle</strong> — Cấu hình kỳ khoán toàn cty</li>
+        <li><span class="todo">○</span> <strong>POST /api/kpi/allocation/calculate-bonus</strong> — Gọi fn_calc_bonus cho 1 period</li>
+        <li><span class="todo">○</span> <strong>GET /api/kpi/allocation/fund-summary</strong> — Quỹ PB dự kiến vs thực tế</li>
+        <li><span class="todo">○</span> <strong>GET /api/kpi/allocation/employee-bonus</strong> — Bảng thưởng cá nhân</li>
+        <li><span class="todo">○</span> Test: tạo salary → tạo đợt khoán → calculate → kiểm tra bonus đúng</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 11</div>
+    </div>
+  </div>
+
+  <!-- Step 2.6 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #db2777;">13</div>
+      <div class="step-title">UI: Tích hợp /kpi/allocation (4 phần)</div>
+      <span class="badge b-ui">UI</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">3 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Cải tạo trang /kpi/allocation thành trang tổng hợp toàn diện.</p>
+      <ul class="tasks">
+        <li><span class="todo">○</span> <strong>Phần 1 — Quỹ dự kiến:</strong> Bảng theo PB: HĐ liên quan, tổng giá trị × % × factor = quỹ dự kiến</li>
+        <li><span class="todo">○</span> <strong>Phần 2 — Quỹ thực tế:</strong> DT thực thu × % − chi phí + DT nội bộ = quỹ thực tế. So sánh với dự kiến (progress bar)</li>
+        <li><span class="todo">○</span> <strong>Phần 3 — Đợt khoán:</strong> Danh sách allocation_periods (giữ nguyên + cải tiến)</li>
+        <li><span class="todo">○</span> <strong>Phần 4 — Thưởng cá nhân:</strong> Bảng NV: sản lượng | lương kỳ | thưởng/nợ. Highlight khoán âm bằng đỏ</li>
+        <li><span class="todo">○</span> Thêm selector kỳ khoán (dropdown chọn period)</li>
+        <li><span class="todo">○</span> Nút "Tính thưởng" → gọi calculate-bonus API</li>
+        <li><span class="todo">○</span> Hook: useFundSummary, useEmployeeBonus, useAllocationCycle</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 12</div>
+    </div>
+  </div>
+
+  <!-- Step 2.7 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #db2777;">14</div>
+      <div class="step-title">UI: Trang quản lý Lương + Cấu hình kỳ khoán</div>
+      <span class="badge b-ui">UI</span>
+      <span class="badge b-p0">P0</span>
+      <div class="step-time">2 ngày</div>
+    </div>
+    <div class="step-body">
+      <ul class="tasks">
+        <li><span class="todo">○</span> Trang /settings/salary-config hoặc tab trong /kpi/config: nhập lương cơ bản mỗi NV</li>
+        <li><span class="todo">○</span> Trang /kpi/salary: nhập lương tháng hàng loạt (import Excel hoặc form nhóm theo PB)</li>
+        <li><span class="todo">○</span> Trang /kpi/config: thêm section cấu hình kỳ khoán (3 hoặc 6 tháng, tháng bắt đầu)</li>
+        <li><span class="todo">○</span> Hiển thị danh sách salary_deductions (công nợ) + trạng thái trừ dần</li>
+        <li><span class="todo">○</span> Test: nhập lương → tính khoán → khoán âm → kiểm tra deduction xuất hiện</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 12</div>
+      <div class="output"><strong>Kết thúc Phase 2:</strong> Toàn bộ luồng DT → Quỹ PB → KPI → Sản lượng − Lương = Thưởng hoạt động end-to-end</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHASE 3 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="phase-header ph3">
+    <div class="num">03</div>
+    <div>
+      <h3>Phase 3: Cron Jobs, DT Nội bộ & Phụ lục Rollback</h3>
+      <div class="time">Tuần 5 · ~8 ngày · Ưu tiên P1</div>
+    </div>
+  </div>
+
+  <!-- Step 3.1 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #059669;">15</div>
+      <div class="step-title">Kiểm tra & Hoàn thiện Cron Jobs</div>
+      <span class="badge b-api">API</span>
+      <span class="badge b-logic">Logic</span>
+      <span class="badge b-p1">P1</span>
+      <div class="step-time">2 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>3 cron routes đã có. Cần kiểm tra logic + đảm bảo tương thích với schema mới.</p>
+      <ul class="tasks">
+        <li><span class="check">✓</span> Routes: revenue-completion, revenue-time-based, revenue-overdue-check đã có</li>
+        <li><span class="todo">○</span> <strong>revenue-completion:</strong> kiểm tra tính delta đúng, set status='confirmed', gọi fn_allocate_dept_revenue</li>
+        <li><span class="todo">○</span> <strong>revenue-time-based:</strong> kiểm tra monthly_amount đúng, không trùng tháng, gọi allocate</li>
+        <li><span class="todo">○</span> <strong>revenue-overdue-check:</strong> kiểm tra update status + tạo notification</li>
+        <li><span class="todo">○</span> Cấu hình Vercel Cron hoặc Supabase pg_cron</li>
+        <li><span class="todo">○</span> Test: chạy manual mỗi cron → verify data</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Phase 1 triggers, Phase 2 fund functions</div>
+    </div>
+  </div>
+
+  <!-- Step 3.2 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #059669;">16</div>
+      <div class="step-title">DT Nội bộ: Workflow duyệt + Tích hợp quỹ</div>
+      <span class="badge b-api">API</span>
+      <span class="badge b-ui">UI</span>
+      <span class="badge b-p1">P1</span>
+      <div class="step-time">3 ngày</div>
+    </div>
+    <div class="step-body">
+      <ul class="tasks">
+        <li><span class="check">✓</span> Bảng internal_revenue + trang /revenue/internal đã có</li>
+        <li><span class="todo">○</span> API: POST /api/internal-revenue/[id]/approve, /reject</li>
+        <li><span class="todo">○</span> Workflow: PB trưởng tạo (pending) → Kế toán duyệt → GĐ phê (approved)</li>
+        <li><span class="todo">○</span> Verify fn_calc_actual_fund đã SUM internal_revenue approved đúng</li>
+        <li><span class="todo">○</span> UI /revenue/internal: thêm nút Duyệt/Từ chối, filter status</li>
+        <li><span class="todo">○</span> Test: tạo DT nội bộ → approve → kiểm tra cộng vào quỹ PB</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 10 (fn_calc_actual_fund tham chiếu internal_revenue)</div>
+    </div>
+  </div>
+
+  <!-- Step 3.3 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #059669;">17</div>
+      <div class="step-title">Logic Rollback Phụ lục & Công nợ nội bộ</div>
+      <span class="badge b-logic">Logic</span>
+      <span class="badge b-db">DB</span>
+      <span class="badge b-p1">P1</span>
+      <div class="step-time">3 ngày</div>
+    </div>
+    <div class="step-body">
+      <p>Xử lý phức tạp: phụ lục giảm giá trị → giảm quỹ PB → ảnh hưởng thưởng đã chi.</p>
+      <ul class="tasks">
+        <li><span class="todo">○</span> Mở rộng fn_revenue_adjustment: nếu value_change < 0 → tính impact theo dept%</li>
+        <li><span class="todo">○</span> Kiểm tra: đã chi thưởng thật chưa? (allocation_periods.status = 'paid')</li>
+        <li><span class="todo">○</span> Nếu chưa chi → giảm quỹ ảo trực tiếp</li>
+        <li><span class="todo">○</span> Nếu đã chi → tạo salary_deductions cho PB (chia đều hoặc theo %)</li>
+        <li><span class="todo">○</span> UI: hiển thị lịch sử điều chỉnh + công nợ phát sinh trên /kpi/allocation</li>
+        <li><span class="todo">○</span> Test: kịch bản phụ lục giảm 100tr → kiểm tra ảnh hưởng mỗi PB</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Step 5 (trigger addendum), Step 11 (salary_deductions)</div>
+      <div class="output"><strong>Kết thúc Phase 3:</strong> Tự động hóa hoàn toàn: cron, DT nội bộ approved, rollback phụ lục</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PHASE 4 -->
+<!-- ============================================================ -->
+<div class="section">
+  <div class="phase-header ph4">
+    <div class="num">04</div>
+    <div>
+      <h3>Phase 4: Báo cáo, Phân tích & Tối ưu</h3>
+      <div class="time">Tuần 6 · ~10 ngày · Ưu tiên P1–P2</div>
+    </div>
+  </div>
+
+  <!-- Step 4.1 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #7c3aed;">18</div>
+      <div class="step-title">Báo cáo Doanh thu & Lãi lỗ</div>
+      <span class="badge b-api">API</span>
+      <span class="badge b-ui">UI</span>
+      <span class="badge b-p1">P1</span>
+      <div class="step-time">5 ngày</div>
+    </div>
+    <div class="step-body">
+      <ul class="tasks">
+        <li><span class="todo">○</span> VIEW v_contract_profitloss: DT − Chi phí theo HĐ</li>
+        <li><span class="todo">○</span> API /api/revenue/by-period: hoàn thiện group by tháng/quý/năm + so sánh kỳ</li>
+        <li><span class="todo">○</span> API /api/reports/budget-vs-actual: budget_amount vs amount theo PB/project</li>
+        <li><span class="todo">○</span> UI /revenue/reports: biểu đồ MoM/QoQ, bảng lãi lỗ, export Excel/PDF</li>
+        <li><span class="todo">○</span> UI /projects/[id]/revenue: progress bar DT vs HĐ, timeline mốc ghi nhận, phân bổ PB</li>
+        <li><span class="todo">○</span> UI /revenue/departments (cải tiến): drill-down PB → dự án, biểu đồ so sánh PB</li>
+        <li><span class="todo">○</span> Báo cáo thưởng khoán: tổng hợp theo kỳ, theo PB, top/bottom performers</li>
+      </ul>
+      <div class="dep"><strong>Phụ thuộc:</strong> Phase 1 + 2 hoàn thành</div>
+    </div>
+  </div>
+
+  <!-- Step 4.2 -->
+  <div class="step">
+    <div class="step-head">
+      <div class="step-num" style="background: #7c3aed;">19</div>
+      <div class="step-title">Tối ưu, Kiểm thử & UAT</div>
+      <span class="badge b-test">Test</span>
+      <span class="badge b-p1">P1</span>
+      <div class="step-time">5 ngày</div>
+    </div>
+    <div class="step-body">
+      <ul class="tasks">
+        <li><span class="todo">○</span> Performance: thêm indexes cho queries nặng, analyze query plans</li>
+        <li><span class="todo">○</span> E2E test: toàn bộ luồng HĐ → billing → DT → phân bổ PB → quỹ → lương → thưởng</li>
+        <li><span class="todo">○</span> Edge cases: khoán âm nhiều kỳ liên tiếp, phụ lục giảm > DT đã ghi nhận</li>
+        <li><span class="todo">○</span> UAT với dữ liệu thật: nhập HĐ thật → chạy 1 kỳ khoán thử → verify</li>
+        <li><span class="todo">○</span> Approval workflow chi phí lớn (P2 — nếu còn thời gian)</li>
+        <li><span class="todo">○</span> Viết tài liệu hướng dẫn sử dụng cho end-user</li>
+      </ul>
+      <div class="output"><strong>Kết thúc Phase 4:</strong> Hệ thống sẵn sàng production</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DEPENDENCY MAP -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>Sơ đồ Phụ thuộc (Dependency Map)</h2>
+  <div style="font-family: 'Fira Code', monospace; font-size: 0.82rem; background: var(--gray-900); color: #e2e8f0; padding: 1.5rem; border-radius: 10px; overflow-x: auto; line-height: 1.8;">
+<span style="color:#93c5fd;">Phase 1: DB Triggers</span>
+Step 1  ──┬──→ Step 2 ──┬──→ Step 3 (billing→revenue) ──→ Step 7 (UI)
+          │              └──→ Step 4 (acceptance→revenue)
+          └──→ Step 5 (addendum→adjustment)
+          └──→ Step 6 (API check)
+
+<span style="color:#f9a8d4;">Phase 2: Lương & Quỹ</span>
+Step 8  ──┬──→ Step 9  ──→ Step 10 (fn_calc_actual_fund) ──→ Step 11 (fn_calc_bonus)
+          │                                                        │
+          └─────────────────────────────────────────────────────────┤
+                                                                    ↓
+                                                    Step 12 (API) ──→ Step 13 (UI /kpi/allocation)
+                                                        │
+                                                        └──→ Step 14 (UI Lương)
+
+<span style="color:#86efac;">Phase 3: Cron & Nội bộ</span>
+Step 15 (cron)  ←── Phase 1 + 2
+Step 16 (DT nội bộ) ←── Step 10
+Step 17 (rollback) ←── Step 5 + Step 11
+
+<span style="color:#c4b5fd;">Phase 4: Báo cáo</span>
+Step 18 ←── Phase 1 + 2
+Step 19 ←── ALL
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TIMELINE SUMMARY -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>Timeline Tổng hợp</h2>
+  <table>
+    <tr><th>Tuần</th><th>Phase</th><th>Steps</th><th>Deliverable chính</th></tr>
+    <tr><td><strong>Tuần 1</strong></td><td rowspan="2" style="background:#dbeafe;">Phase 1</td><td>1 → 5</td><td>DB triggers hoạt động: billing→DT, acceptance→DT, addendum→adjustment, auto phân bổ PB</td></tr>
+    <tr><td><strong>Tuần 2</strong></td><td>6 → 7</td><td>API kiểm tra + UI revenue dashboard cải tiến</td></tr>
+    <tr><td><strong>Tuần 3</strong></td><td rowspan="2" style="background:#fce7f3;">Phase 2</td><td>8 → 11</td><td>Bảng lương, hệ số khó, fn_calc_actual_fund, fn_calc_bonus</td></tr>
+    <tr><td><strong>Tuần 4</strong></td><td>12 → 14</td><td>API salary/bonus + UI /kpi/allocation 4 phần + UI quản lý lương</td></tr>
+    <tr><td><strong>Tuần 5</strong></td><td style="background:#dcfce7;">Phase 3</td><td>15 → 17</td><td>Cron jobs, DT nội bộ workflow, rollback phụ lục</td></tr>
+    <tr><td><strong>Tuần 6</strong></td><td style="background:#ede9fe;">Phase 4</td><td>18 → 19</td><td>Báo cáo, lãi lỗ, tối ưu, UAT, docs</td></tr>
+  </table>
+
+  <div class="highlight" style="margin-top: 1.5rem;">
+    <h4>Ưu tiên tuyệt đối (nếu thời gian hạn chế, chỉ làm đến đây)</h4>
+    <p style="font-size:0.9rem;">
+      <strong>Steps 1–7 (Phase 1)</strong> + <strong>Steps 8–14 (Phase 2)</strong> = hoàn thành luồng chính:<br>
+      HĐ → Billing paid → DT tự động → Phân bổ PB → Quỹ khoán → KPI → Sản lượng − Lương = Thưởng khoán.<br>
+      Phase 3–4 là cải tiến + tự động hóa thêm, có thể triển khai sau.
+    </p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="text-align: center; padding: 2rem; color: var(--gray-500); font-size: 0.82rem;">
+  A2Z WorkHub — Implementation Order v3.0 · 05/04/2026
+</div>
+
+</div>
+</body>
+</html>

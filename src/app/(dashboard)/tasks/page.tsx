@@ -9,6 +9,7 @@ import { useUsers } from "@/lib/hooks/use-users";
 import { useTeams } from "@/lib/hooks/use-teams";
 import { useUIStore, useAuthStore, type TaskSortKey } from "@/lib/stores";
 import { StatusBadge, PriorityBadge, ProgressBar, UserAvatar, KPIRing, FilterChip, Button, EmptyState } from "@/components/shared";
+import { ClipboardList, CalendarDays } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { Dialog, DialogContent } from "@/components/shared/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/shared/popover";
@@ -321,7 +322,7 @@ export default function TasksPage() {
           ))}
         </div>
       ) : tasks.length === 0 ? (
-        <EmptyState icon="📋" title={t.tasks.noTasks} subtitle={t.tasks.noTasksSub} />
+        <EmptyState icon={<ClipboardList size={32} strokeWidth={1.5} />} title={t.tasks.noTasks} subtitle={t.tasks.noTasksSub} />
       ) : taskView === "grid" ? (
         <TaskGrid tasks={tasks} onSelect={setSelectedTaskId} />
       ) : taskView === "kanban" ? (
@@ -710,7 +711,7 @@ function TaskTimeline({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: strin
 
   // Calculate timeline range
   const allDates = sorted.flatMap((t) => [t.start_date, t.deadline, t.created_at].filter(Boolean)).map((d) => new Date(d!));
-  if (allDates.length === 0) return <EmptyState icon="📅" title={t.tasks.noTimelineData} subtitle={t.tasks.noTimelineDataSub} />;
+  if (allDates.length === 0) return <EmptyState icon={<CalendarDays size={32} strokeWidth={1.5} />} title={t.tasks.noTimelineData} subtitle={t.tasks.noTimelineDataSub} />;
 
   const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())) - 7 * 86400000);
   const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())) + 7 * 86400000);

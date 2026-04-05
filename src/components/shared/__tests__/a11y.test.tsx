@@ -12,6 +12,7 @@ import {
   EmptyState,
   UserAvatar,
 } from "../index";
+import { ClipboardList } from "lucide-react";
 
 /*
  * Automated accessibility tests using axe-core via vitest-axe.
@@ -100,7 +101,7 @@ describe("Shared components — axe-core automated audit", () => {
 
   it("EmptyState has no a11y violations", async () => {
     const { container } = render(
-      <EmptyState icon="📋" title="Chưa có dữ liệu" subtitle="Hãy tạo mới" />
+      <EmptyState icon={<ClipboardList size={32} strokeWidth={1.5} />} title="Chưa có dữ liệu" subtitle="Hãy tạo mới" />
     );
     expect(await axe(container)).toHaveNoViolations();
   });

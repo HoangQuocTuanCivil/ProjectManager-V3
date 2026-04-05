@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCenters, useCreateCenter, useUpdateCenter } from "@/lib/hooks/use-teams";
 import { useQuery } from "@tanstack/react-query";
 import { Section, Button, UserAvatar, Toggle, EmptyState } from "@/components/shared";
+import { Landmark } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { toast } from "sonner";
@@ -125,7 +126,7 @@ export default function CentersSettingsPage() {
         {isLoading ? (
           <div className="p-4 space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-secondary rounded-lg animate-pulse" />)}</div>
         ) : centers.length === 0 ? (
-          <div className="p-6"><EmptyState icon="🏛️" title="Chưa có trung tâm" /></div>
+          <div className="p-6"><EmptyState icon={<Landmark size={32} strokeWidth={1.5} />} title="Chưa có trung tâm" /></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

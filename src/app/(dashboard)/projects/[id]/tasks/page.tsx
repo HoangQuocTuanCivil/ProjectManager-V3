@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { StatusBadge, PriorityBadge, ProgressBar, UserAvatar, KPIRing, FilterChip, Button, EmptyState } from "@/components/shared";
+import { ClipboardList } from "lucide-react";
 import { ROLE_CONFIG, STATUS_CONFIG, formatDate } from "@/lib/utils/kpi";
 import { TaskDetail } from "@/components/tasks/task-detail";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -42,7 +43,7 @@ export default function ProjectTasksPage() {
       {isLoading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-12 bg-card border border-border rounded-lg animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="📋" title="Chưa có công việc" subtitle="Giao việc mới cho dự án này" />
+        <EmptyState icon={<ClipboardList size={32} strokeWidth={1.5} />} title="Chưa có công việc" subtitle="Giao việc mới cho dự án này" />
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <table className="w-full">

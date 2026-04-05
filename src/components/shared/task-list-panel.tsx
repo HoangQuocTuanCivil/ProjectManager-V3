@@ -2,6 +2,7 @@
 
 import { Dialog, DialogContent } from "./dialog";
 import { StatusBadge, ProgressBar, UserAvatar, PriorityBadge, EmptyState } from "./index";
+import { ClipboardList } from "lucide-react";
 import { ROLE_CONFIG, formatRelativeDate } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
@@ -61,7 +62,7 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
       >
         <div className="overflow-y-auto -mx-5 -mb-5 px-5 pb-5 max-h-[60vh]">
           {filteredTasks.length === 0 ? (
-            <EmptyState icon="📋" title={t.dashboard.noTasks} subtitle={t.dashboard.noTasksSub} />
+            <EmptyState icon={<ClipboardList size={32} strokeWidth={1.5} />} title={t.dashboard.noTasks} subtitle={t.dashboard.noTasksSub} />
           ) : (
             <div className="divide-y divide-border/40">
               {filteredTasks.map((task) => (

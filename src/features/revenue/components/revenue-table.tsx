@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
 import { EmptyState } from "@/components/shared";
 import { toast } from "sonner";
-import { Check, X, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, X, Trash2, ChevronLeft, ChevronRight, Coins } from "lucide-react";
 import type { RevenueEntryStatus } from "@/lib/types";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -78,7 +78,7 @@ export function RevenueTable({ filters, canManage }: Props) {
   }
 
   if (entries.length === 0) {
-    return <EmptyState icon="💰" title={t.revenue.noEntries} subtitle={t.revenue.noEntriesSub} />;
+    return <EmptyState icon={<Coins size={32} strokeWidth={1.5} />} title={t.revenue.noEntries} subtitle={t.revenue.noEntriesSub} />;
   }
 
   const SortHeader = ({ col, children }: { col: string; children: React.ReactNode }) => {

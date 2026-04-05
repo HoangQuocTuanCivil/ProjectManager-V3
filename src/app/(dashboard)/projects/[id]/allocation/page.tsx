@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
 import { Section, StatCard, UserAvatar, KPIRing, EmptyState } from "@/components/shared";
+import { User, Coins } from "lucide-react";
 import { AllocationTable } from "@/components/kpi";
 import { ROLE_CONFIG, formatVND } from "@/lib/utils/kpi";
 import type { Task, AllocationPeriod } from "@/lib/types";
@@ -45,7 +46,7 @@ export default function ProjectAllocationPage() {
       <Section title="KPI theo người thực hiện">
         {userMap.size === 0 ? (
           <div className="p-6">
-            <EmptyState icon="👤" title="Chưa có dữ liệu" subtitle="Giao việc cho nhân viên để bắt đầu" />
+            <EmptyState icon={<User size={32} strokeWidth={1.5} />} title="Chưa có dữ liệu" subtitle="Giao việc cho nhân viên để bắt đầu" />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -110,7 +111,7 @@ export default function ProjectAllocationPage() {
           ))}
         </div>
       ) : (
-        <EmptyState icon="💰" title="Chưa có khoán" subtitle="Tạo đợt khoán từ trang KPI & Chia khoán" />
+        <EmptyState icon={<Coins size={32} strokeWidth={1.5} />} title="Chưa có khoán" subtitle="Tạo đợt khoán từ trang KPI & Chia khoán" />
       )}
     </div>
   );

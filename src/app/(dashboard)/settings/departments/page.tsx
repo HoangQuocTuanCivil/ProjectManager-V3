@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Section, Button, UserAvatar, Toggle, EmptyState } from "@/components/shared";
+import { Landmark } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { toast } from "sonner";
@@ -105,12 +106,25 @@ export default function DepartmentsSettingsPage() {
       if (!res.ok) throw new Error(data.error || "Lỗi cập nhật");
       return data;
     },
+    onMutate: async (variables: any) => {
+      await queryClient.cancelQueries({ queryKey: ["departments"] });
+      const previous = queryClient.getQueryData(["departments"]);
+      queryClient.setQueryData(["departments"], (old: any[]) =>
+        old?.map((d: any) => d.id === variables.id ? { ...d, ...variables } : d)
+      );
+      return { previous };
+    },
+    onError: (e: any, _v: any, context: any) => {
+      if (context?.previous) queryClient.setQueryData(["departments"], context.previous);
+      toast.error(e.message || "Lỗi cập nhật");
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["departments"] });
       toast.success("Cập nhật thành công!");
       setEditDept(null);
     },
-    onError: (e: any) => toast.error(e.message || "Lỗi cập nhật"),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+    },
   });
 
   const handleCreate = () => {
@@ -207,7 +221,7 @@ export default function DepartmentsSettingsPage() {
         {isLoading ? (
           <div className="p-4 space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-secondary rounded-lg animate-pulse" />)}</div>
         ) : departments.length === 0 ? (
-          <div className="p-6"><EmptyState icon="🏛️" title="Chưa có phòng ban" /></div>
+          <div className="p-6"><EmptyState icon={<Landmark size={32} strokeWidth={1.5} />} title="Chưa có phòng ban" /></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">

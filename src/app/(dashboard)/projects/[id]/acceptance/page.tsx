@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthStore } from "@/lib/stores";
 import { Section, StatCard, FilterChip, EmptyState, Button, KPIRing } from "@/components/shared";
+import { CheckCircle2, Target, Coins } from "lucide-react";
 import { formatVND } from "@/lib/utils/kpi";
 import {
   useAcceptanceRecords,
@@ -89,7 +90,7 @@ export default function ProjectAcceptancePage() {
           {isLoading ? (
             <div className="p-4 space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-secondary rounded-lg animate-pulse" />)}</div>
           ) : pending.length === 0 ? (
-            <div className="p-6"><EmptyState icon="✅" title="Không có sản phẩm chờ nghiệm thu" /></div>
+            <div className="p-6"><EmptyState icon={<CheckCircle2 size={32} strokeWidth={1.5} />} title="Không có sản phẩm chờ nghiệm thu" /></div>
           ) : (
             <div className="divide-y divide-border/40">
               {pending.map((record) => (
@@ -128,7 +129,7 @@ export default function ProjectAcceptancePage() {
       {tab === "accepted" && (
         <Section title={`Đã nghiệm thu (${accepted.length})`}>
           {accepted.length === 0 ? (
-            <div className="p-6"><EmptyState icon="🎯" title="Chưa có sản phẩm được nghiệm thu" /></div>
+            <div className="p-6"><EmptyState icon={<Target size={32} strokeWidth={1.5} />} title="Chưa có sản phẩm được nghiệm thu" /></div>
           ) : (
             <AcceptanceTable records={accepted} showPayment={false} />
           )}
@@ -149,7 +150,7 @@ export default function ProjectAcceptancePage() {
 
           <Section title={`Thanh toán (${paymentRecords.length})`}>
             {paymentRecords.length === 0 ? (
-              <div className="p-6"><EmptyState icon="💰" title="Không có bản ghi" /></div>
+              <div className="p-6"><EmptyState icon={<Coins size={32} strokeWidth={1.5} />} title="Không có bản ghi" /></div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">

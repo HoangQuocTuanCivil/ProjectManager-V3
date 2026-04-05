@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useAllTeams, useCreateTeam, useUpdateTeam, useDeleteTeam } from "@/lib/hooks/use-teams";
 import { Section, Button, UserAvatar, Toggle, EmptyState } from "@/components/shared";
+import { Users } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { toast } from "sonner";
@@ -173,7 +174,7 @@ export default function TeamsSettingsPage() {
         <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-secondary rounded-lg animate-pulse" />)}</div>
       ) : teams.length === 0 ? (
         <Section title="Danh sách nhóm">
-          <div className="p-6"><EmptyState icon="👥" title="Chưa có nhóm nào" /></div>
+          <div className="p-6"><EmptyState icon={<Users size={32} strokeWidth={1.5} />} title="Chưa có nhóm nào" /></div>
         </Section>
       ) : (
         teamsByDept

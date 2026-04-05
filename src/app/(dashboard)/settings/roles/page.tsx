@@ -248,7 +248,7 @@ export default function RolesSettingsPage() {
         {rolesLoading ? (
           <div className="p-4 space-y-3">{[1, 2].map((i) => <div key={i} className="h-16 bg-secondary rounded-lg animate-pulse" />)}</div>
         ) : roles.length === 0 ? (
-          <div className="p-6"><EmptyState icon="🔐" title="Chưa có vai trò tùy chỉnh" subtitle="Tạo vai trò mới để phân quyền chi tiết" /></div>
+          <div className="p-6"><EmptyState icon={<ShieldCheck size={32} strokeWidth={1.5} />} title="Chưa có vai trò tùy chỉnh" subtitle="Tạo vai trò mới để phân quyền chi tiết" /></div>
         ) : (
           <div className="divide-y divide-border/40">
             {roles.map((role: any) => (

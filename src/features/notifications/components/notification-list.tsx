@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyState } from "@/components/shared";
+import { Bell } from "lucide-react";
 import { NotificationCard } from "./notification-item";
 import type { NotificationGroup, NotificationItem } from "../types/notification.types";
 
@@ -30,7 +31,7 @@ export function NotificationList({
   if (groups.length === 0 || groups.every((g) => g.items.length === 0)) {
     return (
       <div className="py-12">
-        <EmptyState icon="🔔" title="Không có thông báo" subtitle="Bạn sẽ nhận thông báo khi có hoạt động mới" />
+        <EmptyState icon={<Bell size={32} strokeWidth={1.5} />} title="Không có thông báo" subtitle="Bạn sẽ nhận thông báo khi có hoạt động mới" />
       </div>
     );
   }

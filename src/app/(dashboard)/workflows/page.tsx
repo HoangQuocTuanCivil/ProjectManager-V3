@@ -6,6 +6,7 @@ import { useWorkflows, useToggleWorkflow, useDeleteWorkflow } from "@/lib/hooks/
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/stores";
 import { Button, Toggle, FilterChip, EmptyState, Section, StatCard, UserAvatar } from "@/components/shared";
+import { Zap } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/shared/dialog";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
@@ -81,7 +82,7 @@ export default function WorkflowsPage() {
           {[1, 2, 3].map((i) => <div key={i} className="h-32 bg-card border border-border rounded-xl animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="⚡" title={t.workflows.noWorkflows} subtitle={t.workflows.noWorkflowsSub} />
+        <EmptyState icon={<Zap size={32} strokeWidth={1.5} />} title={t.workflows.noWorkflows} subtitle={t.workflows.noWorkflowsSub} />
       ) : (
         <div className="space-y-3">
           {filtered.map((wf: any) => (

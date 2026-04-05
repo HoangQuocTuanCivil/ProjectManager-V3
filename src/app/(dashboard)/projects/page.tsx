@@ -11,6 +11,7 @@ import { Dialog, DialogContent } from "@/components/shared/dialog";
 import {
   Button, FilterChip, EmptyState, ProgressBar, HealthBadge, UserAvatar, StatCard, KPIRing,
 } from "@/components/shared";
+import { Building2 } from "lucide-react";
 import { ROLE_CONFIG, formatDate, formatVND } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
 import type { Project, ProjectStatus, UserRole } from "@/lib/types";
@@ -153,7 +154,7 @@ export default function ProjectsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon="🏗️" title={t.projects.noProjects} subtitle={t.projects.noProjectsSub} />
+        <EmptyState icon={<Building2 size={32} strokeWidth={1.5} />} title={t.projects.noProjects} subtitle={t.projects.noProjectsSub} />
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((project) => (
