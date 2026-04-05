@@ -311,7 +311,23 @@ export function GalaxyBackground({ className }: { className?: string }) {
     const drawBlackHole = (tp: ThemeProfile) => {
       const r = galaxyRadius * BLACK_HOLE_RADIUS;
 
-      // Photon ring glow
+      // Soft ambient glow — blends black hole into surrounding star field
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.scale(1, TILT);
+      const ambientR = r * 8;
+      const ambient = ctx.createRadialGradient(0, 0, r * 2, 0, 0, ambientR);
+      ambient.addColorStop(0, tp.accretionMid);
+      ambient.addColorStop(0.3, tp.accretionDim);
+      ambient.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = ambient;
+      ctx.beginPath();
+      ctx.arc(0, 0, ambientR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Photon ring
       ctx.save();
       ctx.translate(centerX, centerY);
       ctx.globalAlpha = 0.6;
@@ -328,28 +344,31 @@ export function GalaxyBackground({ className }: { className?: string }) {
       // Accretion disk
       ctx.save();
       ctx.translate(centerX, centerY);
-      const diskRx = r * 3.5;
-      const diskRy = diskRx * TILT;
-      const accGrad = ctx.createRadialGradient(0, 0, r * 1.2, 0, 0, diskRx);
+      ctx.scale(1, TILT);
+      const diskR = r * 4;
+      const accGrad = ctx.createRadialGradient(0, 0, r * 1.0, 0, 0, diskR);
       accGrad.addColorStop(0, tp.accretionBright);
-      accGrad.addColorStop(0.4, tp.accretionMid);
-      accGrad.addColorStop(1, tp.accretionDim);
+      accGrad.addColorStop(0.25, tp.accretionMid);
+      accGrad.addColorStop(0.6, tp.accretionDim);
+      accGrad.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = accGrad;
       ctx.beginPath();
-      ctx.ellipse(0, 0, diskRx, diskRy, 0, 0, Math.PI * 2);
+      ctx.arc(0, 0, diskR, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      // Event horizon void
+      // Event horizon
       ctx.save();
       ctx.translate(centerX, centerY);
-      const voidGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.3);
+      ctx.scale(1, TILT);
+      const voidR = r * 1.3;
+      const voidGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, voidR);
       voidGrad.addColorStop(0, tp.isDark ? "rgb(0,0,0)" : "rgb(5,10,30)");
-      voidGrad.addColorStop(0.7, tp.isDark ? "rgb(2,2,8)" : "rgb(8,15,40)");
+      voidGrad.addColorStop(0.65, tp.isDark ? "rgb(2,2,8)" : "rgb(8,15,40)");
       voidGrad.addColorStop(1, tp.voidEdge);
       ctx.fillStyle = voidGrad;
       ctx.beginPath();
-      ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2);
+      ctx.arc(0, 0, voidR, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     };
