@@ -40,19 +40,15 @@ function generateStars(radius: number): GalaxyStar[] {
     const spinAngle = r * SPIN;
     const branchAngle = ((i % BRANCHES) / BRANCHES) * Math.PI * 2;
 
-    const scatter = (axis: number) => {
-      void axis;
-      return (
-        Math.pow(Math.random(), RANDOMNESS_POWER) *
-        (Math.random() < 0.5 ? 1 : -1) *
-        RANDOMNESS *
-        r
-      );
-    };
+    const scatter = () =>
+      Math.pow(Math.random(), RANDOMNESS_POWER) *
+      (Math.random() < 0.5 ? 1 : -1) *
+      RANDOMNESS *
+      r;
 
     stars.push({
-      x: Math.cos(branchAngle + spinAngle) * r + scatter(0),
-      y: Math.sin(branchAngle + spinAngle) * r + scatter(1),
+      x: Math.cos(branchAngle + spinAngle) * r + scatter(),
+      y: Math.sin(branchAngle + spinAngle) * r + scatter(),
       size: Math.random() * BASE_SIZE,
       distance: r,
       colorMix: r / radius,
@@ -88,7 +84,7 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       width = rect.width;
       height = rect.height;
-      galaxyRadius = Math.min(width, height) * 0.4;
+      galaxyRadius = Math.max(width, height) * 0.55;
       stars = generateStars(galaxyRadius);
     };
 
@@ -106,7 +102,7 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.save();
       ctx.translate(width / 2, height / 2);
 
-      angle += ROTATION_SPEED;
+      angle = (angle + ROTATION_SPEED) % (Math.PI * 2);
       ctx.rotate(angle);
 
       for (const star of stars) {
