@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 
 /* ─── Constants ────────────────────────────────────────────────────── */
 const FRAME_INTERVAL = 33; // ~30 fps
-const ROTATION_SPEED = 0.0008;
-const CENTER_X_RATIO = 0.55;
+const ROTATION_SPEED = 0.0024;
+const CENTER_X_RATIO = 0.75;
 const CENTER_Y_RATIO = 0.48;
 
 /* Star distribution */
@@ -221,7 +221,7 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       width = rect.width;
       height = rect.height;
-      galaxyRadius = Math.min(width, height) * 0.65;
+      galaxyRadius = Math.min(width, height) * 1.95;
       centerX = width * CENTER_X_RATIO;
       centerY = height * CENTER_Y_RATIO;
     };
