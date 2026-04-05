@@ -3,20 +3,19 @@
 import { useEffect, useRef } from "react";
 
 /* ─── Constants ────────────────────────────────────────────────────── */
-const FRAME_INTERVAL = 33; // ~30 fps
+const FRAME_INTERVAL = 33;
 const ROTATION_SPEED = 0.0024;
 const CENTER_X_RATIO = 0.75;
 const CENTER_Y_RATIO = 0.48;
-const SPHERE_RADIUS_RATIO = 0.045; // Core sphere size relative to galaxy radius
+const BLACK_HOLE_RADIUS = 0.022;
 
-/* Star distribution */
 const CORE_STARS = 1200;
 const ARM_STARS = 4000;
 const SCATTER_STARS = 800;
 const BG_STARS = 300;
 const ARMS = 2;
 const ARM_SPREAD = 0.35;
-const TILT = 0.38; // Vertical squish for perspective (0=edge-on, 1=face-on)
+const TILT = 0.38;
 
 /* ─── Types ────────────────────────────────────────────────────────── */
 const enum StarLayer {
@@ -27,46 +26,33 @@ const enum StarLayer {
 }
 
 interface Star {
-  /** Orbital angle in galaxy plane (radians) */
   angle: number;
-  /** Distance from center (0..1 normalized to galaxy radius) */
   dist: number;
-  /** Small random offset for natural scatter (normalized) */
   scatterX: number;
   scatterY: number;
-  /** Rendering */
   size: number;
   layer: StarLayer;
-  /** Color hue (degrees) */
   hue: number;
   saturation: number;
   lightness: number;
   baseAlpha: number;
 }
 
-/** Theme-dependent rendering profile */
 interface ThemeProfile {
   isDark: boolean;
-  /** Multiplier for star alpha values */
   alphaBoost: number;
-  /** Lightness adjustment: dark mode uses stored values, light mode darkens them */
   lightnessClamp: (l: number) => number;
-  /** Core glow color stops */
   coreOuter: [string, string, string];
   coreInner: [string, string, string, string];
   corePoint: [string, string, string];
-  /** Ring stroke color + alpha */
   ringColor: string;
   ringAlpha: number;
-  /** Background star lightness */
   bgLightness: (l: number) => number;
-  /** Core sphere colors */
-  sphereBase: string;       // Dark hemisphere color
-  sphereMid: string;        // Mid-tone blue
-  sphereBright: string;     // Bright face color
-  sphereHighlight: string;  // Specular spot
-  sphereAura: string;       // Outer glow color
-  sphereAuraAlpha: number;  // Outer glow opacity
+  accretionBright: string;
+  accretionMid: string;
+  accretionDim: string;
+  photonRing: string;
+  voidEdge: string;
 }
 
 const THEME_DARK: ThemeProfile = {
@@ -79,30 +65,28 @@ const THEME_DARK: ThemeProfile = {
   ringColor: "rgba(80,180,255,0.4)",
   ringAlpha: 0.12,
   bgLightness: (l) => l,
-  sphereBase: "rgb(5, 15, 60)",
-  sphereMid: "rgb(20, 80, 200)",
-  sphereBright: "rgb(60, 170, 255)",
-  sphereHighlight: "rgba(180, 230, 255, 0.95)",
-  sphereAura: "rgba(0, 140, 255, 0.35)",
-  sphereAuraAlpha: 1.0,
+  accretionBright: "rgba(140,210,255,0.9)",
+  accretionMid: "rgba(40,120,255,0.5)",
+  accretionDim: "rgba(10,40,180,0)",
+  photonRing: "rgba(180,230,255,0.8)",
+  voidEdge: "rgba(0,80,255,0.15)",
 };
 
 const THEME_LIGHT: ThemeProfile = {
   isDark: false,
   alphaBoost: 2.8,
-  lightnessClamp: (l) => Math.min(l, 40), // Force darker stars on bright background
+  lightnessClamp: (l) => Math.min(l, 40),
   coreOuter: ["rgba(0,100,220,0.25)", "rgba(0,80,200,0.12)", "rgba(0,40,180,0)"],
   coreInner: ["rgba(30,100,220,0.55)", "rgba(20,80,200,0.4)", "rgba(10,60,180,0.18)", "rgba(0,30,150,0)"],
   corePoint: ["rgba(40,120,220,0.8)", "rgba(20,80,200,0.45)", "rgba(10,50,180,0)"],
   ringColor: "rgba(20,80,200,0.5)",
   ringAlpha: 0.25,
   bgLightness: (l) => Math.min(l, 50),
-  sphereBase: "rgb(10, 30, 100)",
-  sphereMid: "rgb(30, 100, 220)",
-  sphereBright: "rgb(80, 180, 255)",
-  sphereHighlight: "rgba(200, 235, 255, 0.9)",
-  sphereAura: "rgba(0, 100, 220, 0.3)",
-  sphereAuraAlpha: 1.0,
+  accretionBright: "rgba(60,150,255,0.95)",
+  accretionMid: "rgba(20,80,220,0.55)",
+  accretionDim: "rgba(5,30,150,0)",
+  photonRing: "rgba(40,120,220,0.85)",
+  voidEdge: "rgba(0,50,200,0.2)",
 };
 
 function getThemeProfile(): ThemeProfile {
@@ -324,70 +308,50 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.fillRect(0, 0, width, height);
     };
 
-    /* ── Draw 3D glowing sphere at galaxy center ── */
-    const drawCoreSphere = (tp: ThemeProfile) => {
-      const r = galaxyRadius * SPHERE_RADIUS_RATIO;
+    const drawBlackHole = (tp: ThemeProfile) => {
+      const r = galaxyRadius * BLACK_HOLE_RADIUS;
 
-      // 1. Outer aura glow (soft bloom around sphere)
-      ctx.globalAlpha = tp.sphereAuraAlpha;
-      const aura = ctx.createRadialGradient(
-        centerX, centerY, r * 0.8,
-        centerX, centerY, r * 3.5
-      );
-      aura.addColorStop(0, tp.sphereAura);
-      aura.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = aura;
+      // Photon ring glow
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.globalAlpha = 0.6;
+      ctx.strokeStyle = tp.photonRing;
+      ctx.lineWidth = r * 0.25;
+      ctx.shadowBlur = r * 1.5;
+      ctx.shadowColor = tp.photonRing;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, r * 3.5, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.ellipse(0, 0, r * 2.2, r * 2.2 * TILT, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
 
-      // 2. Base sphere (3D shading: dark bottom-right to bright top-left)
-      ctx.globalAlpha = 1;
-      const sphereGrad = ctx.createRadialGradient(
-        centerX - r * 0.3, centerY - r * 0.3, r * 0.05,
-        centerX, centerY, r
-      );
-      sphereGrad.addColorStop(0, tp.sphereBright);
-      sphereGrad.addColorStop(0.5, tp.sphereMid);
-      sphereGrad.addColorStop(1, tp.sphereBase);
-
-      ctx.fillStyle = sphereGrad;
+      // Accretion disk
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      const diskRx = r * 3.5;
+      const diskRy = diskRx * TILT;
+      const accGrad = ctx.createRadialGradient(0, 0, r * 1.2, 0, 0, diskRx);
+      accGrad.addColorStop(0, tp.accretionBright);
+      accGrad.addColorStop(0.4, tp.accretionMid);
+      accGrad.addColorStop(1, tp.accretionDim);
+      ctx.fillStyle = accGrad;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, diskRx, diskRy, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
 
-      // 3. Specular highlight (small bright spot on upper-left)
-      const hlX = centerX - r * 0.3;
-      const hlY = centerY - r * 0.35;
-      const hlR = r * 0.4;
-      const specular = ctx.createRadialGradient(
-        hlX, hlY, 0,
-        hlX, hlY, hlR
-      );
-      specular.addColorStop(0, tp.sphereHighlight);
-      specular.addColorStop(0.6, "rgba(150,210,255,0.2)");
-      specular.addColorStop(1, "rgba(100,180,255,0)");
-
-      ctx.fillStyle = specular;
+      // Event horizon void
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      const voidGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.3);
+      voidGrad.addColorStop(0, tp.isDark ? "rgb(0,0,0)" : "rgb(5,10,30)");
+      voidGrad.addColorStop(0.7, tp.isDark ? "rgb(2,2,8)" : "rgb(8,15,40)");
+      voidGrad.addColorStop(1, tp.voidEdge);
+      ctx.fillStyle = voidGrad;
       ctx.beginPath();
-      ctx.arc(hlX, hlY, hlR, 0, Math.PI * 2);
+      ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2);
       ctx.fill();
-
-      // 4. Rim light (subtle bright edge on bottom for backlight effect)
-      ctx.globalAlpha = 0.25;
-      const rimGrad = ctx.createRadialGradient(
-        centerX, centerY + r * 0.6, r * 0.2,
-        centerX, centerY, r * 1.05
-      );
-      rimGrad.addColorStop(0, "rgba(100,200,255,0.6)");
-      rimGrad.addColorStop(1, "rgba(0,80,200,0)");
-
-      ctx.fillStyle = rimGrad;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, r * 1.05, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.globalAlpha = 1;
+      ctx.restore();
     };
 
     /* ── Animation loop ── */
@@ -466,10 +430,8 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
 
-      // Draw 3D sphere at center (on top of stars, behind rings)
-      drawCoreSphere(tp);
+      drawBlackHole(tp);
 
-      // Draw ring highlight over core (horizontal ellipses)
       drawRings(tp);
 
       animFrame = requestAnimationFrame(animate);
