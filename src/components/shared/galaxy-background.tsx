@@ -11,6 +11,8 @@ const RANDOMNESS_POWER = 3;
 const BASE_SIZE = 0.8;
 const ROTATION_SPEED = 0.002;
 const CORE_RATIO = 0.2;
+const CENTER_X = 0.72;
+const CENTER_Y = 0.5;
 
 interface GalaxyStar {
   x: number;
@@ -99,8 +101,11 @@ export function GalaxyBackground({ className }: { className?: string }) {
 
       ctx.clearRect(0, 0, width, height);
 
+      const isDark = document.documentElement.classList.contains("dark");
+      const intensity = isDark ? 1.0 : 1.8;
+
       ctx.save();
-      ctx.translate(width / 2, height / 2);
+      ctx.translate(width * CENTER_X, height * CENTER_Y);
 
       angle = (angle + ROTATION_SPEED) % (Math.PI * 2);
       ctx.rotate(angle);
@@ -113,13 +118,19 @@ export function GalaxyBackground({ className }: { className?: string }) {
         ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
 
         if (isCore) {
-          const coreAlpha = 0.7 + 0.3 * (1 - star.distance / (galaxyRadius * CORE_RATIO));
-          ctx.fillStyle = `rgba(255, 255, 255, ${coreAlpha})`;
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = "rgba(0, 255, 255, 0.6)";
+          const coreAlpha = Math.min(1, (0.7 + 0.3 * (1 - star.distance / (galaxyRadius * CORE_RATIO))) * intensity);
+          ctx.fillStyle = isDark
+            ? `rgba(255, 255, 255, ${coreAlpha})`
+            : `rgba(0, 120, 255, ${coreAlpha})`;
+          ctx.shadowBlur = 8 * intensity;
+          ctx.shadowColor = isDark
+            ? "rgba(0, 255, 255, 0.6)"
+            : "rgba(0, 100, 255, 0.8)";
         } else {
-          const alpha = Math.max(0.05, 1 - t);
-          const [r, g, b] = lerpColor(0, 255, 255, 30, 0, 255, t);
+          const alpha = Math.min(1, Math.max(0.05, (1 - t) * intensity));
+          const [r, g, b] = isDark
+            ? lerpColor(0, 255, 255, 30, 0, 255, t)
+            : lerpColor(0, 100, 220, 60, 0, 180, t);
           ctx.fillStyle = `rgba(${r | 0}, ${g | 0}, ${b | 0}, ${alpha})`;
           ctx.shadowBlur = 0;
         }
