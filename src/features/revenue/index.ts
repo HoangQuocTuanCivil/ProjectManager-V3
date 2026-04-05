@@ -8,7 +8,7 @@ export {
 
 export {
   useRevenueSummary, useRevenueByProject, useRevenueByDepartment,
-  useRevenueByPeriod, useRevenueForecast,
+  useRevenueByCenter, useRevenueByPeriod, useRevenueForecast,
 } from './hooks/use-revenue-analytics';
 
 export {

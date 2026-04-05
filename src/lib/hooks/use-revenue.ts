@@ -4,7 +4,7 @@ export {
   useInternalRevenue, useCreateInternalRevenue, useUpdateInternalRevenue, useDeleteInternalRevenue,
   useCostEntries, useCreateCostEntry, useDeleteCostEntry,
   useRevenueSummary, useRevenueByProject, useRevenueByDepartment,
-  useRevenueByPeriod, useRevenueForecast,
+  useRevenueByCenter, useRevenueByPeriod, useRevenueForecast,
   useRevenueAdjustments, useAdjustmentsByContract,
   useProductServices, useCreateProductService, useUpdateProductService, useDeleteProductService,
   useDeptRevenue, useDeptRevenueByProject,

@@ -6,6 +6,7 @@ const analyticsKeys = {
   summary: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "summary", filters] as const,
   project: (id: string) => [...analyticsKeys.all, "project", id] as const,
   department: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "department", filters] as const,
+  center: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "center", filters] as const,
   period: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "period", filters] as const,
   forecast: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "forecast", filters] as const,
 };
@@ -54,6 +55,15 @@ export function useRevenueByDepartment(filters?: { from?: string; to?: string })
     queryFn: () => apiFetch<Array<{
       dept_id: string; dept_name: string; dept_code: string; total_allocated: number; project_count: number;
     }>>(buildUrl("/api/revenue/by-department", filters as Record<string, string | undefined>)),
+  });
+}
+
+export function useRevenueByCenter(filters?: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: analyticsKeys.center(filters as Record<string, string | undefined>),
+    queryFn: () => apiFetch<Array<{
+      center_id: string; center_name: string; center_code: string; total_allocated: number; dept_count: number;
+    }>>(buildUrl("/api/revenue/by-center", filters as Record<string, string | undefined>)),
   });
 }
 

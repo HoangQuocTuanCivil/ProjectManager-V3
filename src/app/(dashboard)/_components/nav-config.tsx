@@ -1,7 +1,9 @@
 import {
-  LayoutDashboard, ClipboardList, Building2, Target, Rocket,
+  LayoutGrid, ClipboardList, Building2, Target, Flag,
   Zap, BarChart3, FileText, TrendingUp,
 } from "lucide-react";
+
+const ICON_PROPS = { size: 20, strokeWidth: 1.5 } as const;
 
 export interface NavSubItem {
   href: string;
@@ -19,12 +21,12 @@ export interface NavItemConfig {
 }
 
 export const NAV_ITEMS: NavItemConfig[] = [
-  { href: "/", icon: <LayoutDashboard size={20} />, tKey: "overview" },
-  { href: "/tasks", icon: <ClipboardList size={20} />, tKey: "tasks", badge: "tasks" },
-  { href: "/projects", icon: <Building2 size={20} />, tKey: "projects" },
+  { href: "/", icon: <LayoutGrid {...ICON_PROPS} />, tKey: "overview" },
+  { href: "/tasks", icon: <ClipboardList {...ICON_PROPS} />, tKey: "tasks", badge: "tasks" },
+  { href: "/projects", icon: <Building2 {...ICON_PROPS} />, tKey: "projects" },
   {
     href: "/kpi",
-    icon: <Target size={20} />,
+    icon: <Target {...ICON_PROPS} />,
     tKey: "kpi",
     children: [
       { href: "/kpi", tKey: "kpiOverview" },
@@ -34,7 +36,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   },
   {
     href: "/contracts",
-    icon: <FileText size={20} />,
+    icon: <FileText {...ICON_PROPS} />,
     tKey: "contractManagement",
     children: [
       { href: "/contracts", tKey: "contracts" },
@@ -43,19 +45,19 @@ export const NAV_ITEMS: NavItemConfig[] = [
   },
   {
     href: "/revenue",
-    icon: <TrendingUp size={20} />,
+    icon: <TrendingUp {...ICON_PROPS} />,
     tKey: "revenue",
     children: [
       { href: "/revenue", tKey: "companyRevenue" },
       { href: "/revenue/departments", tKey: "deptAllocation" },
+      { href: "/revenue/centers", tKey: "centerAllocation" },
       { href: "/revenue/internal", tKey: "internalRevenue" },
       { href: "/revenue/costs", tKey: "costs" },
-      { href: "/reports", tKey: "reports" },
     ],
   },
-  { href: "/goals", icon: <Rocket size={20} />, tKey: "goals" },
-  { href: "/workflows", icon: <Zap size={20} />, tKey: "workflow" },
-  { href: "/reports", icon: <BarChart3 size={20} />, tKey: "reports" },
+  { href: "/goals", icon: <Flag {...ICON_PROPS} />, tKey: "goals" },
+  { href: "/workflows", icon: <Zap {...ICON_PROPS} />, tKey: "workflow" },
+  { href: "/reports", icon: <BarChart3 {...ICON_PROPS} />, tKey: "reports" },
 ];
 
 export const PAGE_TITLE_KEYS: Record<string, string> = {
@@ -71,6 +73,7 @@ export const PAGE_TITLE_KEYS: Record<string, string> = {
   "/revenue/internal": "revenueManagement",
   "/revenue/costs": "revenueManagement",
   "/revenue/departments": "revenueManagement",
+  "/revenue/centers": "revenueManagement",
   "/goals": "goalsOkr",
   "/workflows": "workflowApproval",
   "/reports": "reports",
