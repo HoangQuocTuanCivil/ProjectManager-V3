@@ -43,6 +43,52 @@ interface Star {
   baseAlpha: number;
 }
 
+/** Theme-dependent rendering profile */
+interface ThemeProfile {
+  isDark: boolean;
+  /** Multiplier for star alpha values */
+  alphaBoost: number;
+  /** Lightness adjustment: dark mode uses stored values, light mode darkens them */
+  lightnessClamp: (l: number) => number;
+  /** Core glow color stops */
+  coreOuter: [string, string, string];
+  coreInner: [string, string, string, string];
+  corePoint: [string, string, string];
+  /** Ring stroke color + alpha */
+  ringColor: string;
+  ringAlpha: number;
+  /** Background star lightness */
+  bgLightness: (l: number) => number;
+}
+
+const THEME_DARK: ThemeProfile = {
+  isDark: true,
+  alphaBoost: 1.0,
+  lightnessClamp: (l) => l,
+  coreOuter: ["rgba(0,160,255,0.15)", "rgba(0,120,255,0.06)", "rgba(0,60,255,0)"],
+  coreInner: ["rgba(120,200,255,0.45)", "rgba(40,140,255,0.3)", "rgba(20,80,255,0.12)", "rgba(0,40,180,0)"],
+  corePoint: ["rgba(200,230,255,0.7)", "rgba(100,180,255,0.3)", "rgba(30,100,255,0)"],
+  ringColor: "rgba(80,180,255,0.4)",
+  ringAlpha: 0.12,
+  bgLightness: (l) => l,
+};
+
+const THEME_LIGHT: ThemeProfile = {
+  isDark: false,
+  alphaBoost: 2.8,
+  lightnessClamp: (l) => Math.min(l, 40), // Force darker stars on bright background
+  coreOuter: ["rgba(0,100,220,0.25)", "rgba(0,80,200,0.12)", "rgba(0,40,180,0)"],
+  coreInner: ["rgba(30,100,220,0.55)", "rgba(20,80,200,0.4)", "rgba(10,60,180,0.18)", "rgba(0,30,150,0)"],
+  corePoint: ["rgba(40,120,220,0.8)", "rgba(20,80,200,0.45)", "rgba(10,50,180,0)"],
+  ringColor: "rgba(20,80,200,0.5)",
+  ringAlpha: 0.25,
+  bgLightness: (l) => Math.min(l, 50),
+};
+
+function getThemeProfile(): ThemeProfile {
+  return document.documentElement.classList.contains("dark") ? THEME_DARK : THEME_LIGHT;
+}
+
 /* ─── Star generation ──────────────────────────────────────────────── */
 
 function randomGaussian(): number {
@@ -226,8 +272,8 @@ export function GalaxyBackground({ className }: { className?: string }) {
       centerY = height * CENTER_Y_RATIO;
     };
 
-    /* ── Draw core glow (radial gradient) ── */
-    const drawCoreGlow = () => {
+    /* ── Draw core glow (radial gradient) — theme-aware ── */
+    const drawCoreGlow = (tp: ThemeProfile) => {
       const coreR = galaxyRadius * 0.18;
 
       // Outer halo
@@ -235,9 +281,9 @@ export function GalaxyBackground({ className }: { className?: string }) {
         centerX, centerY, 0,
         centerX, centerY, coreR * 2.5
       );
-      outerGlow.addColorStop(0, "rgba(0, 160, 255, 0.15)");
-      outerGlow.addColorStop(0.3, "rgba(0, 120, 255, 0.06)");
-      outerGlow.addColorStop(1, "rgba(0, 60, 255, 0)");
+      outerGlow.addColorStop(0, tp.coreOuter[0]);
+      outerGlow.addColorStop(0.3, tp.coreOuter[1]);
+      outerGlow.addColorStop(1, tp.coreOuter[2]);
 
       ctx.fillStyle = outerGlow;
       ctx.fillRect(0, 0, width, height);
@@ -247,10 +293,10 @@ export function GalaxyBackground({ className }: { className?: string }) {
         centerX, centerY, 0,
         centerX, centerY, coreR
       );
-      innerGlow.addColorStop(0, "rgba(120, 200, 255, 0.45)");
-      innerGlow.addColorStop(0.2, "rgba(40, 140, 255, 0.3)");
-      innerGlow.addColorStop(0.5, "rgba(20, 80, 255, 0.12)");
-      innerGlow.addColorStop(1, "rgba(0, 40, 180, 0)");
+      innerGlow.addColorStop(0, tp.coreInner[0]);
+      innerGlow.addColorStop(0.2, tp.coreInner[1]);
+      innerGlow.addColorStop(0.5, tp.coreInner[2]);
+      innerGlow.addColorStop(1, tp.coreInner[3]);
 
       ctx.fillStyle = innerGlow;
       ctx.fillRect(0, 0, width, height);
@@ -260,9 +306,9 @@ export function GalaxyBackground({ className }: { className?: string }) {
         centerX, centerY, 0,
         centerX, centerY, coreR * 0.3
       );
-      corePoint.addColorStop(0, "rgba(200, 230, 255, 0.7)");
-      corePoint.addColorStop(0.5, "rgba(100, 180, 255, 0.3)");
-      corePoint.addColorStop(1, "rgba(30, 100, 255, 0)");
+      corePoint.addColorStop(0, tp.corePoint[0]);
+      corePoint.addColorStop(0.5, tp.corePoint[1]);
+      corePoint.addColorStop(1, tp.corePoint[2]);
 
       ctx.fillStyle = corePoint;
       ctx.fillRect(0, 0, width, height);
@@ -278,6 +324,8 @@ export function GalaxyBackground({ className }: { className?: string }) {
       }
       lastTime = timestamp;
 
+      const tp = getThemeProfile();
+
       ctx.clearRect(0, 0, width, height);
 
       rotationAngle = (rotationAngle + ROTATION_SPEED) % (Math.PI * 2);
@@ -285,7 +333,7 @@ export function GalaxyBackground({ className }: { className?: string }) {
       const sinR = Math.sin(rotationAngle);
 
       // Draw core glow first (behind stars)
-      drawCoreGlow();
+      drawCoreGlow(tp);
 
       // Draw all stars
       for (const star of stars) {
@@ -299,8 +347,9 @@ export function GalaxyBackground({ className }: { className?: string }) {
           // Skip if outside canvas
           if (sx < -5 || sx > width + 5 || sy < -5 || sy > height + 5) continue;
 
-          ctx.globalAlpha = star.baseAlpha;
-          ctx.fillStyle = `hsl(0, 0%, ${star.lightness}%)`;
+          const bgL = tp.bgLightness(star.lightness);
+          ctx.globalAlpha = Math.min(1, star.baseAlpha * tp.alphaBoost);
+          ctx.fillStyle = `hsl(0, 0%, ${bgL}%)`;
           ctx.beginPath();
           ctx.arc(sx, sy, star.size, 0, Math.PI * 2);
           ctx.fill();
@@ -319,21 +368,24 @@ export function GalaxyBackground({ className }: { className?: string }) {
 
         // Alpha falloff for depth (back side of galaxy is dimmer)
         const depthFade = star.layer === StarLayer.Core ? 1.0 : (0.7 + 0.3 * (1 + ry / star.dist) * 0.5);
-        const alpha = Math.min(1, star.baseAlpha * depthFade);
+        const alpha = Math.min(1, star.baseAlpha * depthFade * tp.alphaBoost);
 
         if (alpha < 0.02) continue;
 
         ctx.globalAlpha = alpha;
 
+        // Theme-adjusted lightness
+        const drawL = tp.lightnessClamp(star.lightness);
+
         if (star.layer === StarLayer.Core && star.dist < 0.06) {
           // Brightest core stars get a glow
           ctx.shadowBlur = 6;
-          ctx.shadowColor = `hsla(${star.hue}, ${star.saturation}%, ${star.lightness}%, 0.5)`;
+          ctx.shadowColor = `hsla(${star.hue}, ${star.saturation}%, ${drawL}%, 0.5)`;
         } else {
           ctx.shadowBlur = 0;
         }
 
-        ctx.fillStyle = `hsl(${star.hue}, ${star.saturation}%, ${star.lightness}%)`;
+        ctx.fillStyle = `hsl(${star.hue}, ${star.saturation}%, ${drawL}%)`;
         ctx.beginPath();
         ctx.arc(sx, sy, star.size, 0, Math.PI * 2);
         ctx.fill();
@@ -344,17 +396,17 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.globalAlpha = 1;
 
       // Draw ring highlight over core (thin elliptical ring)
-      drawRings(cosR, sinR);
+      drawRings(cosR, sinR, tp);
 
       animFrame = requestAnimationFrame(animate);
     };
 
-    /* ── Elliptical ring glow around core ── */
-    const drawRings = (cosR: number, sinR: number) => {
+    /* ── Elliptical ring glow around core — theme-aware ── */
+    const drawRings = (cosR: number, sinR: number, tp: ThemeProfile) => {
       ctx.save();
       ctx.translate(centerX, centerY);
-      ctx.globalAlpha = 0.12;
-      ctx.strokeStyle = "rgba(80, 180, 255, 0.4)";
+      ctx.globalAlpha = tp.ringAlpha;
+      ctx.strokeStyle = tp.ringColor;
       ctx.lineWidth = 1.5;
 
       // Draw 2 subtle rings
