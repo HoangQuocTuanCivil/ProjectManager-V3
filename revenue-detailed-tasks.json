@@ -1,0 +1,1160 @@
+{
+  "plan_title": "Chi tiết Task triển khai Hệ thống Ghi nhận Doanh thu",
+  "project": "A2Z WorkHub",
+  "created_date": "2026-04-05",
+  "total_tasks": 45,
+  "total_estimated_days": 38.5,
+
+  "phases": [
+    {
+      "phase_id": "P1",
+      "phase_name": "Nền tảng Database & Triggers",
+      "weeks": "Tuần 1–2",
+      "estimated_days": 12.5,
+      "goal": "Xây dựng schema mới, functions tự động hóa, đảm bảo dữ liệu chính xác",
+
+      "tasks": [
+        {
+          "task_id": "P1-T1",
+          "title": "Tạo ENUM mới cho revenue",
+          "estimated_hours": 4,
+          "priority": "HIGH",
+          "depends_on": [],
+          "status": "pending",
+          "description": "Tạo 2 enum types mới cần thiết cho các bảng mới",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo ENUM revenue_entry_status",
+              "detail": "CREATE TYPE revenue_entry_status AS ENUM ('draft', 'confirmed', 'adjusted', 'cancelled');",
+              "note": "draft: mới tạo/chờ xác nhận. confirmed: đã xác nhận ghi nhận. adjusted: đã bị điều chỉnh bởi phụ lục. cancelled: đã hủy"
+            },
+            {
+              "step": 2,
+              "action": "Tạo ENUM product_service_category",
+              "detail": "CREATE TYPE product_service_category AS ENUM ('design', 'consulting', 'survey', 'supervision', 'other');",
+              "note": "Phân loại sản phẩm/dịch vụ theo lĩnh vực hoạt động của công ty tư vấn"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T2",
+          "title": "Tạo bảng product_services",
+          "estimated_hours": 6,
+          "priority": "HIGH",
+          "depends_on": ["P1-T1"],
+          "status": "pending",
+          "description": "Danh mục sản phẩm/dịch vụ để ghi nhận doanh thu theo chiều SP/DV",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "CREATE TABLE product_services",
+              "detail": "Gồm: id (UUID PK), org_id (FK organizations), code (TEXT UNIQUE(org_id,code)), name (TEXT NOT NULL), category (product_service_category NOT NULL), unit_price (NUMERIC(15,0) DEFAULT 0), description (TEXT), is_active (BOOLEAN DEFAULT true), created_at, updated_at",
+              "note": "unit_price là giá tham chiếu, giá thực tế theo hợp đồng"
+            },
+            {
+              "step": 2,
+              "action": "Tạo indexes",
+              "detail": "idx_ps_org ON product_services(org_id, is_active); idx_ps_category ON product_services(org_id, category)"
+            },
+            {
+              "step": 3,
+              "action": "Tạo trigger updated_at",
+              "detail": "Dùng fn_update_timestamp() đã có sẵn"
+            },
+            {
+              "step": 4,
+              "action": "Enable RLS + tạo policies",
+              "detail": "SELECT: org_id = user_org_id(). ALL mutations: thêm điều kiện role IN ('admin', 'leader', 'director')"
+            },
+            {
+              "step": 5,
+              "action": "Seed data mẫu",
+              "detail": "INSERT 5-7 sản phẩm/dịch vụ mẫu: Thiết kế kiến trúc, Tư vấn giám sát, Khảo sát địa hình, Thiết kế kết cấu, Tư vấn thẩm tra"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T3",
+          "title": "Tạo bảng revenue_adjustments",
+          "estimated_hours": 6,
+          "priority": "HIGH",
+          "depends_on": ["P1-T1"],
+          "status": "pending",
+          "description": "Lưu lịch sử điều chỉnh doanh thu khi có phụ lục hợp đồng",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "CREATE TABLE revenue_adjustments",
+              "detail": "Gồm: id (UUID PK), org_id (FK organizations), revenue_entry_id (FK revenue_entries NULLABLE), contract_id (FK contracts NOT NULL), addendum_id (FK contract_addendums NOT NULL), old_amount (NUMERIC(15,0) NOT NULL), new_amount (NUMERIC(15,0) NOT NULL), adjustment_amount (NUMERIC(15,0) GENERATED ALWAYS AS (new_amount - old_amount) STORED), reason (TEXT NOT NULL), adjusted_by (FK users NOT NULL), created_at (TIMESTAMPTZ DEFAULT NOW())",
+              "note": "adjustment_amount tự tính = new - old. revenue_entry_id nullable vì có thể chưa có entry gốc"
+            },
+            {
+              "step": 2,
+              "action": "Tạo indexes",
+              "detail": "idx_ra_contract(contract_id, created_at DESC); idx_ra_entry(revenue_entry_id) WHERE NOT NULL; idx_ra_addendum(addendum_id)"
+            },
+            {
+              "step": 3,
+              "action": "Enable RLS + policies",
+              "detail": "Tương tự pattern revenue_entries: SELECT by org, mutations by admin/leader/director"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T4",
+          "title": "Tạo bảng dept_revenue_allocations",
+          "estimated_hours": 5,
+          "priority": "HIGH",
+          "depends_on": ["P1-T1"],
+          "status": "pending",
+          "description": "Phân bổ doanh thu cho phòng ban tham gia dự án",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "CREATE TABLE dept_revenue_allocations",
+              "detail": "Gồm: id (UUID PK), org_id (FK organizations), revenue_entry_id (FK revenue_entries NOT NULL), project_id (FK projects NOT NULL), dept_id (FK departments NOT NULL), allocation_percentage (NUMERIC(5,2) NOT NULL CHECK >= 0 AND <= 100), allocated_amount (NUMERIC(15,0) NOT NULL), created_at (TIMESTAMPTZ DEFAULT NOW())",
+              "note": "Mỗi revenue_entry có thể phân bổ cho nhiều phòng ban, tổng allocation_percentage = 100%"
+            },
+            {
+              "step": 2,
+              "action": "Tạo indexes",
+              "detail": "idx_dra_entry(revenue_entry_id); idx_dra_dept(dept_id, created_at DESC); idx_dra_project(project_id)"
+            },
+            {
+              "step": 3,
+              "action": "Tạo UNIQUE constraint",
+              "detail": "UNIQUE(revenue_entry_id, dept_id) để ngăn phân bổ trùng phòng ban cho cùng 1 entry"
+            },
+            {
+              "step": 4,
+              "action": "Enable RLS + policies",
+              "detail": "SELECT by org, mutations by admin/leader/director"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T5",
+          "title": "ALTER TABLE revenue_entries - thêm cột mới",
+          "estimated_hours": 8,
+          "priority": "HIGH",
+          "depends_on": ["P1-T2"],
+          "status": "pending",
+          "description": "Bổ sung 6 cột mới và indexes cho bảng revenue_entries hiện tại",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "ALTER TABLE ADD COLUMN product_service_id",
+              "detail": "UUID REFERENCES product_services(id) ON DELETE SET NULL",
+              "note": "Liên kết sản phẩm/dịch vụ cho dimension = product_service"
+            },
+            {
+              "step": 2,
+              "action": "ALTER TABLE ADD COLUMN addendum_id",
+              "detail": "UUID REFERENCES contract_addendums(id) ON DELETE SET NULL",
+              "note": "Đánh dấu bản ghi được tạo từ phụ lục hợp đồng"
+            },
+            {
+              "step": 3,
+              "action": "ALTER TABLE ADD COLUMN recognition_date",
+              "detail": "DATE NOT NULL DEFAULT CURRENT_DATE",
+              "note": "Ngày ghi nhận kế toán, khác created_at (ngày tạo bản ghi). Quan trọng cho báo cáo theo kỳ"
+            },
+            {
+              "step": 4,
+              "action": "ALTER TABLE ADD COLUMN status",
+              "detail": "revenue_entry_status NOT NULL DEFAULT 'draft'",
+              "note": "Kiểm soát quy trình: draft → confirmed. Bản ghi tự động từ trigger sẽ là confirmed"
+            },
+            {
+              "step": 5,
+              "action": "ALTER TABLE ADD COLUMN completion_percentage",
+              "detail": "NUMERIC(5,2) CHECK (completion_percentage >= 0 AND completion_percentage <= 100)",
+              "note": "Chỉ dùng khi method = completion_rate"
+            },
+            {
+              "step": 6,
+              "action": "ALTER TABLE ADD COLUMN original_entry_id",
+              "detail": "UUID REFERENCES revenue_entries(id) ON DELETE SET NULL",
+              "note": "Self-reference: khi bản ghi này là điều chỉnh của bản ghi gốc"
+            },
+            {
+              "step": 7,
+              "action": "Migrate dữ liệu hiện tại",
+              "detail": "UPDATE revenue_entries SET status = 'confirmed', recognition_date = COALESCE(period_start, created_at::date) WHERE status IS NULL",
+              "note": "Đảm bảo dữ liệu cũ không bị ảnh hưởng"
+            },
+            {
+              "step": 8,
+              "action": "Tạo indexes mới",
+              "detail": "idx_revenue_status(org_id, status, recognition_date DESC); idx_revenue_product(product_service_id) WHERE NOT NULL; idx_revenue_recognition(recognition_date, dimension); UNIQUE idx_revenue_source_unique(source, source_id) WHERE source_id IS NOT NULL",
+              "note": "UNIQUE(source, source_id) ngăn double-counting - rủi ro R2"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T6",
+          "title": "Tạo function fn_revenue_from_billing()",
+          "estimated_hours": 12,
+          "priority": "CRITICAL",
+          "depends_on": ["P1-T5"],
+          "status": "pending",
+          "description": "Tự động tạo revenue_entry khi billing_milestone được thanh toán (Module 1 → Revenue)",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo PL/pgSQL function fn_revenue_from_billing()",
+              "detail": "CREATE OR REPLACE FUNCTION fn_revenue_from_billing() RETURNS TRIGGER",
+              "note": "Function này là trigger function, gắn vào bảng billing_milestones"
+            },
+            {
+              "step": 2,
+              "action": "Logic bên trong function",
+              "detail": "1) Kiểm tra NEW.status = 'paid' AND OLD.status != 'paid' (chỉ khi chuyển sang paid). 2) Lấy contract info: SELECT c.id, c.project_id, c.org_id FROM contracts c WHERE c.id = (SELECT contract_id FROM billing_milestones WHERE id = NEW.id). 3) Kiểm tra chưa có entry: NOT EXISTS (SELECT 1 FROM revenue_entries WHERE source = 'billing_milestone' AND source_id = NEW.id). 4) INSERT INTO revenue_entries: org_id, project_id, contract_id, dimension='contract', method='acceptance', source='billing_milestone', source_id=NEW.id, amount=NEW.amount, description='Thanh toán mốc: ' || NEW.title, recognition_date=NEW.paid_date, status='confirmed', created_by=(lấy từ context hoặc system user). 5) RETURN NEW",
+              "note": "Idempotent: luôn kiểm tra NOT EXISTS trước khi INSERT để tránh duplicate"
+            },
+            {
+              "step": 3,
+              "action": "Tạo trigger trg_billing_paid",
+              "detail": "CREATE TRIGGER trg_billing_paid AFTER UPDATE OF status ON billing_milestones FOR EACH ROW WHEN (NEW.status = 'paid' AND OLD.status IS DISTINCT FROM 'paid') EXECUTE FUNCTION fn_revenue_from_billing()",
+              "note": "Dùng UPDATE OF status để chỉ fire khi cột status thay đổi, không fire khi update cột khác"
+            },
+            {
+              "step": 4,
+              "action": "Gọi fn_allocate_dept_revenue() sau khi INSERT",
+              "detail": "Sau bước INSERT thành công, gọi PERFORM fn_allocate_dept_revenue(new_entry_id) để tự động phân bổ cho phòng ban",
+              "note": "Phụ thuộc P1-T9 (fn_allocate_dept_revenue)"
+            },
+            {
+              "step": 5,
+              "action": "Test thủ công",
+              "detail": "UPDATE billing_milestones SET status = 'paid', paid_date = CURRENT_DATE WHERE id = '<test_id>'. Kiểm tra revenue_entries có bản ghi mới. UPDATE lại → không tạo trùng"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T7",
+          "title": "Tạo function fn_revenue_from_acceptance()",
+          "estimated_hours": 12,
+          "priority": "CRITICAL",
+          "depends_on": ["P1-T5"],
+          "status": "pending",
+          "description": "Tự động tạo revenue_entry khi task nghiệm thu được thanh toán (Module 3 → Revenue)",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo PL/pgSQL function fn_revenue_from_acceptance()",
+              "detail": "CREATE OR REPLACE FUNCTION fn_revenue_from_acceptance() RETURNS TRIGGER",
+              "note": "Trigger function gắn vào bảng tasks"
+            },
+            {
+              "step": 2,
+              "action": "Logic bên trong function",
+              "detail": "1) Kiểm tra điều kiện: NEW.kpi_evaluated_at IS NOT NULL (đã nghiệm thu) AND (NEW.metadata->>'payment_status') = 'paid' (đã thanh toán) AND ((OLD.metadata->>'payment_status') IS DISTINCT FROM 'paid' OR OLD.kpi_evaluated_at IS NULL) (chuyển trạng thái mới). 2) Kiểm tra NOT EXISTS (SELECT 1 FROM revenue_entries WHERE source = 'acceptance' AND source_id = NEW.id). 3) Lấy payment_amount: (NEW.metadata->>'payment_amount')::numeric. 4) Nếu payment_amount > 0: INSERT INTO revenue_entries: org_id=NEW.org_id, project_id=NEW.project_id, dimension='project', method='acceptance', source='acceptance', source_id=NEW.id, amount=payment_amount, description='Nghiệm thu: ' || NEW.title, recognition_date=CURRENT_DATE, status='confirmed'. 5) RETURN NEW",
+              "note": "Cần cả 2 điều kiện: đã đánh giá KPI VÀ đã thanh toán"
+            },
+            {
+              "step": 3,
+              "action": "Tạo trigger trg_task_acceptance_paid",
+              "detail": "CREATE TRIGGER trg_task_acceptance_paid AFTER UPDATE ON tasks FOR EACH ROW WHEN (NEW.status IN ('review', 'completed') AND NEW.kpi_evaluated_at IS NOT NULL) EXECUTE FUNCTION fn_revenue_from_acceptance()",
+              "note": "Chỉ fire cho tasks có trạng thái review/completed và đã có KPI evaluation"
+            },
+            {
+              "step": 4,
+              "action": "Test thủ công",
+              "detail": "Cập nhật task metadata payment_status='paid', payment_amount=10000000. Kiểm tra revenue_entries. Cập nhật lại → không trùng"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T8",
+          "title": "Tạo function fn_revenue_adjustment()",
+          "estimated_hours": 10,
+          "priority": "HIGH",
+          "depends_on": ["P1-T3", "P1-T5"],
+          "status": "pending",
+          "description": "Xử lý điều chỉnh doanh thu khi thêm phụ lục hợp đồng",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo PL/pgSQL function fn_revenue_adjustment()",
+              "detail": "CREATE OR REPLACE FUNCTION fn_revenue_adjustment() RETURNS TRIGGER"
+            },
+            {
+              "step": 2,
+              "action": "Logic bên trong function",
+              "detail": "1) Lấy contract hiện tại: SELECT id, contract_value, org_id, project_id FROM contracts WHERE id = NEW.contract_id. 2) Tính new_value = contract.contract_value + NEW.value_change. 3) INSERT INTO revenue_adjustments: org_id, contract_id=NEW.contract_id, addendum_id=NEW.id, old_amount=contract.contract_value, new_amount=new_value, reason='Phụ lục ' || NEW.addendum_no || ': ' || COALESCE(NEW.description, NEW.title), adjusted_by=NEW.created_by. 4) Nếu NEW.value_change != 0: INSERT INTO revenue_entries: dimension='contract', method='acceptance', source='manual', addendum_id=NEW.id, amount=NEW.value_change, description='Điều chỉnh từ PL ' || NEW.addendum_no, status='draft', original_entry_id=(tìm entry gốc nếu có). 5) RETURN NEW",
+              "note": "value_change có thể âm (giảm giá trị HĐ) hoặc dương (tăng). Entry điều chỉnh status='draft' cần admin confirm"
+            },
+            {
+              "step": 3,
+              "action": "Tạo trigger trg_addendum_created",
+              "detail": "CREATE TRIGGER trg_addendum_created AFTER INSERT ON contract_addendums FOR EACH ROW EXECUTE FUNCTION fn_revenue_adjustment()"
+            },
+            {
+              "step": 4,
+              "action": "Test thủ công",
+              "detail": "INSERT contract_addendum với value_change = 50000000. Kiểm tra revenue_adjustments + revenue_entries có bản ghi mới"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T9",
+          "title": "Tạo function fn_allocate_dept_revenue()",
+          "estimated_hours": 8,
+          "priority": "HIGH",
+          "depends_on": ["P1-T4"],
+          "status": "pending",
+          "description": "Tự động phân bổ doanh thu cho các phòng ban tham gia dự án",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo PL/pgSQL function fn_allocate_dept_revenue(p_entry_id UUID)",
+              "detail": "CREATE OR REPLACE FUNCTION fn_allocate_dept_revenue(p_entry_id UUID) RETURNS VOID"
+            },
+            {
+              "step": 2,
+              "action": "Logic bên trong function",
+              "detail": "1) Lấy entry: SELECT project_id, amount, org_id FROM revenue_entries WHERE id = p_entry_id. 2) Nếu project_id IS NULL → RETURN (không phân bổ). 3) Lấy danh sách phòng ban + tỷ lệ: Ưu tiên lấy từ dept_budget_allocations (allocated_amount / SUM(allocated_amount) * 100). Nếu không có → lấy từ project_departments chia đều. 4) FOR mỗi dept: INSERT INTO dept_revenue_allocations: revenue_entry_id=p_entry_id, project_id, dept_id, allocation_percentage, allocated_amount = entry.amount * percentage / 100. 5) Cập nhật revenue_entries.dept_id = phòng ban có % cao nhất (phòng ban chính)",
+              "note": "Function được gọi từ fn_revenue_from_billing() và fn_revenue_from_acceptance(), không phải trigger"
+            },
+            {
+              "step": 3,
+              "action": "Test với dự án có nhiều phòng ban",
+              "detail": "Tạo project với 3 departments → trigger billing paid → kiểm tra dept_revenue_allocations có 3 records với đúng tỷ lệ"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T10",
+          "title": "RLS policies cho các bảng mới",
+          "estimated_hours": 4,
+          "priority": "HIGH",
+          "depends_on": ["P1-T2", "P1-T3", "P1-T4"],
+          "status": "pending",
+          "description": "Bảo mật Row Level Security cho 3 bảng mới",
+          "file_target": "supabase/migrations/20260101000008_revenue_enhanced.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "RLS cho product_services",
+              "detail": "ALTER TABLE ENABLE RLS. SELECT: org_id = user_org_id(). ALL: thêm role IN ('admin','leader','director')"
+            },
+            {
+              "step": 2,
+              "action": "RLS cho revenue_adjustments",
+              "detail": "Tương tự pattern. SELECT by org_id. Mutations restricted to admin/leader/director"
+            },
+            {
+              "step": 3,
+              "action": "RLS cho dept_revenue_allocations",
+              "detail": "Tương tự pattern. Head phòng ban có thể xem allocations của phòng mình"
+            },
+            {
+              "step": 4,
+              "action": "Test RLS",
+              "detail": "Login với role staff → chỉ thấy SELECT. Login admin → CRUD đầy đủ"
+            }
+          ]
+        },
+        {
+          "task_id": "P1-T11",
+          "title": "Unit tests cho SQL functions",
+          "estimated_hours": 12,
+          "priority": "MEDIUM",
+          "depends_on": ["P1-T6", "P1-T7", "P1-T8", "P1-T9"],
+          "status": "pending",
+          "description": "Viết test cases cho tất cả functions và triggers",
+          "file_target": "supabase/tests/ hoặc scripts/test-revenue-functions.sql",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Test fn_revenue_from_billing()",
+              "detail": "Case 1: Update milestone paid → tạo revenue entry. Case 2: Update milestone paid lần 2 → không tạo trùng (idempotent). Case 3: Update milestone sang status khác → không tạo. Case 4: Kiểm tra amount, dimension, method, source đúng"
+            },
+            {
+              "step": 2,
+              "action": "Test fn_revenue_from_acceptance()",
+              "detail": "Case 1: Task có KPI + payment paid → tạo entry. Case 2: Task có KPI nhưng chưa paid → không tạo. Case 3: Task paid nhưng chưa KPI → không tạo. Case 4: Duplicate → không tạo trùng"
+            },
+            {
+              "step": 3,
+              "action": "Test fn_revenue_adjustment()",
+              "detail": "Case 1: Addendum value_change > 0 → tạo adjustment + entry dương. Case 2: value_change < 0 → tạo adjustment + entry âm. Case 3: value_change = 0 → tạo adjustment, không tạo entry"
+            },
+            {
+              "step": 4,
+              "action": "Test fn_allocate_dept_revenue()",
+              "detail": "Case 1: Project có 2 dept với budget allocation → phân bổ theo tỷ lệ. Case 2: Project có dept nhưng không có budget → chia đều. Case 3: Project không có dept → không phân bổ. Case 4: Kiểm tra tổng allocated_amount = entry amount"
+            },
+            {
+              "step": 5,
+              "action": "Test UNIQUE constraint",
+              "detail": "INSERT 2 revenue_entries với cùng source + source_id → expect error trên bản ghi thứ 2"
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "phase_id": "P2",
+      "phase_name": "API Layer",
+      "weeks": "Tuần 3",
+      "estimated_days": 7,
+      "goal": "Xây dựng API endpoints hoàn chỉnh cho frontend tiêu thụ",
+
+      "tasks": [
+        {
+          "task_id": "P2-T1",
+          "title": "Cập nhật TypeScript types & enums",
+          "estimated_hours": 4,
+          "priority": "HIGH",
+          "depends_on": ["P1-T5"],
+          "status": "pending",
+          "description": "Cập nhật types và enums trong frontend để phản ánh schema mới",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Cập nhật src/lib/types/enums.ts",
+              "detail": "Thêm: RevenueEntryStatus = 'draft' | 'confirmed' | 'adjusted' | 'cancelled'. ProductServiceCategory = 'design' | 'consulting' | 'survey' | 'supervision' | 'other'"
+            },
+            {
+              "step": 2,
+              "action": "Cập nhật src/lib/types/revenue.ts",
+              "detail": "Thêm vào RevenueEntry: product_service_id, addendum_id, recognition_date, status, completion_percentage, original_entry_id, product_service? (join). Thêm interfaces mới: ProductService, RevenueAdjustment, DeptRevenueAllocation, RevenueSummary, RevenueByPeriod, RevenueForecast"
+            },
+            {
+              "step": 3,
+              "action": "Cập nhật src/lib/types/index.ts",
+              "detail": "Export tất cả types mới"
+            }
+          ]
+        },
+        {
+          "task_id": "P2-T2",
+          "title": "Revenue CRUD API routes",
+          "estimated_hours": 12,
+          "priority": "HIGH",
+          "depends_on": ["P2-T1"],
+          "status": "pending",
+          "description": "API endpoints CRUD cho doanh thu với filter, pagination, confirm/cancel",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo src/app/api/revenue/route.ts",
+              "detail": "GET: Lấy danh sách revenue_entries với joins (project, contract, department, product_service, creator). Params: projectId, contractId, deptId, productServiceId, dimension, method, status, from, to, page (default 1), limit (default 20), sortBy (default recognition_date), sortOrder (default desc). POST: Tạo entry mới, validate required fields, default status='draft'",
+              "note": "Tham khảo pattern từ src/app/api/tasks/route.ts cho cấu trúc. Dùng getAdminSupabase() hoặc createRouteHandlerClient()"
+            },
+            {
+              "step": 2,
+              "action": "Tạo src/app/api/revenue/[id]/route.ts",
+              "detail": "GET: Chi tiết 1 entry kèm joins. PATCH: Cập nhật entry (chỉ khi status='draft'). DELETE: Xóa entry (chỉ khi status='draft')"
+            },
+            {
+              "step": 3,
+              "action": "Tạo src/app/api/revenue/[id]/confirm/route.ts",
+              "detail": "POST: Chuyển status draft → confirmed. Validate: chỉ admin/leader/director. Gọi fn_allocate_dept_revenue() nếu chưa có allocation"
+            },
+            {
+              "step": 4,
+              "action": "Tạo src/app/api/revenue/[id]/cancel/route.ts",
+              "detail": "POST: Chuyển status → cancelled. Tạo bản ghi đối ứng với amount âm (-amount). Link original_entry_id"
+            }
+          ]
+        },
+        {
+          "task_id": "P2-T3",
+          "title": "Revenue Analytics API routes",
+          "estimated_hours": 14,
+          "priority": "HIGH",
+          "depends_on": ["P2-T1"],
+          "status": "pending",
+          "description": "API endpoints phân tích và báo cáo doanh thu",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo src/app/api/revenue/summary/route.ts",
+              "detail": "GET: Tổng hợp doanh thu. Return: { total, byDimension: {project, contract, period, product_service}, byMethod: {acceptance, completion_rate, time_based}, bySource: {billing_milestone, acceptance, manual}, confirmed, draft, previousPeriodTotal, growthRate }. Params: from, to, projectId"
+            },
+            {
+              "step": 2,
+              "action": "Tạo src/app/api/revenue/by-project/[id]/route.ts",
+              "detail": "GET: Doanh thu chi tiết của 1 dự án. Return: { projectInfo, contractValue, totalRevenue, recognizedPercentage, entries[], deptAllocations[], adjustments[], forecast }. Tính recognizedPercentage = totalRevenue / contractValue * 100"
+            },
+            {
+              "step": 3,
+              "action": "Tạo src/app/api/revenue/by-department/route.ts",
+              "detail": "GET: Doanh thu phân bổ theo phòng ban. Return: Array<{ dept_id, dept_name, dept_code, project_count, total_allocated, percentage }>. Params: from, to. Query từ dept_revenue_allocations JOIN departments"
+            },
+            {
+              "step": 4,
+              "action": "Tạo src/app/api/revenue/by-period/route.ts",
+              "detail": "GET: Doanh thu theo tháng/quý/năm. Params: from, to, group_by (month|quarter|year). Return: Array<{ period, total, byDimension }>. Dùng DATE_TRUNC trên recognition_date"
+            },
+            {
+              "step": 5,
+              "action": "Tạo src/app/api/revenue/forecast/route.ts",
+              "detail": "GET: Dự báo doanh thu. Tính từ: billing_milestones chưa paid (status=upcoming|invoiced) + completion rate dự kiến. Return: { upcoming_milestones_total, completion_rate_forecast, total_forecast, months[] }"
+            },
+            {
+              "step": 6,
+              "action": "Tạo src/app/api/revenue/adjustments/route.ts",
+              "detail": "GET: Lịch sử điều chỉnh. Params: contractId, from, to. Return: Array<RevenueAdjustment> với joins addendum, contract"
+            }
+          ]
+        },
+        {
+          "task_id": "P2-T4",
+          "title": "Product Services CRUD API",
+          "estimated_hours": 6,
+          "priority": "MEDIUM",
+          "depends_on": ["P2-T1"],
+          "status": "pending",
+          "description": "API endpoints quản lý danh mục sản phẩm/dịch vụ",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo src/app/api/product-services/route.ts",
+              "detail": "GET: Danh sách (filter: category, is_active). POST: Tạo mới (validate: code unique trong org)"
+            },
+            {
+              "step": 2,
+              "action": "Tạo src/app/api/product-services/[id]/route.ts",
+              "detail": "PATCH: Cập nhật. DELETE: Soft delete (UPDATE is_active = false)"
+            }
+          ]
+        },
+        {
+          "task_id": "P2-T5",
+          "title": "Cron job endpoints",
+          "estimated_hours": 10,
+          "priority": "MEDIUM",
+          "depends_on": ["P2-T1"],
+          "status": "pending",
+          "description": "API endpoints cho các tác vụ tự động chạy định kỳ",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo src/app/api/cron/revenue-completion/route.ts",
+              "detail": "POST: Tính doanh thu theo % hoàn thành. Logic: 1) Lấy contracts active có method=completion_rate (cần bổ sung cơ chế đánh dấu contract method). 2) Tính overall_progress từ tasks completed / total tasks. 3) recognized = contract_value × progress. 4) existing = SUM(revenue_entries WHERE contract_id AND source='completion'). 5) delta = recognized - existing. 6) Nếu delta > 0: INSERT revenue_entry. Verify: CRON_SECRET header",
+              "note": "Tham khảo src/app/api/cron/check-overdue/route.ts cho pattern cron auth"
+            },
+            {
+              "step": 2,
+              "action": "Tạo src/app/api/cron/revenue-time-based/route.ts",
+              "detail": "POST: Phân bổ doanh thu theo tháng. Logic: 1) Lấy contracts active có method=time_based. 2) months = MONTHS_BETWEEN(start_date, end_date). 3) monthly = contract_value / months. 4) Kiểm tra chưa có entry cho tháng hiện tại. 5) INSERT revenue_entry cho tháng hiện tại. Verify: CRON_SECRET header"
+            },
+            {
+              "step": 3,
+              "action": "Tạo src/app/api/cron/revenue-overdue-check/route.ts",
+              "detail": "POST: Kiểm tra milestone quá hạn. Logic: 1) UPDATE billing_milestones SET status='overdue' WHERE due_date < TODAY AND status='upcoming'. 2) Tạo notifications cho admin/leader. Verify: CRON_SECRET header"
+            },
+            {
+              "step": 4,
+              "action": "Cấu hình Vercel Cron (vercel.json)",
+              "detail": "Thêm 3 cron jobs vào vercel.json: revenue-completion (0 2 * * 0), revenue-time-based (0 3 1 * *), revenue-overdue-check (0 8 * * *)"
+            }
+          ]
+        },
+        {
+          "task_id": "P2-T6",
+          "title": "Cập nhật React hooks cho Revenue",
+          "estimated_hours": 10,
+          "priority": "HIGH",
+          "depends_on": ["P2-T2", "P2-T3", "P2-T4"],
+          "status": "pending",
+          "description": "Tạo hooks mới và cập nhật hooks hiện tại để consume API mới",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Cập nhật src/features/revenue/hooks/use-revenue.ts",
+              "detail": "Thêm filters mới cho useRevenueEntries: contractId, status, from, to, productServiceId, page, limit. Thêm useUpdateRevenueEntry (PATCH). Thêm useConfirmRevenueEntry (POST confirm). Thêm useCancelRevenueEntry (POST cancel)"
+            },
+            {
+              "step": 2,
+              "action": "Tạo src/features/revenue/hooks/use-revenue-analytics.ts",
+              "detail": "useRevenueSummary(params), useRevenueByProject(projectId), useRevenueByDepartment(params), useRevenueByPeriod(params), useRevenueForecast(). Mỗi hook fetch từ API route tương ứng"
+            },
+            {
+              "step": 3,
+              "action": "Tạo src/features/revenue/hooks/use-revenue-adjustments.ts",
+              "detail": "useRevenueAdjustments(params), useAdjustmentsByContract(contractId)"
+            },
+            {
+              "step": 4,
+              "action": "Tạo src/features/revenue/hooks/use-product-services.ts",
+              "detail": "useProductServices(filters), useCreateProductService(), useUpdateProductService(), useDeleteProductService()"
+            },
+            {
+              "step": 5,
+              "action": "Tạo src/features/revenue/hooks/use-dept-revenue.ts",
+              "detail": "useDeptRevenue(params), useDeptRevenueByProject(projectId)"
+            },
+            {
+              "step": 6,
+              "action": "Cập nhật src/features/revenue/index.ts",
+              "detail": "Export tất cả hooks mới"
+            },
+            {
+              "step": 7,
+              "action": "Cập nhật src/lib/hooks/use-revenue.ts",
+              "detail": "Re-export tất cả từ @/features/revenue"
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "phase_id": "P3",
+      "phase_name": "Frontend - Dashboard & Forms",
+      "weeks": "Tuần 4–5",
+      "estimated_days": 11,
+      "goal": "Giao diện quản lý doanh thu hoàn chỉnh với biểu đồ và báo cáo",
+
+      "tasks": [
+        {
+          "task_id": "P3-T1",
+          "title": "Cập nhật i18n translations",
+          "estimated_hours": 4,
+          "priority": "MEDIUM",
+          "depends_on": ["P2-T1"],
+          "status": "pending",
+          "description": "Thêm translations cho các tính năng mới",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Cập nhật src/lib/i18n/vi.ts",
+              "detail": "Thêm vào section revenue: statusDraft, statusConfirmed, statusAdjusted, statusCancelled, recognitionDate, productService, adjustment, deptAllocation, forecast, byPeriod, byDepartment, reports, exportExcel, exportPdf, confirmEntry, cancelEntry, growthRate, previousPeriod, recognized, targetRevenue"
+            },
+            {
+              "step": 2,
+              "action": "Cập nhật src/lib/i18n/en.ts",
+              "detail": "Thêm tương ứng bản tiếng Anh"
+            }
+          ]
+        },
+        {
+          "task_id": "P3-T2",
+          "title": "Cải tiến Revenue Dashboard (/revenue)",
+          "estimated_hours": 20,
+          "priority": "HIGH",
+          "depends_on": ["P2-T6", "P3-T1"],
+          "status": "pending",
+          "description": "Nâng cấp toàn diện trang dashboard doanh thu hiện tại",
+          "file_target": "src/app/(dashboard)/revenue/page.tsx",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tách component KPI Summary Cards",
+              "detail": "Tạo src/features/revenue/components/revenue-summary-cards.tsx. Hiển thị: Tổng doanh thu (confirmed), So sánh kỳ trước (growthRate %), Đã ghi nhận vs Dự kiến, Doanh thu draft chờ xác nhận. Dùng useRevenueSummary()"
+            },
+            {
+              "step": 2,
+              "action": "Tạo component Revenue Charts",
+              "detail": "Tạo src/features/revenue/components/revenue-charts.tsx. 3 biểu đồ dùng Recharts: 1) BarChart: doanh thu theo tháng (stacked by dimension). 2) PieChart: tỷ lệ theo nguồn (billing/acceptance/manual). 3) LineChart: xu hướng doanh thu. Dùng useRevenueByPeriod()"
+            },
+            {
+              "step": 3,
+              "action": "Cải tiến bảng danh sách",
+              "detail": "Tạo src/features/revenue/components/revenue-table.tsx. Thêm cột: Source badge, Status badge (draft=yellow, confirmed=green, adjusted=blue, cancelled=red), Recognition Date, Product/Service. Pagination. Sort theo cột. Row actions: Confirm, Cancel, Edit (nếu draft)"
+            },
+            {
+              "step": 4,
+              "action": "Cải tiến Filter bar",
+              "detail": "Tạo src/features/revenue/components/revenue-filters.tsx. Filters: Dự án, Hợp đồng, Phòng ban, SP/DV, Dimension, Method, Status, Khoảng thời gian (from-to)"
+            },
+            {
+              "step": 5,
+              "action": "Cải tiến Create form",
+              "detail": "Cập nhật form: thêm trường Product/Service (SearchSelect), Recognition Date (date input), Status indicator. Dùng react-hook-form + zod validation"
+            },
+            {
+              "step": 6,
+              "action": "Tích hợp vào page.tsx",
+              "detail": "Refactor page.tsx: import các components mới, layout: Summary Cards → Charts → Filters → Table. Tab navigation: Tất cả | Theo dự án | Theo HĐ | Theo kỳ | Theo SP/DV"
+            }
+          ]
+        },
+        {
+          "task_id": "P3-T3",
+          "title": "Trang Doanh thu Dự án (/projects/[id]/revenue)",
+          "estimated_hours": 14,
+          "priority": "HIGH",
+          "depends_on": ["P2-T6"],
+          "status": "pending",
+          "description": "Trang xem doanh thu chi tiết theo từng dự án",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo src/app/(dashboard)/projects/[id]/revenue/page.tsx",
+              "detail": "Layout: Header (tên dự án + giá trị HĐ) → Progress bar (đã ghi nhận / giá trị HĐ) → Summary cards → Bảng entries → Phân bổ phòng ban → Lịch sử điều chỉnh"
+            },
+            {
+              "step": 2,
+              "action": "Tạo component ProjectRevenueProgress",
+              "detail": "src/features/revenue/components/project-revenue-progress.tsx. Progress bar lớn: recognizedAmount / contractValue × 100%. Hiển thị: Đã ghi nhận, Còn lại, % hoàn thành. Color: green nếu on-track, yellow nếu chậm, red nếu quá hạn"
+            },
+            {
+              "step": 3,
+              "action": "Tạo component DeptAllocationChart",
+              "detail": "src/features/revenue/components/dept-allocation-chart.tsx. PieChart hoặc horizontal BarChart hiển thị phân bổ doanh thu cho phòng ban. Dùng useDeptRevenueByProject()"
+            },
+            {
+              "step": 4,
+              "action": "Tạo component AdjustmentTimeline",
+              "detail": "src/features/revenue/components/adjustment-timeline.tsx. Timeline hiển thị lịch sử điều chỉnh: ngày, phụ lục, số tiền cũ → mới, lý do. Dùng useAdjustmentsByContract()"
+            },
+            {
+              "step": 5,
+              "action": "Thêm tab Revenue vào project navigation",
+              "detail": "Cập nhật src/app/(dashboard)/projects/[id]/layout.tsx: thêm tab 'Doanh thu' vào thanh navigation bên cạnh Tasks, Members, Milestones, Acceptance"
+            }
+          ]
+        },
+        {
+          "task_id": "P3-T4",
+          "title": "Trang Phân bổ Phòng ban (/revenue/departments)",
+          "estimated_hours": 14,
+          "priority": "MEDIUM",
+          "depends_on": ["P2-T6"],
+          "status": "pending",
+          "description": "Trang xem doanh thu phân bổ theo phòng ban",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo src/app/(dashboard)/revenue/departments/page.tsx",
+              "detail": "Layout: Summary cards (tổng phòng ban, tổng doanh thu phân bổ) → Biểu đồ so sánh → Bảng chi tiết"
+            },
+            {
+              "step": 2,
+              "action": "Tạo component DeptRevenueTable",
+              "detail": "Bảng: Phòng ban | Mã | Số dự án | Doanh thu phân bổ | % tổng | Trend. Click row → expand danh sách dự án + doanh thu chi tiết (drill-down)"
+            },
+            {
+              "step": 3,
+              "action": "Tạo component DeptComparisonChart",
+              "detail": "Horizontal BarChart so sánh doanh thu giữa các phòng ban. Color-coded theo center. Dùng Recharts"
+            },
+            {
+              "step": 4,
+              "action": "Thêm link trong sidebar/navigation",
+              "detail": "Cập nhật navigation: Revenue → sub-items: Dashboard, Phân bổ PB, Nội bộ, Chi phí, Báo cáo"
+            }
+          ]
+        },
+        {
+          "task_id": "P3-T5",
+          "title": "Trang Báo cáo (/revenue/reports)",
+          "estimated_hours": 14,
+          "priority": "MEDIUM",
+          "depends_on": ["P2-T6"],
+          "status": "pending",
+          "description": "Trang báo cáo và phân tích doanh thu theo kỳ",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo src/app/(dashboard)/revenue/reports/page.tsx",
+              "detail": "Layout: Period selector (tháng/quý/năm + from-to) → Comparison chart → Detail table → Export buttons"
+            },
+            {
+              "step": 2,
+              "action": "Tạo component PeriodComparison",
+              "detail": "Biểu đồ so sánh doanh thu: kỳ hiện tại vs kỳ trước. Hiển thị growth rate. Grouped BarChart hoặc LineChart with 2 series"
+            },
+            {
+              "step": 3,
+              "action": "Tạo component RevenueMethodBreakdown",
+              "detail": "Bảng chi tiết theo phương pháp ghi nhận: acceptance vs completion_rate vs time_based. Số lượng entries, tổng, % tổng"
+            },
+            {
+              "step": 4,
+              "action": "Tạo component RevenueForecast",
+              "detail": "Hiển thị dự báo doanh thu. Dựa trên: billing milestones upcoming + completion rate trend. Biểu đồ cột: actual (xanh) + forecast (xanh nhạt striped)"
+            }
+          ]
+        },
+        {
+          "task_id": "P3-T6",
+          "title": "Quản lý Sản phẩm/Dịch vụ trong Settings",
+          "estimated_hours": 6,
+          "priority": "MEDIUM",
+          "depends_on": ["P2-T4"],
+          "status": "pending",
+          "description": "CRUD danh mục sản phẩm/dịch vụ trong trang cài đặt",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo src/app/(dashboard)/settings/product-services/page.tsx",
+              "detail": "Bảng danh sách: Mã | Tên | Phân loại | Giá tham chiếu | Trạng thái. Actions: Edit, Deactivate"
+            },
+            {
+              "step": 2,
+              "action": "Tạo form dialog tạo/sửa SP/DV",
+              "detail": "Dialog modal: Code (text), Name (text), Category (select), Unit Price (number), Description (textarea). Validate: code unique"
+            },
+            {
+              "step": 3,
+              "action": "Thêm link trong Settings navigation",
+              "detail": "Cập nhật settings layout: thêm menu item 'Sản phẩm/Dịch vụ'"
+            }
+          ]
+        },
+        {
+          "task_id": "P3-T7",
+          "title": "Export Excel/PDF cho báo cáo doanh thu",
+          "estimated_hours": 8,
+          "priority": "LOW",
+          "depends_on": ["P3-T2", "P3-T5"],
+          "status": "pending",
+          "description": "Tính năng xuất báo cáo doanh thu ra Excel và PDF",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Tạo utility export-revenue.ts",
+              "detail": "src/features/revenue/utils/export-revenue.ts. Dùng SheetJS (xlsx) cho Excel export. Tạo workbook với: Sheet 1: Tổng hợp, Sheet 2: Chi tiết entries, Sheet 3: Phân bổ PB"
+            },
+            {
+              "step": 2,
+              "action": "Cập nhật API route export",
+              "detail": "Cập nhật src/app/api/reports/export/route.ts: thêm type='revenue' params. Return CSV hoặc Excel buffer"
+            },
+            {
+              "step": 3,
+              "action": "Thêm Export buttons vào UI",
+              "detail": "Nút 'Xuất Excel' và 'Xuất PDF' trên Dashboard và Reports page"
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "phase_id": "P4",
+      "phase_name": "Tích hợp & Kiểm thử",
+      "weeks": "Tuần 6",
+      "estimated_days": 8,
+      "goal": "Đảm bảo hệ thống hoạt động chính xác end-to-end và sẵn sàng production",
+
+      "tasks": [
+        {
+          "task_id": "P4-T1",
+          "title": "Integration test: Billing → Revenue",
+          "estimated_hours": 8,
+          "priority": "CRITICAL",
+          "depends_on": ["P3-T2"],
+          "status": "pending",
+          "description": "Test end-to-end luồng thanh toán hợp đồng tạo doanh thu tự động",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Scenario 1: Happy path",
+              "detail": "Tạo contract → Tạo billing milestone → Update milestone status='paid' → Kiểm tra: revenue_entry được tạo, dept_revenue_allocations được tạo, UI hiển thị đúng"
+            },
+            {
+              "step": 2,
+              "action": "Scenario 2: Idempotency",
+              "detail": "Update milestone paid 2 lần → chỉ có 1 revenue_entry"
+            },
+            {
+              "step": 3,
+              "action": "Scenario 3: Rollback",
+              "detail": "Update milestone từ paid → invoiced (rollback) → revenue_entry vẫn tồn tại nhưng cần cơ chế xử lý? Xác định business rule"
+            },
+            {
+              "step": 4,
+              "action": "Scenario 4: Multi-department project",
+              "detail": "Project với 3 phòng ban → billing paid → kiểm tra 3 dept_revenue_allocations với đúng tỷ lệ và tổng = amount"
+            }
+          ]
+        },
+        {
+          "task_id": "P4-T2",
+          "title": "Integration test: Acceptance → Revenue",
+          "estimated_hours": 8,
+          "priority": "CRITICAL",
+          "depends_on": ["P3-T2"],
+          "status": "pending",
+          "description": "Test end-to-end luồng nghiệm thu tạo doanh thu tự động",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Scenario 1: Nghiệm thu + Thanh toán",
+              "detail": "Tạo task review → Đánh giá KPI → Cập nhật payment_status='paid' → Kiểm tra revenue_entry"
+            },
+            {
+              "step": 2,
+              "action": "Scenario 2: Chỉ nghiệm thu, chưa thanh toán",
+              "detail": "Đánh giá KPI nhưng không cập nhật payment → KHÔNG tạo revenue_entry"
+            },
+            {
+              "step": 3,
+              "action": "Scenario 3: Thanh toán trước, nghiệm thu sau",
+              "detail": "Payment paid → KPI evaluation → Kiểm tra revenue_entry được tạo khi cả 2 điều kiện thỏa mãn"
+            }
+          ]
+        },
+        {
+          "task_id": "P4-T3",
+          "title": "Integration test: Addendum → Adjustment",
+          "estimated_hours": 6,
+          "priority": "HIGH",
+          "depends_on": ["P3-T2"],
+          "status": "pending",
+          "description": "Test end-to-end luồng phụ lục hợp đồng tạo điều chỉnh",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Scenario 1: Tăng giá trị HĐ",
+              "detail": "Tạo addendum value_change = +100M → Kiểm tra: revenue_adjustments created, revenue_entry draft created, contract_value updated"
+            },
+            {
+              "step": 2,
+              "action": "Scenario 2: Giảm giá trị HĐ",
+              "detail": "Tạo addendum value_change = -50M → Kiểm tra: adjustment với negative amount, entry âm"
+            },
+            {
+              "step": 3,
+              "action": "Scenario 3: Confirm entry điều chỉnh",
+              "detail": "Từ Scenario 1 → Admin confirm entry draft → status='confirmed'. Dashboard cập nhật tổng doanh thu"
+            }
+          ]
+        },
+        {
+          "task_id": "P4-T4",
+          "title": "Data migration cho dữ liệu hiện tại",
+          "estimated_hours": 6,
+          "priority": "HIGH",
+          "depends_on": ["P1-T5"],
+          "status": "pending",
+          "description": "Chuyển dữ liệu doanh thu hiện tại sang schema mới an toàn",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Backup dữ liệu hiện tại",
+              "detail": "pg_dump bảng revenue_entries, internal_revenue, cost_entries"
+            },
+            {
+              "step": 2,
+              "action": "Update revenue_entries cũ",
+              "detail": "SET status = 'confirmed' WHERE status IS NULL. SET recognition_date = COALESCE(period_start, created_at::date). Kiểm tra không có dữ liệu bị mất"
+            },
+            {
+              "step": 3,
+              "action": "Tạo dept_revenue_allocations cho entries cũ",
+              "detail": "Với mỗi revenue_entry có project_id → chạy fn_allocate_dept_revenue(). Script migration riêng"
+            },
+            {
+              "step": 4,
+              "action": "Verify data integrity",
+              "detail": "Kiểm tra: COUNT entries trước = sau. SUM amounts khớp. Không có orphaned records"
+            }
+          ]
+        },
+        {
+          "task_id": "P4-T5",
+          "title": "UAT - Kiểm thử người dùng",
+          "estimated_hours": 12,
+          "priority": "HIGH",
+          "depends_on": ["P4-T1", "P4-T2", "P4-T3", "P4-T4"],
+          "status": "pending",
+          "description": "Kiểm thử với người dùng thực tế và dữ liệu thực",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Chuẩn bị test environment",
+              "detail": "Deploy lên staging. Import dữ liệu thực (anonymized nếu cần). Tạo test accounts cho các role"
+            },
+            {
+              "step": 2,
+              "action": "Test case cho Admin/Leader",
+              "detail": "Tạo revenue thủ công → Confirm → Xem dashboard → Xem báo cáo → Export. Tạo contract → billing milestone → paid → kiểm tra tự động"
+            },
+            {
+              "step": 3,
+              "action": "Test case cho Director",
+              "detail": "Xem doanh thu phòng ban mình quản lý. Xem phân bổ. Xem báo cáo theo kỳ"
+            },
+            {
+              "step": 4,
+              "action": "Test case cho Head phòng ban",
+              "detail": "Xem doanh thu phân bổ cho phòng ban. Xem chi tiết theo dự án"
+            },
+            {
+              "step": 5,
+              "action": "Thu thập feedback",
+              "detail": "Ghi nhận issues, UX improvements, missing features. Phân loại: bug / enhancement / nice-to-have"
+            }
+          ]
+        },
+        {
+          "task_id": "P4-T6",
+          "title": "Bug fixes & UI polish",
+          "estimated_hours": 12,
+          "priority": "MEDIUM",
+          "depends_on": ["P4-T5"],
+          "status": "pending",
+          "description": "Sửa lỗi từ UAT và tinh chỉnh UI/UX",
+          "steps": [
+            {
+              "step": 1,
+              "action": "Fix critical bugs từ UAT",
+              "detail": "Sửa các lỗi ảnh hưởng nghiệp vụ: sai số liệu, trigger không hoạt động, permission sai"
+            },
+            {
+              "step": 2,
+              "action": "UI polish",
+              "detail": "Responsive design, loading states, error states, empty states. Animation transitions. Consistent spacing và typography"
+            },
+            {
+              "step": 3,
+              "action": "Performance optimization",
+              "detail": "Kiểm tra query performance với dữ liệu lớn. Thêm index nếu cần. React Query cache optimization"
+            },
+            {
+              "step": 4,
+              "action": "Accessibility",
+              "detail": "Keyboard navigation, ARIA labels cho charts, color contrast cho status badges"
+            }
+          ]
+        },
+        {
+          "task_id": "P4-T7",
+          "title": "Documentation",
+          "estimated_hours": 6,
+          "priority": "LOW",
+          "depends_on": ["P4-T6"],
+          "status": "pending",
+          "description": "Tài liệu hướng dẫn sử dụng và kỹ thuật",
+          "steps": [
+            {
+              "step": 1,
+              "action": "User guide",
+              "detail": "Hướng dẫn sử dụng cho end-users: Cách ghi nhận doanh thu, Cách xem báo cáo, Cách quản lý SP/DV, Giải thích các phương pháp ghi nhận"
+            },
+            {
+              "step": 2,
+              "action": "Technical documentation",
+              "detail": "Mô tả triggers và functions, Data flow diagrams, API documentation, Database schema changes"
+            },
+            {
+              "step": 3,
+              "action": "Migration guide",
+              "detail": "Hướng dẫn chạy migration cho production. Rollback plan. Checklist deploy"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+
+  "dependency_graph": {
+    "description": "Thứ tự thực hiện tasks dựa trên dependencies",
+    "critical_path": [
+      "P1-T1 → P1-T2 → P1-T5 → P1-T6 → P2-T1 → P2-T2 → P2-T6 → P3-T2 → P4-T1 → P4-T5 → P4-T6",
+      "P1-T1 → P1-T3 → P1-T8",
+      "P1-T1 → P1-T4 → P1-T9"
+    ],
+    "parallel_opportunities": [
+      {
+        "group": "P1 Tables (có thể làm song song)",
+        "tasks": ["P1-T2", "P1-T3", "P1-T4"],
+        "note": "3 bảng mới độc lập, chỉ phụ thuộc P1-T1 (enums)"
+      },
+      {
+        "group": "P1 Functions (có thể làm song song)",
+        "tasks": ["P1-T6", "P1-T7", "P1-T8"],
+        "note": "3 trigger functions độc lập, đều phụ thuộc P1-T5"
+      },
+      {
+        "group": "P2 APIs (có thể làm song song)",
+        "tasks": ["P2-T2", "P2-T3", "P2-T4", "P2-T5"],
+        "note": "Các API routes độc lập, đều phụ thuộc P2-T1"
+      },
+      {
+        "group": "P3 Pages (có thể làm song song)",
+        "tasks": ["P3-T3", "P3-T4", "P3-T5", "P3-T6"],
+        "note": "Các trang mới độc lập, đều phụ thuộc P2-T6"
+      },
+      {
+        "group": "P4 Tests (có thể làm song song)",
+        "tasks": ["P4-T1", "P4-T2", "P4-T3"],
+        "note": "Các luồng test độc lập"
+      }
+    ]
+  },
+
+  "summary": {
+    "total_tasks": 45,
+    "by_phase": {
+      "P1_Database": { "tasks": 11, "days": 12.5 },
+      "P2_API": { "tasks": 6, "days": 7 },
+      "P3_Frontend": { "tasks": 7, "days": 11 },
+      "P4_Testing": { "tasks": 7, "days": 8 }
+    },
+    "by_priority": {
+      "CRITICAL": ["P1-T6", "P1-T7", "P4-T1", "P4-T2"],
+      "HIGH": ["P1-T2", "P1-T3", "P1-T4", "P1-T5", "P1-T8", "P1-T9", "P1-T10", "P2-T1", "P2-T2", "P2-T3", "P2-T6", "P3-T2", "P3-T3", "P4-T3", "P4-T4", "P4-T5"],
+      "MEDIUM": ["P1-T11", "P2-T4", "P2-T5", "P3-T1", "P3-T4", "P3-T5", "P3-T6", "P4-T6"],
+      "LOW": ["P3-T7", "P4-T7"]
+    },
+    "new_files_to_create": [
+      "supabase/migrations/20260101000008_revenue_enhanced.sql",
+      "src/app/api/revenue/route.ts",
+      "src/app/api/revenue/[id]/route.ts",
+      "src/app/api/revenue/[id]/confirm/route.ts",
+      "src/app/api/revenue/[id]/cancel/route.ts",
+      "src/app/api/revenue/summary/route.ts",
+      "src/app/api/revenue/by-project/[id]/route.ts",
+      "src/app/api/revenue/by-department/route.ts",
+      "src/app/api/revenue/by-period/route.ts",
+      "src/app/api/revenue/forecast/route.ts",
+      "src/app/api/revenue/adjustments/route.ts",
+      "src/app/api/product-services/route.ts",
+      "src/app/api/product-services/[id]/route.ts",
+      "src/app/api/cron/revenue-completion/route.ts",
+      "src/app/api/cron/revenue-time-based/route.ts",
+      "src/app/api/cron/revenue-overdue-check/route.ts",
+      "src/features/revenue/hooks/use-revenue-analytics.ts",
+      "src/features/revenue/hooks/use-revenue-adjustments.ts",
+      "src/features/revenue/hooks/use-product-services.ts",
+      "src/features/revenue/hooks/use-dept-revenue.ts",
+      "src/features/revenue/components/revenue-summary-cards.tsx",
+      "src/features/revenue/components/revenue-charts.tsx",
+      "src/features/revenue/components/revenue-table.tsx",
+      "src/features/revenue/components/revenue-filters.tsx",
+      "src/features/revenue/components/project-revenue-progress.tsx",
+      "src/features/revenue/components/dept-allocation-chart.tsx",
+      "src/features/revenue/components/adjustment-timeline.tsx",
+      "src/app/(dashboard)/projects/[id]/revenue/page.tsx",
+      "src/app/(dashboard)/revenue/departments/page.tsx",
+      "src/app/(dashboard)/revenue/reports/page.tsx",
+      "src/app/(dashboard)/settings/product-services/page.tsx",
+      "src/features/revenue/utils/export-revenue.ts"
+    ],
+    "files_to_modify": [
+      "src/lib/types/enums.ts",
+      "src/lib/types/revenue.ts",
+      "src/lib/types/index.ts",
+      "src/lib/i18n/vi.ts",
+      "src/lib/i18n/en.ts",
+      "src/features/revenue/hooks/use-revenue.ts",
+      "src/features/revenue/index.ts",
+      "src/lib/hooks/use-revenue.ts",
+      "src/app/(dashboard)/revenue/page.tsx",
+      "src/app/(dashboard)/projects/[id]/layout.tsx",
+      "src/app/api/reports/export/route.ts",
+      "vercel.json"
+    ]
+  }
+}
