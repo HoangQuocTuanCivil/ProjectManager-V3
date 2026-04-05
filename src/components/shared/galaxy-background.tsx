@@ -2,105 +2,66 @@
 
 import { useEffect, useRef } from "react";
 
-/**
- * Animated galaxy background — a glowing central sphere with
- * orbiting rings and scattered star particles.
- *
- * Performance optimizations:
- * - Throttled to ~30fps via FRAME_INTERVAL
- * - Pauses when tab is hidden
- * - Uses pre-calculated orbital paths (sin/cos cached per frame)
- * - Single canvas, no DOM thrashing
- * - Clean cleanup on unmount
- */
+const FRAME_INTERVAL = 33;
+const STAR_COUNT = 10000;
+const BRANCHES = 3;
+const SPIN = 1;
+const RANDOMNESS = 0.2;
+const RANDOMNESS_POWER = 3;
+const BASE_SIZE = 0.8;
+const ROTATION_SPEED = 0.002;
+const CORE_RATIO = 0.2;
 
-// ─── Tuning constants ──────────────────────────────────────────
-const FRAME_INTERVAL = 33; // ~30fps
-const STAR_COUNT = 280; // background stars
-const RING_PARTICLE_COUNT = 260; // particles along orbital rings
-const RING_COUNT = 4; // number of orbital ellipses
-const ROTATION_SPEED = 0.0003; // radians per frame — slow majestic spin
-/** Global opacity multiplier — keeps galaxy subtle, matching particle network */
-const OPACITY_SCALE = 0.45;
-
-// ─── Types ─────────────────────────────────────────────────────
-interface Star {
-  x: number; // normalized 0..1
+interface GalaxyStar {
+  x: number;
   y: number;
   size: number;
-  brightness: number;
-  twinkleSpeed: number;
-  twinkleOffset: number;
-  /** 0 = white/blue, 1 = warm accent (orange/gold) */
-  warm: boolean;
+  distance: number;
+  colorMix: number;
 }
 
-interface RingParticle {
-  /** Angle on the ellipse (radians) */
-  angle: number;
-  /** Which ring (index) this particle belongs to */
-  ring: number;
-  size: number;
-  brightness: number;
-  /** Speed multiplier — slight variation keeps it organic */
-  speedMul: number;
+function lerpColor(
+  r1: number, g1: number, b1: number,
+  r2: number, g2: number, b2: number,
+  t: number
+): [number, number, number] {
+  return [
+    r1 + (r2 - r1) * t,
+    g1 + (g2 - g1) * t,
+    b1 + (b2 - b1) * t,
+  ];
 }
 
-interface Ring {
-  /** Semi-major axis as fraction of galaxy radius */
-  a: number;
-  /** Semi-minor axis (controls tilt perspective) */
-  b: number;
-  /** Rotation offset of this ring (radians) */
-  tilt: number;
-  /** Base opacity */
-  opacity: number;
-}
+function generateStars(radius: number): GalaxyStar[] {
+  const stars: GalaxyStar[] = [];
 
-// ─── Ring definitions ──────────────────────────────────────────
-const RINGS: Ring[] = [
-  { a: 1.0, b: 0.28, tilt: 0, opacity: 0.6 },
-  { a: 1.35, b: 0.38, tilt: 0.12, opacity: 0.45 },
-  { a: 1.7, b: 0.48, tilt: -0.08, opacity: 0.3 },
-  { a: 2.1, b: 0.58, tilt: 0.18, opacity: 0.18 },
-];
-
-// ─── Helpers ───────────────────────────────────────────────────
-function rand(min: number, max: number) {
-  return Math.random() * (max - min) + min;
-}
-
-function createStars(): Star[] {
-  const stars: Star[] = [];
   for (let i = 0; i < STAR_COUNT; i++) {
+    const r = Math.random() * radius;
+    const spinAngle = r * SPIN;
+    const branchAngle = ((i % BRANCHES) / BRANCHES) * Math.PI * 2;
+
+    const scatter = (axis: number) => {
+      void axis;
+      return (
+        Math.pow(Math.random(), RANDOMNESS_POWER) *
+        (Math.random() < 0.5 ? 1 : -1) *
+        RANDOMNESS *
+        r
+      );
+    };
+
     stars.push({
-      x: Math.random(),
-      y: Math.random(),
-      size: rand(0.4, 2.0),
-      brightness: rand(0.3, 1.0),
-      twinkleSpeed: rand(0.002, 0.008),
-      twinkleOffset: rand(0, Math.PI * 2),
-      warm: Math.random() < 0.12, // ~12% warm-colored stars
+      x: Math.cos(branchAngle + spinAngle) * r + scatter(0),
+      y: Math.sin(branchAngle + spinAngle) * r + scatter(1),
+      size: Math.random() * BASE_SIZE,
+      distance: r,
+      colorMix: r / radius,
     });
   }
+
   return stars;
 }
 
-function createRingParticles(): RingParticle[] {
-  const particles: RingParticle[] = [];
-  for (let i = 0; i < RING_PARTICLE_COUNT; i++) {
-    particles.push({
-      angle: rand(0, Math.PI * 2),
-      ring: Math.floor(rand(0, RING_COUNT)),
-      size: rand(0.6, 2.2),
-      brightness: rand(0.4, 1.0),
-      speedMul: rand(0.7, 1.3),
-    });
-  }
-  return particles;
-}
-
-// ─── Component ─────────────────────────────────────────────────
 export function GalaxyBackground({ className }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -113,15 +74,12 @@ export function GalaxyBackground({ className }: { className?: string }) {
     let destroyed = false;
     let animFrame = 0;
     let lastTime = 0;
-    let globalAngle = 0;
-
+    let angle = 0;
     let width = 0;
     let height = 0;
+    let stars: GalaxyStar[] = [];
+    let galaxyRadius = 0;
 
-    const stars = createStars();
-    const ringParticles = createRingParticles();
-
-    // ── Resize handler ───────────────────────────────────────
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -130,131 +88,10 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       width = rect.width;
       height = rect.height;
+      galaxyRadius = Math.min(width, height) * 0.4;
+      stars = generateStars(galaxyRadius);
     };
 
-    // ── Draw the central glowing sphere ──────────────────────
-    const drawCore = (cx: number, cy: number, r: number) => {
-      const os = OPACITY_SCALE;
-
-      // Outer glow (large soft radial)
-      const outerGlow = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 2.8);
-      outerGlow.addColorStop(0, `hsla(210, 100%, 70%, ${0.25 * os})`);
-      outerGlow.addColorStop(0.3, `hsla(210, 100%, 60%, ${0.08 * os})`);
-      outerGlow.addColorStop(1, "hsla(210, 100%, 60%, 0)");
-      ctx.fillStyle = outerGlow;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * 2.8, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Mid glow
-      const midGlow = ctx.createRadialGradient(cx, cy, r * 0.05, cx, cy, r * 1.5);
-      midGlow.addColorStop(0, `hsla(200, 100%, 80%, ${0.5 * os})`);
-      midGlow.addColorStop(0.5, `hsla(213, 94%, 60%, ${0.15 * os})`);
-      midGlow.addColorStop(1, "hsla(213, 94%, 60%, 0)");
-      ctx.fillStyle = midGlow;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * 1.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Sphere body
-      const sphere = ctx.createRadialGradient(
-        cx - r * 0.25,
-        cy - r * 0.25,
-        r * 0.05,
-        cx,
-        cy,
-        r
-      );
-      sphere.addColorStop(0, `hsla(195, 100%, 85%, ${1.0 * os})`);
-      sphere.addColorStop(0.3, `hsla(210, 100%, 65%, ${0.95 * os})`);
-      sphere.addColorStop(0.7, `hsla(220, 90%, 45%, ${0.9 * os})`);
-      sphere.addColorStop(1, `hsla(230, 80%, 25%, ${0.85 * os})`);
-      ctx.fillStyle = sphere;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-    };
-
-    // ── Draw orbital ring line ───────────────────────────────
-    const drawRingLine = (
-      cx: number,
-      cy: number,
-      baseR: number,
-      ring: Ring,
-      angle: number
-    ) => {
-      const a = baseR * ring.a;
-      const b = baseR * ring.b;
-
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(ring.tilt + angle);
-
-      ctx.strokeStyle = `hsla(210, 80%, 65%, ${ring.opacity * 0.35 * OPACITY_SCALE})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, a, b, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.restore();
-    };
-
-    // ── Draw a single ring particle ──────────────────────────
-    const drawRingParticle = (
-      cx: number,
-      cy: number,
-      baseR: number,
-      p: RingParticle,
-      angle: number,
-      time: number
-    ) => {
-      const ring = RINGS[p.ring];
-      const a = baseR * ring.a;
-      const b = baseR * ring.b;
-      const theta = p.angle + angle * p.speedMul;
-
-      // Position on ellipse
-      const ex = Math.cos(theta) * a;
-      const ey = Math.sin(theta) * b;
-
-      // Rotate by ring tilt + global rotation
-      const cosT = Math.cos(ring.tilt + angle);
-      const sinT = Math.sin(ring.tilt + angle);
-      const px = cx + ex * cosT - ey * sinT;
-      const py = cy + ex * sinT + ey * cosT;
-
-      // Twinkle
-      const twinkle = 0.5 + 0.5 * Math.sin(time * 0.004 + p.angle * 3);
-      const alpha = p.brightness * twinkle * 0.9;
-
-      // Depth effect: particles at "back" of orbit are dimmer
-      const depthFade = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(theta));
-
-      ctx.fillStyle = `hsla(210, 90%, 75%, ${alpha * depthFade * OPACITY_SCALE})`;
-      ctx.beginPath();
-      ctx.arc(px, py, p.size * (0.6 + 0.4 * depthFade), 0, Math.PI * 2);
-      ctx.fill();
-    };
-
-    // ── Draw background stars ────────────────────────────────
-    const drawStars = (time: number) => {
-      for (const s of stars) {
-        const twinkle =
-          0.5 + 0.5 * Math.sin(time * s.twinkleSpeed + s.twinkleOffset);
-        const alpha = s.brightness * twinkle;
-
-        if (s.warm) {
-          ctx.fillStyle = `hsla(30, 90%, 65%, ${alpha * 0.8 * OPACITY_SCALE})`;
-        } else {
-          ctx.fillStyle = `hsla(215, 60%, 80%, ${alpha * 0.7 * OPACITY_SCALE})`;
-        }
-        ctx.beginPath();
-        ctx.arc(s.x * width, s.y * height, s.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    };
-
-    // ── Main animation loop ──────────────────────────────────
     const animate = (timestamp: number) => {
       if (destroyed) return;
 
@@ -264,50 +101,42 @@ export function GalaxyBackground({ className }: { className?: string }) {
       }
       lastTime = timestamp;
 
-      globalAngle += ROTATION_SPEED;
-
       ctx.clearRect(0, 0, width, height);
 
-      // Galaxy center position — fills entire viewport
-      const cx = width * 0.5;
-      const cy = height * 0.48;
-      const baseR = Math.min(width, height) * 0.32;
+      ctx.save();
+      ctx.translate(width / 2, height / 2);
 
-      // 1. Background stars
-      drawStars(timestamp);
+      angle += ROTATION_SPEED;
+      ctx.rotate(angle);
 
-      // 2. Ring particles that are "behind" the sphere (back half)
-      for (const p of ringParticles) {
-        const ring = RINGS[p.ring];
-        const theta = p.angle + globalAngle * p.speedMul;
-        const depthVal = Math.sin(theta);
-        // Draw back-half particles first (depthVal < 0)
-        if (depthVal < 0) {
-          drawRingParticle(cx, cy, baseR, p, globalAngle, timestamp);
+      for (const star of stars) {
+        const t = star.colorMix;
+        const isCore = star.distance < galaxyRadius * CORE_RATIO;
+
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+
+        if (isCore) {
+          const coreAlpha = 0.7 + 0.3 * (1 - star.distance / (galaxyRadius * CORE_RATIO));
+          ctx.fillStyle = `rgba(255, 255, 255, ${coreAlpha})`;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "rgba(0, 255, 255, 0.6)";
+        } else {
+          const alpha = Math.max(0.05, 1 - t);
+          const [r, g, b] = lerpColor(0, 255, 255, 30, 0, 255, t);
+          ctx.fillStyle = `rgba(${r | 0}, ${g | 0}, ${b | 0}, ${alpha})`;
+          ctx.shadowBlur = 0;
         }
+
+        ctx.fill();
       }
 
-      // 3. Ring lines (behind sphere)
-      for (const ring of RINGS) {
-        drawRingLine(cx, cy, baseR, ring, globalAngle);
-      }
-
-      // 4. Central sphere
-      drawCore(cx, cy, baseR);
-
-      // 5. Ring particles in front of sphere (front half)
-      for (const p of ringParticles) {
-        const theta = p.angle + globalAngle * p.speedMul;
-        const depthVal = Math.sin(theta);
-        if (depthVal >= 0) {
-          drawRingParticle(cx, cy, baseR, p, globalAngle, timestamp);
-        }
-      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
 
       animFrame = requestAnimationFrame(animate);
     };
 
-    // ── Bootstrap ────────────────────────────────────────────
     resize();
     animFrame = requestAnimationFrame(animate);
 
