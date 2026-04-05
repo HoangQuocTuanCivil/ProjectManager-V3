@@ -20,4 +20,6 @@ export type RecognitionMethod = 'acceptance' | 'completion_rate' | 'time_based';
 export type RevenueSource = 'billing_milestone' | 'acceptance' | 'manual';
 export type InternalRevenueStatus = 'pending' | 'approved' | 'recorded';
 export type CostCategory = 'personnel' | 'survey' | 'procurement' | 'overhead';
+export type RevenueEntryStatus = 'draft' | 'confirmed' | 'adjusted' | 'cancelled';
+export type ProductServiceCategory = 'design' | 'consulting' | 'survey' | 'supervision' | 'other';
 export type SettingsTab = 'accounts' | 'roles' | 'depts' | 'teams' | 'workflows' | 'kpi' | 'templates' | 'notifications' | 'security';

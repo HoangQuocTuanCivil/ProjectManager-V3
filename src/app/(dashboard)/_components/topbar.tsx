@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore, useNotifStore } from "@/lib/stores";
 import { useSignOut } from "@/lib/hooks/use-users";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
-import { Search, Bell, Menu, Settings, LogOut, User, KeyRound, Building2, Users, Building, UsersRound, ShieldCheck, Target, FileText, Landmark } from "lucide-react";
+import { Search, Bell, Menu, Settings, LogOut, User, KeyRound, Building2, Users, Building, UsersRound, ShieldCheck, Target, FileText, Landmark, Package } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -90,6 +90,7 @@ function UserMenu() {
               { href: "/settings/roles", label: "Vai trò & Phân quyền", icon: <ShieldCheck size={15} />, roles: ["admin", "leader"] },
               { href: "/settings/kpi", label: "Cấu hình KPI", icon: <Target size={15} />, roles: ["admin", "leader"] },
               { href: "/settings/templates", label: "Mẫu công việc", icon: <FileText size={15} />, roles: ["admin", "leader", "head"] },
+              { href: "/settings/product-services", label: "Sản phẩm/Dịch vụ", icon: <Package size={15} />, roles: ["admin", "leader", "director"] },
             ]
               .filter((item) => user && item.roles.includes(user.role))
               .map((item) => (

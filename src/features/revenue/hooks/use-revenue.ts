@@ -6,7 +6,8 @@ const supabase = createClient();
 
 export const revenueKeys = {
   all: ["revenue"] as const,
-  entries: (filters?: { projectId?: string; dimension?: string }) => [...revenueKeys.all, "entries", filters] as const,
+  entries: (filters?: Record<string, string | undefined>) => [...revenueKeys.all, "entries", filters] as const,
+  entry: (id: string) => [...revenueKeys.all, "entry", id] as const,
   internal: (filters?: { projectId?: string; deptId?: string }) => [...revenueKeys.all, "internal", filters] as const,
   costs: (filters?: { projectId?: string; category?: string }) => [...revenueKeys.all, "costs", filters] as const,
 };
@@ -18,21 +19,30 @@ async function getOrgId() {
   return { userId: user!.id, orgId: profile.org_id };
 }
 
-/* ───── Revenue Entries (Doanh thu công ty) ────────────────────── */
+async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Request failed");
+  return json;
+}
 
-export function useRevenueEntries(filters?: { projectId?: string; dimension?: string }) {
+export function useRevenueEntries(filters?: {
+  status?: string; dimension?: string; project_id?: string; dept_id?: string;
+  date_from?: string; date_to?: string; search?: string;
+  page?: number; per_page?: number;
+}) {
   return useQuery({
-    queryKey: revenueKeys.entries(filters),
+    queryKey: revenueKeys.entries(filters as Record<string, string | undefined>),
     queryFn: async () => {
-      let query = supabase
-        .from("revenue_entries")
-        .select("*, project:projects(id, code, name), contract:contracts(id, contract_no, title), department:departments(id, name, code), creator:users!created_by(id, full_name)")
-        .order("created_at", { ascending: false });
-      if (filters?.projectId) query = query.eq("project_id", filters.projectId);
-      if (filters?.dimension) query = query.eq("dimension", filters.dimension);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as unknown as RevenueEntry[];
+      const params = new URLSearchParams();
+      if (filters) {
+        for (const [k, v] of Object.entries(filters)) {
+          if (v !== undefined && v !== "") params.set(k, String(v));
+        }
+      }
+      return apiFetch<{ data: RevenueEntry[]; count: number; page: number; per_page: number }>(
+        `/api/revenue?${params}`
+      );
     },
   });
 }
@@ -40,15 +50,25 @@ export function useRevenueEntries(filters?: { projectId?: string; dimension?: st
 export function useCreateRevenueEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: Omit<RevenueEntry, 'id' | 'org_id' | 'created_by' | 'created_at' | 'updated_at' | 'project' | 'contract' | 'department' | 'creator'>) => {
-      const { userId, orgId } = await getOrgId();
-      const { data, error } = await supabase
-        .from("revenue_entries")
-        .insert({ ...input, org_id: orgId, created_by: userId })
-        .select().single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (input: Omit<RevenueEntry, 'id' | 'org_id' | 'created_by' | 'created_at' | 'updated_at' | 'project' | 'contract' | 'department' | 'creator' | 'product_service' | 'addendum' | 'original_entry'>) =>
+      apiFetch<RevenueEntry>("/api/revenue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+  });
+}
+
+export function useUpdateRevenueEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...updates }: { id: string } & Partial<RevenueEntry>) =>
+      apiFetch<RevenueEntry>(`/api/revenue/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
   });
 }
@@ -56,15 +76,28 @@ export function useCreateRevenueEntry() {
 export function useDeleteRevenueEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("revenue_entries").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => apiFetch(`/api/revenue/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
   });
 }
 
-/* ───── Internal Revenue (Doanh thu nội bộ) ────────────────────── */
+export function useConfirmRevenueEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/revenue/${id}/confirm`, { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+  });
+}
+
+export function useCancelRevenueEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/revenue/${id}/cancel`, { method: "POST" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+  });
+}
+
+/* ───── Internal Revenue ──────────────────────────────────────── */
 
 export function useInternalRevenue(filters?: { projectId?: string; deptId?: string }) {
   return useQuery({
@@ -126,7 +159,7 @@ export function useDeleteInternalRevenue() {
   });
 }
 
-/* ───── Cost Entries (Chi phí) ─────────────────────────────────── */
+/* ───── Cost Entries ──────────────────────────────────────────── */
 
 export function useCostEntries(filters?: { projectId?: string; category?: string }) {
   return useQuery({

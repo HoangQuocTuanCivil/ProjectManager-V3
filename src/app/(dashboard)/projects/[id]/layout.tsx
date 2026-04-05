@@ -13,6 +13,7 @@ const PROJECT_TABS = [
   { href: "/milestones", label: "Milestones", icon: "◆" },
   { href: "/acceptance", label: "Nghiệm thu", icon: "✅" },
   { href: "/allocation", label: "Chia khoán", icon: "💰" },
+  { href: "/revenue", label: "Doanh thu", icon: "📈" },
   { href: "/settings", label: "Cài đặt", icon: "⚙️" },
 ];
 

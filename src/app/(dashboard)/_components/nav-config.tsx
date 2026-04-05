@@ -47,8 +47,10 @@ export const NAV_ITEMS: NavItemConfig[] = [
     tKey: "revenue",
     children: [
       { href: "/revenue", tKey: "companyRevenue" },
+      { href: "/revenue/departments", tKey: "deptAllocation" },
       { href: "/revenue/internal", tKey: "internalRevenue" },
       { href: "/revenue/costs", tKey: "costs" },
+      { href: "/reports", tKey: "reports" },
     ],
   },
   { href: "/goals", icon: <Rocket size={20} />, tKey: "goals" },
@@ -68,6 +70,7 @@ export const PAGE_TITLE_KEYS: Record<string, string> = {
   "/revenue": "revenueManagement",
   "/revenue/internal": "revenueManagement",
   "/revenue/costs": "revenueManagement",
+  "/revenue/departments": "revenueManagement",
   "/goals": "goalsOkr",
   "/workflows": "workflowApproval",
   "/reports": "reports",

@@ -15,13 +15,40 @@ export type Database = {
   public: {
     Tables: {
       revenue_entries: {
-        Row: { id: string; org_id: string; project_id: string | null; contract_id: string | null; dept_id: string | null; dimension: string; method: string; source: string; source_id: string | null; amount: number; description: string; period_start: string | null; period_end: string | null; notes: string | null; created_by: string; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; org_id: string; project_id?: string | null; contract_id?: string | null; dept_id?: string | null; dimension?: string; method?: string; source?: string; source_id?: string | null; amount?: number; description: string; period_start?: string | null; period_end?: string | null; notes?: string | null; created_by: string; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; org_id?: string; project_id?: string | null; contract_id?: string | null; dept_id?: string | null; dimension?: string; method?: string; source?: string; source_id?: string | null; amount?: number; description?: string; period_start?: string | null; period_end?: string | null; notes?: string | null; created_by?: string; created_at?: string | null; updated_at?: string | null }
+        Row: { id: string; org_id: string; project_id: string | null; contract_id: string | null; dept_id: string | null; dimension: string; method: string; source: string; source_id: string | null; amount: number; description: string; period_start: string | null; period_end: string | null; notes: string | null; product_service_id: string | null; addendum_id: string | null; recognition_date: string; status: string; completion_percentage: number | null; original_entry_id: string | null; created_by: string; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; org_id: string; project_id?: string | null; contract_id?: string | null; dept_id?: string | null; dimension?: string; method?: string; source?: string; source_id?: string | null; amount?: number; description: string; period_start?: string | null; period_end?: string | null; notes?: string | null; product_service_id?: string | null; addendum_id?: string | null; recognition_date?: string; status?: string; completion_percentage?: number | null; original_entry_id?: string | null; created_by: string; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; org_id?: string; project_id?: string | null; contract_id?: string | null; dept_id?: string | null; dimension?: string; method?: string; source?: string; source_id?: string | null; amount?: number; description?: string; period_start?: string | null; period_end?: string | null; notes?: string | null; product_service_id?: string | null; addendum_id?: string | null; recognition_date?: string; status?: string; completion_percentage?: number | null; original_entry_id?: string | null; created_by?: string; created_at?: string | null; updated_at?: string | null }
         Relationships: [
           { foreignKeyName: "revenue_entries_org_id_fkey"; columns: ["org_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
           { foreignKeyName: "revenue_entries_project_id_fkey"; columns: ["project_id"]; isOneToOne: false; referencedRelation: "projects"; referencedColumns: ["id"] },
           { foreignKeyName: "revenue_entries_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "users"; referencedColumns: ["id"] },
+        ]
+      }
+      product_services: {
+        Row: { id: string; org_id: string; code: string; name: string; category: string; unit_price: number; description: string | null; is_active: boolean; created_at: string; updated_at: string }
+        Insert: { id?: string; org_id: string; code: string; name: string; category?: string; unit_price?: number; description?: string | null; is_active?: boolean; created_at?: string; updated_at?: string }
+        Update: { id?: string; org_id?: string; code?: string; name?: string; category?: string; unit_price?: number; description?: string | null; is_active?: boolean; created_at?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "product_services_org_id_fkey"; columns: ["org_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+        ]
+      }
+      revenue_adjustments: {
+        Row: { id: string; org_id: string; contract_id: string; addendum_id: string; revenue_entry_id: string | null; old_amount: number; new_amount: number; adjustment_amount: number; reason: string; adjusted_by: string; created_at: string }
+        Insert: { id?: string; org_id: string; contract_id: string; addendum_id: string; revenue_entry_id?: string | null; old_amount?: number; new_amount?: number; reason: string; adjusted_by: string; created_at?: string }
+        Update: { id?: string; org_id?: string; contract_id?: string; addendum_id?: string; revenue_entry_id?: string | null; old_amount?: number; new_amount?: number; reason?: string; adjusted_by?: string; created_at?: string }
+        Relationships: [
+          { foreignKeyName: "revenue_adjustments_org_id_fkey"; columns: ["org_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+          { foreignKeyName: "revenue_adjustments_contract_id_fkey"; columns: ["contract_id"]; isOneToOne: false; referencedRelation: "contracts"; referencedColumns: ["id"] },
+          { foreignKeyName: "revenue_adjustments_addendum_id_fkey"; columns: ["addendum_id"]; isOneToOne: false; referencedRelation: "contract_addendums"; referencedColumns: ["id"] },
+        ]
+      }
+      dept_revenue_allocations: {
+        Row: { id: string; revenue_entry_id: string; dept_id: string; project_id: string | null; allocation_percentage: number; allocated_amount: number; notes: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; revenue_entry_id: string; dept_id: string; project_id?: string | null; allocation_percentage?: number; allocated_amount?: number; notes?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; revenue_entry_id?: string; dept_id?: string; project_id?: string | null; allocation_percentage?: number; allocated_amount?: number; notes?: string | null; created_at?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "dept_revenue_allocations_revenue_entry_id_fkey"; columns: ["revenue_entry_id"]; isOneToOne: false; referencedRelation: "revenue_entries"; referencedColumns: ["id"] },
+          { foreignKeyName: "dept_revenue_allocations_dept_id_fkey"; columns: ["dept_id"]; isOneToOne: false; referencedRelation: "departments"; referencedColumns: ["id"] },
         ]
       }
       internal_revenue: {
@@ -3430,6 +3457,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      fn_allocate_dept_revenue: {
+        Args: { p_entry_id: string }
+        Returns: undefined
+      }
       fn_allocate_smart: {
         Args: { p_period_id: string; p_use_actual?: boolean }
         Returns: Json
