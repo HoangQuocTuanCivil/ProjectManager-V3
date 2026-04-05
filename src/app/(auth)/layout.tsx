@@ -3,6 +3,7 @@
 import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
 import { ParticleNetwork } from "@/components/shared/particle-network";
+import { GalaxyBackground } from "@/components/shared/galaxy-background";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
@@ -12,8 +13,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* Animated particle network background */}
       <ParticleNetwork />
 
-      {/* Radial gradient overlay for depth */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(var(--primary)/0.08),transparent_60%)]" />
+      {/* Animated galaxy overlay */}
+      <GalaxyBackground />
 
       {/* Theme toggle — uses same Lucide icons as dashboard topbar */}
       <button

@@ -1,0 +1,702 @@
+{
+  "plan": {
+    "title": "Kế hoạch triển khai Hệ thống Ghi nhận Doanh thu",
+    "project": "A2Z WorkHub",
+    "version": "1.0",
+    "created_date": "2026-04-05",
+    "total_estimated_days": 38.5,
+    "total_weeks": 6
+  },
+
+  "current_state": {
+    "existing_tables": {
+      "revenue_entries": {
+        "status": "active",
+        "description": "Ghi nhận doanh thu công ty (chỉ hỗ trợ nhập thủ công)",
+        "dimensions": ["project", "contract", "period", "product_service"],
+        "methods": ["acceptance", "completion_rate", "time_based"],
+        "sources": ["billing_milestone", "acceptance", "manual"],
+        "gaps": [
+          "Chưa có tự động hóa từ Module 1 & Module 3",
+          "Chưa có trạng thái (status) cho bản ghi",
+          "Chưa có ngày ghi nhận kế toán (recognition_date)",
+          "Chưa liên kết sản phẩm/dịch vụ",
+          "Chưa có lịch sử điều chỉnh"
+        ]
+      },
+      "contracts": {
+        "status": "active",
+        "description": "Hợp đồng với khách hàng",
+        "key_fields": ["contract_value", "status", "signed_date", "project_id"]
+      },
+      "contract_addendums": {
+        "status": "active",
+        "description": "Phụ lục hợp đồng",
+        "key_fields": ["value_change", "new_end_date"],
+        "gaps": ["Chưa tích hợp với revenue khi thêm phụ lục"]
+      },
+      "billing_milestones": {
+        "status": "active",
+        "description": "Mốc thanh toán trong hợp đồng",
+        "statuses": ["upcoming", "invoiced", "paid", "overdue"],
+        "gaps": ["Chưa có trigger tự động tạo revenue khi status = paid"]
+      },
+      "tasks_acceptance": {
+        "status": "active",
+        "description": "Nghiệm thu hồ sơ thiết kế (dựa trên tasks)",
+        "kpi_dimensions": {
+          "volume": 0.40,
+          "quality": 0.30,
+          "difficulty": 0.20,
+          "ahead": 0.10
+        },
+        "payment_tracking": "Qua task.metadata (payment_status, payment_amount)",
+        "gaps": ["Chưa liên kết tự động với revenue_entries"]
+      },
+      "internal_revenue": {
+        "status": "active",
+        "description": "Doanh thu nội bộ (sản phẩm)"
+      },
+      "cost_entries": {
+        "status": "active",
+        "description": "Chi phí theo category"
+      }
+    }
+  },
+
+  "requirements": {
+    "multi_dimension_tracking": {
+      "description": "Ghi nhận doanh thu theo nhiều chiều quản trị",
+      "dimensions": [
+        {
+          "id": "project",
+          "name": "Theo Dự án",
+          "data_source": "projects, contracts, billing_milestones",
+          "current_status": "có sẵn, chưa tự động",
+          "action": "Thêm trigger tự động + trang /projects/[id]/revenue"
+        },
+        {
+          "id": "contract",
+          "name": "Theo Hợp đồng",
+          "data_source": "contracts, contract_addendums, billing_milestones",
+          "current_status": "có sẵn, chưa tự động",
+          "action": "Thêm trigger billing_milestone paid → revenue_entry"
+        },
+        {
+          "id": "period",
+          "name": "Theo Giai đoạn/Thời gian",
+          "data_source": "period_start, period_end trong revenue_entries",
+          "current_status": "cần bổ sung logic",
+          "action": "Thêm recognition_date + API group by tháng/quý/năm"
+        },
+        {
+          "id": "product_service",
+          "name": "Theo Sản phẩm/Dịch vụ",
+          "data_source": "Chưa có bảng product_services",
+          "current_status": "cần tạo mới",
+          "action": "Tạo bảng product_services + liên kết revenue_entries"
+        }
+      ]
+    },
+    "auto_update_sources": {
+      "description": "Doanh thu tự động cập nhật từ các module",
+      "sources": [
+        {
+          "id": "billing_milestone",
+          "name": "Mốc thanh toán trong hợp đồng (Module 1)",
+          "trigger_event": "billing_milestones.status → 'paid'",
+          "output": {
+            "dimension": "contract",
+            "method": "acceptance",
+            "source": "billing_milestone",
+            "amount_from": "billing_milestones.amount",
+            "links": ["contract_id", "project_id"]
+          }
+        },
+        {
+          "id": "acceptance",
+          "name": "Nghiệm thu hồ sơ thiết kế (Module 3)",
+          "trigger_event": "tasks.kpi_evaluated_at IS SET + metadata.payment_status = 'paid'",
+          "output": {
+            "dimension": "project",
+            "method": "acceptance",
+            "source": "acceptance",
+            "amount_from": "tasks.metadata.payment_amount",
+            "links": ["project_id"]
+          }
+        }
+      ]
+    },
+    "recognition_methods": {
+      "description": "Hỗ trợ nhiều phương pháp ghi nhận",
+      "methods": [
+        {
+          "id": "acceptance",
+          "name": "Theo nghiệm thu",
+          "description": "Ghi nhận 100% khi hồ sơ/sản phẩm được nghiệm thu đạt",
+          "use_case": "Dự án thiết kế, tư vấn",
+          "formula": "100% giá trị khi nghiệm thu đạt",
+          "automation": "Trigger từ Module 1 (billing paid) + Module 3 (acceptance paid)"
+        },
+        {
+          "id": "completion_rate",
+          "name": "Theo tỷ lệ hoàn thành",
+          "description": "Ghi nhận dần theo % hoàn thành công việc",
+          "use_case": "Dự án dài hạn, khảo sát",
+          "formula": "contract_value × overall_project_progress",
+          "automation": "Cron job hàng tuần tính chênh lệch"
+        },
+        {
+          "id": "time_based",
+          "name": "Theo thời gian",
+          "description": "Phân bổ đều theo tháng trong thời hạn HĐ",
+          "use_case": "Hợp đồng dịch vụ dài hạn",
+          "formula": "contract_value / số_tháng_hợp_đồng",
+          "automation": "Cron job đầu tháng tạo revenue entry"
+        }
+      ]
+    },
+    "dept_allocation": {
+      "description": "Phân bổ doanh thu cho phòng ban tham gia dự án",
+      "data_sources": ["project_departments", "dept_budget_allocations"],
+      "action": "Tạo bảng dept_revenue_allocations + function fn_allocate_dept_revenue()"
+    },
+    "adjustment_history": {
+      "description": "Lưu lịch sử điều chỉnh doanh thu khi có phụ lục hợp đồng",
+      "trigger": "INSERT vào contract_addendums",
+      "action": "Tạo bảng revenue_adjustments + trigger trg_addendum_created"
+    }
+  },
+
+  "database_changes": {
+    "new_tables": [
+      {
+        "name": "product_services",
+        "description": "Danh mục sản phẩm/dịch vụ",
+        "columns": [
+          { "name": "id", "type": "UUID", "constraint": "PK, DEFAULT gen_random_uuid()" },
+          { "name": "org_id", "type": "UUID", "constraint": "FK → organizations, NOT NULL" },
+          { "name": "code", "type": "TEXT", "constraint": "UNIQUE(org_id, code), NOT NULL" },
+          { "name": "name", "type": "TEXT", "constraint": "NOT NULL" },
+          { "name": "category", "type": "product_service_category ENUM", "constraint": "NOT NULL", "values": ["design", "consulting", "survey", "supervision", "other"] },
+          { "name": "unit_price", "type": "NUMERIC(15,0)", "constraint": "DEFAULT 0" },
+          { "name": "description", "type": "TEXT", "constraint": "nullable" },
+          { "name": "is_active", "type": "BOOLEAN", "constraint": "DEFAULT true" },
+          { "name": "created_at", "type": "TIMESTAMPTZ", "constraint": "DEFAULT NOW()" },
+          { "name": "updated_at", "type": "TIMESTAMPTZ", "constraint": "DEFAULT NOW()" }
+        ],
+        "indexes": [
+          "idx_ps_org ON product_services(org_id, is_active)",
+          "idx_ps_category ON product_services(org_id, category)"
+        ],
+        "rls": "org_id = user_org_id(); admin/leader/director for mutations"
+      },
+      {
+        "name": "revenue_adjustments",
+        "description": "Lịch sử điều chỉnh doanh thu khi có phụ lục HĐ",
+        "columns": [
+          { "name": "id", "type": "UUID", "constraint": "PK, DEFAULT gen_random_uuid()" },
+          { "name": "org_id", "type": "UUID", "constraint": "FK → organizations, NOT NULL" },
+          { "name": "revenue_entry_id", "type": "UUID", "constraint": "FK → revenue_entries, nullable" },
+          { "name": "contract_id", "type": "UUID", "constraint": "FK → contracts, NOT NULL" },
+          { "name": "addendum_id", "type": "UUID", "constraint": "FK → contract_addendums, NOT NULL" },
+          { "name": "old_amount", "type": "NUMERIC(15,0)", "constraint": "NOT NULL" },
+          { "name": "new_amount", "type": "NUMERIC(15,0)", "constraint": "NOT NULL" },
+          { "name": "adjustment_amount", "type": "NUMERIC(15,0)", "constraint": "GENERATED ALWAYS AS (new_amount - old_amount) STORED" },
+          { "name": "reason", "type": "TEXT", "constraint": "NOT NULL" },
+          { "name": "adjusted_by", "type": "UUID", "constraint": "FK → users, NOT NULL" },
+          { "name": "created_at", "type": "TIMESTAMPTZ", "constraint": "DEFAULT NOW()" }
+        ],
+        "indexes": [
+          "idx_ra_contract ON revenue_adjustments(contract_id, created_at DESC)",
+          "idx_ra_entry ON revenue_adjustments(revenue_entry_id) WHERE revenue_entry_id IS NOT NULL",
+          "idx_ra_addendum ON revenue_adjustments(addendum_id)"
+        ],
+        "rls": "org_id = user_org_id(); admin/leader/director for mutations"
+      },
+      {
+        "name": "dept_revenue_allocations",
+        "description": "Phân bổ doanh thu cho phòng ban tham gia dự án",
+        "columns": [
+          { "name": "id", "type": "UUID", "constraint": "PK, DEFAULT gen_random_uuid()" },
+          { "name": "org_id", "type": "UUID", "constraint": "FK → organizations, NOT NULL" },
+          { "name": "revenue_entry_id", "type": "UUID", "constraint": "FK → revenue_entries, NOT NULL" },
+          { "name": "project_id", "type": "UUID", "constraint": "FK → projects, NOT NULL" },
+          { "name": "dept_id", "type": "UUID", "constraint": "FK → departments, NOT NULL" },
+          { "name": "allocation_percentage", "type": "NUMERIC(5,2)", "constraint": "NOT NULL, CHECK (0 <= val <= 100)" },
+          { "name": "allocated_amount", "type": "NUMERIC(15,0)", "constraint": "NOT NULL" },
+          { "name": "created_at", "type": "TIMESTAMPTZ", "constraint": "DEFAULT NOW()" }
+        ],
+        "indexes": [
+          "idx_dra_entry ON dept_revenue_allocations(revenue_entry_id)",
+          "idx_dra_dept ON dept_revenue_allocations(dept_id, created_at DESC)",
+          "idx_dra_project ON dept_revenue_allocations(project_id)"
+        ],
+        "rls": "org_id = user_org_id(); admin/leader/director for mutations"
+      }
+    ],
+    "alter_revenue_entries": {
+      "description": "Bổ sung cột cho bảng revenue_entries hiện tại",
+      "new_columns": [
+        {
+          "name": "product_service_id",
+          "type": "UUID",
+          "constraint": "FK → product_services, nullable",
+          "purpose": "Liên kết sản phẩm/dịch vụ cho chiều SP/DV"
+        },
+        {
+          "name": "addendum_id",
+          "type": "UUID",
+          "constraint": "FK → contract_addendums, nullable",
+          "purpose": "Liên kết phụ lục khi bản ghi là điều chỉnh"
+        },
+        {
+          "name": "recognition_date",
+          "type": "DATE",
+          "constraint": "NOT NULL DEFAULT CURRENT_DATE",
+          "purpose": "Ngày ghi nhận kế toán (khác created_at)"
+        },
+        {
+          "name": "status",
+          "type": "revenue_entry_status ENUM",
+          "constraint": "NOT NULL DEFAULT 'draft'",
+          "values": ["draft", "confirmed", "adjusted", "cancelled"],
+          "purpose": "Trạng thái bản ghi để kiểm soát quy trình"
+        },
+        {
+          "name": "completion_percentage",
+          "type": "NUMERIC(5,2)",
+          "constraint": "nullable",
+          "purpose": "% hoàn thành (cho method = completion_rate)"
+        },
+        {
+          "name": "original_entry_id",
+          "type": "UUID",
+          "constraint": "FK → revenue_entries (self-ref), nullable",
+          "purpose": "Bản ghi gốc khi đây là bản điều chỉnh"
+        }
+      ],
+      "new_indexes": [
+        "idx_revenue_status ON revenue_entries(org_id, status, recognition_date DESC)",
+        "idx_revenue_product ON revenue_entries(product_service_id) WHERE product_service_id IS NOT NULL",
+        "idx_revenue_recognition ON revenue_entries(recognition_date, dimension)",
+        "UNIQUE idx_revenue_source_unique ON revenue_entries(source, source_id) WHERE source_id IS NOT NULL"
+      ]
+    },
+    "new_enums": [
+      {
+        "name": "revenue_entry_status",
+        "values": ["draft", "confirmed", "adjusted", "cancelled"]
+      },
+      {
+        "name": "product_service_category",
+        "values": ["design", "consulting", "survey", "supervision", "other"]
+      }
+    ]
+  },
+
+  "automation": {
+    "triggers_and_functions": [
+      {
+        "id": "billing_to_revenue",
+        "function_name": "fn_revenue_from_billing",
+        "trigger_name": "trg_billing_paid",
+        "trigger_on": "billing_milestones",
+        "trigger_event": "AFTER UPDATE",
+        "trigger_condition": "NEW.status = 'paid' AND OLD.status != 'paid'",
+        "description": "Tự động tạo revenue_entry khi billing milestone được thanh toán",
+        "logic": [
+          "1. Lấy thông tin contract (project_id, contract_id)",
+          "2. Kiểm tra chưa có revenue_entry với source='billing_milestone' AND source_id=milestone.id",
+          "3. INSERT revenue_entries: dimension='contract', method='acceptance', source='billing_milestone'",
+          "4. amount = milestone.amount, recognition_date = milestone.paid_date",
+          "5. status = 'confirmed'",
+          "6. Gọi fn_allocate_dept_revenue() để phân bổ cho phòng ban"
+        ]
+      },
+      {
+        "id": "acceptance_to_revenue",
+        "function_name": "fn_revenue_from_acceptance",
+        "trigger_name": "trg_task_acceptance_paid",
+        "trigger_on": "tasks",
+        "trigger_event": "AFTER UPDATE",
+        "trigger_condition": "NEW.metadata->>'payment_status' = 'paid' AND (OLD.metadata->>'payment_status' IS DISTINCT FROM 'paid') AND NEW.kpi_evaluated_at IS NOT NULL",
+        "description": "Tự động tạo revenue_entry khi task nghiệm thu được thanh toán",
+        "logic": [
+          "1. Kiểm tra task có kpi_evaluated_at (đã nghiệm thu)",
+          "2. Kiểm tra metadata.payment_status = 'paid'",
+          "3. Kiểm tra chưa có revenue_entry với source='acceptance' AND source_id=task.id",
+          "4. INSERT revenue_entries: dimension='project', method='acceptance', source='acceptance'",
+          "5. amount = metadata.payment_amount, project_id = task.project_id",
+          "6. recognition_date = CURRENT_DATE, status = 'confirmed'"
+        ]
+      },
+      {
+        "id": "addendum_adjustment",
+        "function_name": "fn_revenue_adjustment",
+        "trigger_name": "trg_addendum_created",
+        "trigger_on": "contract_addendums",
+        "trigger_event": "AFTER INSERT",
+        "description": "Tạo bản ghi điều chỉnh doanh thu khi thêm phụ lục HĐ",
+        "logic": [
+          "1. Lấy contract hiện tại (contract_value trước thay đổi)",
+          "2. Tính new_value = contract.contract_value + addendum.value_change",
+          "3. INSERT revenue_adjustments: old_amount, new_amount, addendum_id, reason",
+          "4. UPDATE contracts SET contract_value = new_value",
+          "5. Nếu value_change > 0: tạo revenue_entry mới (status='draft') cho phần tăng thêm",
+          "6. Nếu value_change < 0: tạo revenue_entry với amount âm (điều chỉnh giảm)"
+        ]
+      },
+      {
+        "id": "dept_allocation",
+        "function_name": "fn_allocate_dept_revenue",
+        "trigger_name": null,
+        "description": "Phân bổ doanh thu cho các phòng ban tham gia dự án",
+        "logic": [
+          "1. Input: revenue_entry_id",
+          "2. Lấy project_id từ revenue_entry",
+          "3. Lấy danh sách phòng ban từ project_departments",
+          "4. Lấy tỷ lệ phân bổ từ dept_budget_allocations (nếu có)",
+          "5. Nếu không có tỷ lệ → chia đều cho các phòng ban",
+          "6. INSERT dept_revenue_allocations cho mỗi phòng ban",
+          "7. Cập nhật revenue_entries.dept_id = phòng ban chính (% cao nhất)"
+        ]
+      }
+    ],
+    "cron_jobs": [
+      {
+        "id": "revenue_completion_rate",
+        "endpoint": "/api/cron/revenue-completion",
+        "schedule": "Hàng tuần (Chủ nhật 2:00 AM)",
+        "description": "Tính doanh thu theo % hoàn thành cho các HĐ có method = completion_rate",
+        "logic": [
+          "1. Lấy tất cả contracts active có revenue method = completion_rate",
+          "2. Tính overall_progress từ tasks trong project",
+          "3. recognized_amount = contract_value × overall_progress",
+          "4. Tìm tổng revenue đã ghi nhận cho contract này (source=completion)",
+          "5. delta = recognized_amount - tổng_đã_ghi_nhận",
+          "6. Nếu delta > 0: INSERT revenue_entry mới với amount = delta",
+          "7. completion_percentage = overall_progress"
+        ]
+      },
+      {
+        "id": "revenue_time_based",
+        "endpoint": "/api/cron/revenue-time-based",
+        "schedule": "Đầu tháng (ngày 1, 3:00 AM)",
+        "description": "Phân bổ doanh thu đều theo tháng cho HĐ có method = time_based",
+        "logic": [
+          "1. Lấy tất cả contracts active có revenue method = time_based",
+          "2. total_months = DATEDIFF(months, start_date, end_date)",
+          "3. monthly_amount = contract_value / total_months",
+          "4. Kiểm tra chưa có revenue_entry cho tháng hiện tại",
+          "5. INSERT revenue_entry: amount = monthly_amount",
+          "6. period_start = đầu tháng, period_end = cuối tháng"
+        ]
+      },
+      {
+        "id": "revenue_overdue_check",
+        "endpoint": "/api/cron/revenue-overdue-check",
+        "schedule": "Hàng ngày (8:00 AM)",
+        "description": "Kiểm tra và cập nhật billing milestones quá hạn",
+        "logic": [
+          "1. Tìm billing_milestones có due_date < TODAY AND status = 'upcoming'",
+          "2. UPDATE status = 'overdue'",
+          "3. Tạo notification cho admin/leader/director"
+        ]
+      }
+    ]
+  },
+
+  "api_endpoints": {
+    "revenue_crud": [
+      { "method": "GET", "path": "/api/revenue", "description": "Danh sách doanh thu (filter, pagination, sort)", "params": ["projectId", "contractId", "deptId", "dimension", "method", "status", "from", "to", "page", "limit"] },
+      { "method": "GET", "path": "/api/revenue/[id]", "description": "Chi tiết một bản ghi doanh thu" },
+      { "method": "POST", "path": "/api/revenue", "description": "Tạo bản ghi doanh thu thủ công (status=draft)", "body": ["project_id", "contract_id", "dept_id", "product_service_id", "dimension", "method", "amount", "description", "recognition_date", "period_start", "period_end", "notes"] },
+      { "method": "PATCH", "path": "/api/revenue/[id]", "description": "Cập nhật bản ghi (chỉ khi status=draft)", "body": ["amount", "description", "notes", "recognition_date", "product_service_id"] },
+      { "method": "DELETE", "path": "/api/revenue/[id]", "description": "Xóa bản ghi (chỉ khi status=draft)" },
+      { "method": "POST", "path": "/api/revenue/[id]/confirm", "description": "Xác nhận: draft → confirmed" },
+      { "method": "POST", "path": "/api/revenue/[id]/cancel", "description": "Hủy bản ghi (tạo bản ghi đối ứng âm)" }
+    ],
+    "revenue_analytics": [
+      { "method": "GET", "path": "/api/revenue/summary", "description": "Tổng hợp: tổng doanh thu, theo dimension, theo method, theo source", "params": ["from", "to", "projectId"] },
+      { "method": "GET", "path": "/api/revenue/by-project/[id]", "description": "Doanh thu chi tiết của một dự án: tổng, phân bổ phòng ban, lịch sử" },
+      { "method": "GET", "path": "/api/revenue/by-department", "description": "Doanh thu phân bổ theo phòng ban", "params": ["from", "to"] },
+      { "method": "GET", "path": "/api/revenue/by-period", "description": "Doanh thu theo tháng/quý/năm", "params": ["from", "to", "group_by"] },
+      { "method": "GET", "path": "/api/revenue/forecast", "description": "Dự báo doanh thu dựa trên billing_milestones chưa thu + completion rate" },
+      { "method": "GET", "path": "/api/revenue/adjustments", "description": "Lịch sử điều chỉnh doanh thu", "params": ["contractId", "from", "to"] }
+    ],
+    "product_services": [
+      { "method": "GET", "path": "/api/product-services", "description": "Danh sách sản phẩm/dịch vụ" },
+      { "method": "POST", "path": "/api/product-services", "description": "Tạo SP/DV mới" },
+      { "method": "PATCH", "path": "/api/product-services/[id]", "description": "Cập nhật SP/DV" },
+      { "method": "DELETE", "path": "/api/product-services/[id]", "description": "Soft delete (is_active=false)" }
+    ],
+    "cron": [
+      { "method": "POST", "path": "/api/cron/revenue-completion", "description": "Tính doanh thu theo % hoàn thành", "schedule": "Hàng tuần CN 2:00" },
+      { "method": "POST", "path": "/api/cron/revenue-time-based", "description": "Phân bổ doanh thu theo thời gian", "schedule": "Đầu tháng 3:00" },
+      { "method": "POST", "path": "/api/cron/revenue-overdue-check", "description": "Kiểm tra milestone quá hạn", "schedule": "Hàng ngày 8:00" }
+    ]
+  },
+
+  "ui_pages": {
+    "enhanced": [
+      {
+        "path": "/revenue",
+        "name": "Dashboard Doanh thu (cải tiến)",
+        "current_features": ["Form nhập thủ công", "Bảng danh sách", "Tổng hợp theo dimension"],
+        "new_features": [
+          "KPI cards: tổng doanh thu, so sánh kỳ trước, đã ghi nhận vs. dự kiến",
+          "Biểu đồ cột: doanh thu theo tháng (stack by dimension) - Recharts",
+          "Biểu đồ tròn: tỷ lệ theo nguồn (billing/acceptance/manual)",
+          "Biểu đồ đường: xu hướng doanh thu theo thời gian",
+          "Bảng nâng cao: thêm cột Source, Status, Recognition Date",
+          "Lọc nâng cao: theo HĐ, Phòng ban, Khoảng thời gian, Phương pháp",
+          "Export Excel/PDF"
+        ]
+      }
+    ],
+    "new": [
+      {
+        "path": "/projects/[id]/revenue",
+        "name": "Doanh thu theo Dự án",
+        "features": [
+          "Tổng doanh thu dự án vs. giá trị hợp đồng",
+          "Progress bar: đã ghi nhận / giá trị HĐ",
+          "Danh sách bản ghi doanh thu liên quan",
+          "Phân bổ theo phòng ban (biểu đồ + bảng)",
+          "Lịch sử điều chỉnh (từ phụ lục HĐ)",
+          "Timeline: các mốc ghi nhận doanh thu"
+        ]
+      },
+      {
+        "path": "/revenue/departments",
+        "name": "Phân bổ Doanh thu Phòng ban",
+        "features": [
+          "Bảng: Phòng ban | Số dự án | Doanh thu phân bổ | % tổng",
+          "Biểu đồ thanh ngang: so sánh doanh thu giữa phòng ban",
+          "Drill-down: click phòng ban → danh sách dự án + doanh thu",
+          "Lọc theo khoảng thời gian"
+        ]
+      },
+      {
+        "path": "/revenue/reports",
+        "name": "Báo cáo & Phân tích",
+        "features": [
+          "Báo cáo theo giai đoạn (tháng/quý/năm)",
+          "So sánh nhiều kỳ (YoY, QoQ, MoM)",
+          "Tỷ lệ hoàn thành doanh thu vs. mục tiêu",
+          "Báo cáo chi tiết theo từng phương pháp ghi nhận",
+          "Export Excel/PDF"
+        ]
+      },
+      {
+        "path": "/settings/product-services",
+        "name": "Quản lý Sản phẩm/Dịch vụ",
+        "features": [
+          "CRUD danh mục sản phẩm/dịch vụ",
+          "Phân loại: design/consulting/survey/supervision/other",
+          "Giá đơn vị tham chiếu",
+          "Kích hoạt/vô hiệu hóa"
+        ]
+      }
+    ]
+  },
+
+  "frontend_hooks": {
+    "new_hooks": [
+      {
+        "name": "useRevenueAnalytics",
+        "file": "src/features/revenue/hooks/use-revenue-analytics.ts",
+        "exports": ["useRevenueSummary", "useRevenueByProject", "useRevenueByDepartment", "useRevenueByPeriod", "useRevenueForecast"]
+      },
+      {
+        "name": "useRevenueAdjustments",
+        "file": "src/features/revenue/hooks/use-revenue-adjustments.ts",
+        "exports": ["useRevenueAdjustments", "useAdjustmentsByContract"]
+      },
+      {
+        "name": "useProductServices",
+        "file": "src/features/revenue/hooks/use-product-services.ts",
+        "exports": ["useProductServices", "useCreateProductService", "useUpdateProductService", "useDeleteProductService"]
+      },
+      {
+        "name": "useDeptRevenueAllocations",
+        "file": "src/features/revenue/hooks/use-dept-revenue.ts",
+        "exports": ["useDeptRevenue", "useDeptRevenueByProject"]
+      }
+    ],
+    "updated_hooks": [
+      {
+        "name": "useRevenueEntries",
+        "changes": [
+          "Thêm filter: contractId, status, from/to date range, productServiceId",
+          "Thêm pagination: page, limit",
+          "Thêm sort: sortBy, sortOrder"
+        ]
+      },
+      {
+        "name": "useCreateRevenueEntry",
+        "changes": [
+          "Thêm fields: product_service_id, recognition_date, status",
+          "Default status = 'draft'"
+        ]
+      }
+    ],
+    "new_types": [
+      {
+        "file": "src/lib/types/revenue.ts",
+        "additions": [
+          "ProductService interface",
+          "RevenueAdjustment interface",
+          "DeptRevenueAllocation interface",
+          "RevenueSummary interface",
+          "RevenueForecast interface",
+          "RevenueEntryStatus enum update"
+        ]
+      }
+    ]
+  },
+
+  "implementation_phases": [
+    {
+      "phase": 1,
+      "name": "Nền tảng Database & Triggers",
+      "weeks": "Tuần 1–2",
+      "estimated_days": 12.5,
+      "tasks": [
+        { "id": "1.1", "task": "Migration 008: Tạo bảng product_services + revenue_adjustments + dept_revenue_allocations", "days": 2 },
+        { "id": "1.2", "task": "Alter revenue_entries: thêm 6 cột mới", "days": 1 },
+        { "id": "1.3", "task": "Tạo ENUM mới: revenue_entry_status, product_service_category", "days": 0.5 },
+        { "id": "1.4", "task": "fn_revenue_from_billing() + trigger trg_billing_paid", "days": 2 },
+        { "id": "1.5", "task": "fn_revenue_from_acceptance() + trigger trg_task_acceptance_paid", "days": 2 },
+        { "id": "1.6", "task": "fn_revenue_adjustment() + trigger trg_addendum_created", "days": 1.5 },
+        { "id": "1.7", "task": "fn_allocate_dept_revenue()", "days": 1 },
+        { "id": "1.8", "task": "RLS policies cho các bảng mới", "days": 0.5 },
+        { "id": "1.9", "task": "Unit tests (SQL) cho các functions", "days": 2 }
+      ],
+      "deliverables": [
+        "Migration file 20260101000008_revenue_enhanced.sql",
+        "Tất cả triggers hoạt động chính xác",
+        "Test coverage cho mỗi function"
+      ],
+      "dependencies": []
+    },
+    {
+      "phase": 2,
+      "name": "API Layer",
+      "weeks": "Tuần 3",
+      "estimated_days": 7,
+      "tasks": [
+        { "id": "2.1", "task": "Revenue CRUD API: GET/POST/PATCH/DELETE + confirm/cancel", "days": 2 },
+        { "id": "2.2", "task": "Revenue Analytics API: summary, by-project, by-department, by-period, forecast", "days": 2 },
+        { "id": "2.3", "task": "Product Services CRUD API", "days": 1 },
+        { "id": "2.4", "task": "Cron endpoints: revenue-completion, revenue-time-based, overdue-check", "days": 1.5 },
+        { "id": "2.5", "task": "TypeScript types, enums, hooks cập nhật", "days": 0.5 }
+      ],
+      "deliverables": [
+        "Tất cả API endpoints hoạt động",
+        "Types và hooks đã cập nhật",
+        "API documentation"
+      ],
+      "dependencies": ["Phase 1"]
+    },
+    {
+      "phase": 3,
+      "name": "Frontend - Dashboard & Forms",
+      "weeks": "Tuần 4–5",
+      "estimated_days": 11,
+      "tasks": [
+        { "id": "3.1", "task": "Cải tiến Revenue Dashboard: KPI cards, charts (Recharts), bảng nâng cao", "days": 3 },
+        { "id": "3.2", "task": "Trang Doanh thu Dự án: /projects/[id]/revenue", "days": 2 },
+        { "id": "3.3", "task": "Trang Phân bổ Phòng ban: /revenue/departments + biểu đồ + drill-down", "days": 2 },
+        { "id": "3.4", "task": "Trang Báo cáo: /revenue/reports + báo cáo theo kỳ, so sánh", "days": 2 },
+        { "id": "3.5", "task": "Quản lý SP/DV trong Settings", "days": 1 },
+        { "id": "3.6", "task": "Export Excel/PDF", "days": 1 }
+      ],
+      "deliverables": [
+        "Dashboard hoàn chỉnh với biểu đồ",
+        "4 trang mới hoạt động",
+        "Export feature"
+      ],
+      "dependencies": ["Phase 2"]
+    },
+    {
+      "phase": 4,
+      "name": "Tích hợp & Kiểm thử",
+      "weeks": "Tuần 6",
+      "estimated_days": 8,
+      "tasks": [
+        { "id": "4.1", "task": "Integration testing: end-to-end billing→revenue, acceptance→revenue, addendum→adjustment", "days": 2 },
+        { "id": "4.2", "task": "Data migration: chuyển dữ liệu doanh thu hiện tại sang schema mới", "days": 1 },
+        { "id": "4.3", "task": "UAT: kiểm thử người dùng với dữ liệu thực", "days": 2 },
+        { "id": "4.4", "task": "Bug fixes & polish UI/UX", "days": 2 },
+        { "id": "4.5", "task": "Documentation: tài liệu hướng dẫn sử dụng", "days": 1 }
+      ],
+      "deliverables": [
+        "Test report đầy đủ",
+        "Dữ liệu đã được migrate",
+        "UAT sign-off",
+        "User guide"
+      ],
+      "dependencies": ["Phase 3"]
+    }
+  ],
+
+  "risks": [
+    {
+      "id": "R1",
+      "risk": "Dữ liệu doanh thu không nhất quán khi trigger lỗi",
+      "severity": "HIGH",
+      "mitigation": "Sử dụng transaction trong các function PL/pgSQL, rollback khi lỗi",
+      "contingency": "Thiết kế reconciliation job kiểm tra định kỳ"
+    },
+    {
+      "id": "R2",
+      "risk": "Double-counting doanh thu (tạo trùng bản ghi)",
+      "severity": "HIGH",
+      "mitigation": "UNIQUE constraint trên (source, source_id) để ngăn tạo trùng",
+      "contingency": "Idempotent function: kiểm tra tồn tại trước khi INSERT"
+    },
+    {
+      "id": "R3",
+      "risk": "Performance chậm khi dữ liệu lớn",
+      "severity": "MEDIUM",
+      "mitigation": "Index đã tạo trên các cột lọc chính, pagination bắt buộc",
+      "contingency": "Materialized views cho báo cáo nặng"
+    },
+    {
+      "id": "R4",
+      "risk": "Phụ lục HĐ thay đổi giá trị lớn gây sai lệch",
+      "severity": "MEDIUM",
+      "mitigation": "Revenue adjustment ghi nhận chênh lệch, không xóa bản ghi cũ",
+      "contingency": "Audit trail đầy đủ qua revenue_adjustments"
+    },
+    {
+      "id": "R5",
+      "risk": "Người dùng nhập sai doanh thu thủ công",
+      "severity": "LOW",
+      "mitigation": "Trạng thái draft trước khi confirm, quyền phân cấp (admin/leader/director)",
+      "contingency": "Approval workflow cho entry > ngưỡng"
+    },
+    {
+      "id": "R6",
+      "risk": "Thay đổi yêu cầu nghiệp vụ giữa chừng",
+      "severity": "LOW",
+      "mitigation": "Kiến trúc module hóa, dễ mở rộng",
+      "contingency": "Review yêu cầu cuối mỗi Phase"
+    }
+  ],
+
+  "integration_with_existing_modules": {
+    "kpi_allocation": {
+      "description": "Tích hợp với hệ thống Quỹ khoán (dual-fund workflow)",
+      "connection": "Doanh thu ghi nhận → cập nhật quỹ thực tế → tính quỹ khoán dự kiến",
+      "formula_link": "Quỹ khoán = (Doanh thu thu được × % Phòng ban × Hệ số) − Chi phí",
+      "note": "Xem memory: project_company_workflow.md"
+    },
+    "ui_placement": {
+      "description": "Quỹ khoán dự kiến tích hợp vào trang /kpi/allocation",
+      "note": "Xem memory: feedback_fund_ui_placement.md"
+    }
+  }
+}
