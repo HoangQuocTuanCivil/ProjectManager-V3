@@ -17,6 +17,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/contracts": "Quản lý hợp đồng",
   "/contracts/budget-assign": "Giao khoán",
   "/revenue": "Doanh thu công ty",
+  "/revenue/allocation": "Phân bổ phòng ban",
   "/revenue/internal": "Doanh thu nội bộ",
   "/revenue/costs": "Chi phí",
   "/kpi/evaluation": "Nghiệm thu",
