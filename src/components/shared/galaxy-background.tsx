@@ -7,6 +7,7 @@ const FRAME_INTERVAL = 33; // ~30 fps
 const ROTATION_SPEED = 0.0024;
 const CENTER_X_RATIO = 0.75;
 const CENTER_Y_RATIO = 0.48;
+const SPHERE_RADIUS_RATIO = 0.045; // Core sphere size relative to galaxy radius
 
 /* Star distribution */
 const CORE_STARS = 1200;
@@ -26,13 +27,13 @@ const enum StarLayer {
 }
 
 interface Star {
-  /** Polar angle in galaxy plane (radians) */
+  /** Orbital angle in galaxy plane (radians) */
   angle: number;
   /** Distance from center (0..1 normalized to galaxy radius) */
   dist: number;
-  /** Pre-computed Cartesian offset from spiral formula */
-  ox: number;
-  oy: number;
+  /** Small random offset for natural scatter (normalized) */
+  scatterX: number;
+  scatterY: number;
   /** Rendering */
   size: number;
   layer: StarLayer;
@@ -59,6 +60,13 @@ interface ThemeProfile {
   ringAlpha: number;
   /** Background star lightness */
   bgLightness: (l: number) => number;
+  /** Core sphere colors */
+  sphereBase: string;       // Dark hemisphere color
+  sphereMid: string;        // Mid-tone blue
+  sphereBright: string;     // Bright face color
+  sphereHighlight: string;  // Specular spot
+  sphereAura: string;       // Outer glow color
+  sphereAuraAlpha: number;  // Outer glow opacity
 }
 
 const THEME_DARK: ThemeProfile = {
@@ -71,6 +79,12 @@ const THEME_DARK: ThemeProfile = {
   ringColor: "rgba(80,180,255,0.4)",
   ringAlpha: 0.12,
   bgLightness: (l) => l,
+  sphereBase: "rgb(5, 15, 60)",
+  sphereMid: "rgb(20, 80, 200)",
+  sphereBright: "rgb(60, 170, 255)",
+  sphereHighlight: "rgba(180, 230, 255, 0.95)",
+  sphereAura: "rgba(0, 140, 255, 0.35)",
+  sphereAuraAlpha: 1.0,
 };
 
 const THEME_LIGHT: ThemeProfile = {
@@ -83,6 +97,12 @@ const THEME_LIGHT: ThemeProfile = {
   ringColor: "rgba(20,80,200,0.5)",
   ringAlpha: 0.25,
   bgLightness: (l) => Math.min(l, 50),
+  sphereBase: "rgb(10, 30, 100)",
+  sphereMid: "rgb(30, 100, 220)",
+  sphereBright: "rgb(80, 180, 255)",
+  sphereHighlight: "rgba(200, 235, 255, 0.9)",
+  sphereAura: "rgba(0, 100, 220, 0.3)",
+  sphereAuraAlpha: 1.0,
 };
 
 function getThemeProfile(): ThemeProfile {
@@ -104,17 +124,15 @@ function generateStars(): Star[] {
 
   // ── Core stars: dense bright cluster at center ──
   for (let i = 0; i < CORE_STARS; i++) {
-    const dist = Math.abs(randomGaussian()) * 0.12;
+    const dist = Math.min(Math.abs(randomGaussian()) * 0.12, 0.25);
     const angle = Math.random() * Math.PI * 2;
-    const r = Math.min(dist, 0.25);
 
-    // Core is bright white-blue
     const lum = 70 + Math.random() * 30;
     stars.push({
       angle,
-      dist: r,
-      ox: Math.cos(angle) * r,
-      oy: Math.sin(angle) * r * TILT,
+      dist,
+      scatterX: 0,
+      scatterY: 0,
       size: Math.random() * 1.2 + 0.4,
       layer: StarLayer.Core,
       hue: 200 + Math.random() * 20,
@@ -129,41 +147,36 @@ function generateStars(): Star[] {
     const armIndex = i % ARMS;
     const armOffset = (armIndex / ARMS) * Math.PI * 2;
 
-    // Logarithmic spiral: r increases, angle wraps
     const t = Math.random(); // 0..1 along the arm
     const dist = 0.05 + t * 0.85;
 
-    // Spiral winding
+    // Spiral winding angle
     const spiralAngle = armOffset + t * Math.PI * 3.2;
 
-    // Spread perpendicular to arm
+    // Spread perpendicular to arm (stored as scatter offset)
     const spread = randomGaussian() * ARM_SPREAD * (0.3 + t * 0.7);
     const angle = spiralAngle + spread;
 
-    const ox = Math.cos(angle) * dist;
-    const oy = Math.sin(angle) * dist * TILT;
+    // Small random scatter for natural look
+    const scatterX = randomGaussian() * 0.01;
+    const scatterY = randomGaussian() * 0.01;
 
-    // Color gradient: inner=bright cyan/blue -> outer=deeper blue with some variety
     const colorVariation = Math.random();
     let hue: number, sat: number, light: number;
 
     if (colorVariation < 0.7) {
-      // Blue-cyan range
       hue = 195 + Math.random() * 30;
       sat = 70 + Math.random() * 30;
       light = 55 + (1 - t) * 30;
     } else if (colorVariation < 0.88) {
-      // White-ish
       hue = 210;
       sat = 10 + Math.random() * 30;
       light = 80 + Math.random() * 20;
     } else if (colorVariation < 0.95) {
-      // Warm orange/yellow sparks at outer edges
       hue = 20 + Math.random() * 30;
       sat = 80 + Math.random() * 20;
       light = 55 + Math.random() * 25;
     } else {
-      // Rare red/pink
       hue = 350 + Math.random() * 20;
       sat = 70 + Math.random() * 30;
       light = 50 + Math.random() * 20;
@@ -174,8 +187,8 @@ function generateStars(): Star[] {
     stars.push({
       angle,
       dist,
-      ox,
-      oy,
+      scatterX,
+      scatterY,
       size: Math.random() * 1.0 + 0.3,
       layer: StarLayer.Arm,
       hue,
@@ -189,8 +202,8 @@ function generateStars(): Star[] {
   for (let i = 0; i < SCATTER_STARS; i++) {
     const angle = Math.random() * Math.PI * 2;
     const dist = 0.3 + Math.random() * 0.7;
-    const ox = Math.cos(angle) * dist + (Math.random() - 0.5) * 0.15;
-    const oy = Math.sin(angle) * dist * TILT + (Math.random() - 0.5) * 0.08;
+    const scatterX = (Math.random() - 0.5) * 0.15;
+    const scatterY = (Math.random() - 0.5) * 0.08;
 
     const colorRoll = Math.random();
     let hue: number;
@@ -202,8 +215,8 @@ function generateStars(): Star[] {
     stars.push({
       angle,
       dist,
-      ox,
-      oy,
+      scatterX,
+      scatterY,
       size: Math.random() * 0.8 + 0.2,
       layer: StarLayer.Scatter,
       hue,
@@ -213,16 +226,13 @@ function generateStars(): Star[] {
     });
   }
 
-  // ── Background distant stars (static, no rotation) ──
+  // ── Background distant stars (static, no orbit) ──
   for (let i = 0; i < BG_STARS; i++) {
-    const ox = (Math.random() - 0.5) * 2.5;
-    const oy = (Math.random() - 0.5) * 2.5;
-
     stars.push({
       angle: 0,
       dist: 2,
-      ox,
-      oy,
+      scatterX: (Math.random() - 0.5) * 2.5,
+      scatterY: (Math.random() - 0.5) * 2.5,
       size: Math.random() * 0.6 + 0.2,
       layer: StarLayer.Background,
       hue: 0,
@@ -314,6 +324,72 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.fillRect(0, 0, width, height);
     };
 
+    /* ── Draw 3D glowing sphere at galaxy center ── */
+    const drawCoreSphere = (tp: ThemeProfile) => {
+      const r = galaxyRadius * SPHERE_RADIUS_RATIO;
+
+      // 1. Outer aura glow (soft bloom around sphere)
+      ctx.globalAlpha = tp.sphereAuraAlpha;
+      const aura = ctx.createRadialGradient(
+        centerX, centerY, r * 0.8,
+        centerX, centerY, r * 3.5
+      );
+      aura.addColorStop(0, tp.sphereAura);
+      aura.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, r * 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Base sphere (3D shading: dark bottom-right to bright top-left)
+      ctx.globalAlpha = 1;
+      const sphereGrad = ctx.createRadialGradient(
+        centerX - r * 0.3, centerY - r * 0.3, r * 0.05,
+        centerX, centerY, r
+      );
+      sphereGrad.addColorStop(0, tp.sphereBright);
+      sphereGrad.addColorStop(0.5, tp.sphereMid);
+      sphereGrad.addColorStop(1, tp.sphereBase);
+
+      ctx.fillStyle = sphereGrad;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3. Specular highlight (small bright spot on upper-left)
+      const hlX = centerX - r * 0.3;
+      const hlY = centerY - r * 0.35;
+      const hlR = r * 0.4;
+      const specular = ctx.createRadialGradient(
+        hlX, hlY, 0,
+        hlX, hlY, hlR
+      );
+      specular.addColorStop(0, tp.sphereHighlight);
+      specular.addColorStop(0.6, "rgba(150,210,255,0.2)");
+      specular.addColorStop(1, "rgba(100,180,255,0)");
+
+      ctx.fillStyle = specular;
+      ctx.beginPath();
+      ctx.arc(hlX, hlY, hlR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4. Rim light (subtle bright edge on bottom for backlight effect)
+      ctx.globalAlpha = 0.25;
+      const rimGrad = ctx.createRadialGradient(
+        centerX, centerY + r * 0.6, r * 0.2,
+        centerX, centerY, r * 1.05
+      );
+      rimGrad.addColorStop(0, "rgba(100,200,255,0.6)");
+      rimGrad.addColorStop(1, "rgba(0,80,200,0)");
+
+      ctx.fillStyle = rimGrad;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, r * 1.05, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+    };
+
     /* ── Animation loop ── */
     const animate = (timestamp: number) => {
       if (destroyed) return;
@@ -329,22 +405,19 @@ export function GalaxyBackground({ className }: { className?: string }) {
       ctx.clearRect(0, 0, width, height);
 
       rotationAngle = (rotationAngle + ROTATION_SPEED) % (Math.PI * 2);
-      const cosR = Math.cos(rotationAngle);
-      const sinR = Math.sin(rotationAngle);
 
       // Draw core glow first (behind stars)
       drawCoreGlow(tp);
 
-      // Draw all stars
+      // Draw all stars — each orbits along its own horizontal ellipse
       for (const star of stars) {
         let sx: number, sy: number;
 
         if (star.layer === StarLayer.Background) {
-          // Background stars: fixed position, mapped to screen
-          sx = centerX + star.ox * galaxyRadius;
-          sy = centerY + star.oy * galaxyRadius;
+          // Background stars: fixed position, no orbit
+          sx = centerX + star.scatterX * galaxyRadius;
+          sy = centerY + star.scatterY * galaxyRadius;
 
-          // Skip if outside canvas
           if (sx < -5 || sx > width + 5 || sy < -5 || sy > height + 5) continue;
 
           const bgL = tp.bgLightness(star.lightness);
@@ -356,29 +429,28 @@ export function GalaxyBackground({ className }: { className?: string }) {
           continue;
         }
 
-        // Galaxy stars: rotate with galaxy
-        const rx = star.ox * cosR - star.oy * sinR;
-        const ry = star.ox * sinR + star.oy * cosR;
+        // Orbital position: angle advances with time
+        const orbitalAngle = star.angle + rotationAngle;
 
-        sx = centerX + rx * galaxyRadius;
-        sy = centerY + ry * galaxyRadius;
+        // Elliptical orbit: X = full radius, Y = TILT * radius (horizontal ellipse)
+        sx = centerX + (Math.cos(orbitalAngle) * star.dist + star.scatterX) * galaxyRadius;
+        sy = centerY + (Math.sin(orbitalAngle) * star.dist * TILT + star.scatterY) * galaxyRadius;
 
-        // Skip if outside canvas
         if (sx < -5 || sx > width + 5 || sy < -5 || sy > height + 5) continue;
 
-        // Alpha falloff for depth (back side of galaxy is dimmer)
-        const depthFade = star.layer === StarLayer.Core ? 1.0 : (0.7 + 0.3 * (1 + ry / star.dist) * 0.5);
+        // Depth fade: stars at the "back" of the ellipse (sin > 0) are slightly dimmer
+        const depthFade = star.layer === StarLayer.Core
+          ? 1.0
+          : 0.7 + 0.3 * (0.5 + 0.5 * Math.cos(orbitalAngle));
         const alpha = Math.min(1, star.baseAlpha * depthFade * tp.alphaBoost);
 
         if (alpha < 0.02) continue;
 
         ctx.globalAlpha = alpha;
 
-        // Theme-adjusted lightness
         const drawL = tp.lightnessClamp(star.lightness);
 
         if (star.layer === StarLayer.Core && star.dist < 0.06) {
-          // Brightest core stars get a glow
           ctx.shadowBlur = 6;
           ctx.shadowColor = `hsla(${star.hue}, ${star.saturation}%, ${drawL}%, 0.5)`;
         } else {
@@ -391,40 +463,32 @@ export function GalaxyBackground({ className }: { className?: string }) {
         ctx.fill();
       }
 
-      // Reset shadow
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
 
-      // Draw ring highlight over core (thin elliptical ring)
-      drawRings(cosR, sinR, tp);
+      // Draw 3D sphere at center (on top of stars, behind rings)
+      drawCoreSphere(tp);
+
+      // Draw ring highlight over core (horizontal ellipses)
+      drawRings(tp);
 
       animFrame = requestAnimationFrame(animate);
     };
 
-    /* ── Elliptical ring glow around core — theme-aware ── */
-    const drawRings = (cosR: number, sinR: number, tp: ThemeProfile) => {
+    /* ── Elliptical ring glow — horizontal ellipses ── */
+    const drawRings = (tp: ThemeProfile) => {
       ctx.save();
       ctx.translate(centerX, centerY);
       ctx.globalAlpha = tp.ringAlpha;
       ctx.strokeStyle = tp.ringColor;
       ctx.lineWidth = 1.5;
 
-      // Draw 2 subtle rings
       const ringRadii = [0.22, 0.35];
       for (const rr of ringRadii) {
         const rx = galaxyRadius * rr;
         const ry = rx * TILT;
         ctx.beginPath();
-        for (let a = 0; a <= Math.PI * 2; a += 0.05) {
-          const px = Math.cos(a) * rx;
-          const py = Math.sin(a) * ry;
-          // Apply rotation
-          const rpx = px * cosR - py * sinR;
-          const rpy = px * sinR + py * cosR;
-          if (a === 0) ctx.moveTo(rpx, rpy);
-          else ctx.lineTo(rpx, rpy);
-        }
-        ctx.closePath();
+        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
 
