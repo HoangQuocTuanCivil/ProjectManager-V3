@@ -41,6 +41,8 @@ export const NAV_ITEMS: NavItemConfig[] = [
     children: [
       { href: "/contracts", tKey: "contracts" },
       { href: "/contracts/budget-assign", tKey: "budgetAssignTab" },
+      { href: "/contracts/acceptance", tKey: "contractAcceptance" },
+      { href: "/contracts/reports", tKey: "contractReports" },
     ],
   },
   {
@@ -69,6 +71,8 @@ export const PAGE_TITLE_KEYS: Record<string, string> = {
   "/kpi/salary": "costs",
   "/contracts": "contractManagement",
   "/contracts/budget-assign": "contractManagement",
+  "/contracts/acceptance": "contractManagement",
+  "/contracts/reports": "contractManagement",
   "/revenue": "revenueManagement",
   "/revenue/internal": "revenueManagement",
   "/revenue/costs": "costs",

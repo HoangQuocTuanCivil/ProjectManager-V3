@@ -13,6 +13,8 @@ const vi = {
     kpiConfig: "Cấu hình",
     contractManagement: "Hợp đồng",
     budgetAssignTab: "Giao khoán",
+    contractAcceptance: "Nghiệm thu",
+    contractReports: "Báo cáo HĐ",
     contracts: "Hợp đồng",
     revenue: "Doanh thu",
     companyRevenue: "Doanh thu công ty",

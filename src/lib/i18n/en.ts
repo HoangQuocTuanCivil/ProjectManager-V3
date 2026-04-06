@@ -14,6 +14,8 @@ const en: Translations = {
     kpiConfig: "Config",
     contractManagement: "Contract Management",
     budgetAssignTab: "Budget Assignment",
+    contractAcceptance: "Acceptance",
+    contractReports: "Reports",
     contracts: "Contracts",
     revenue: "Revenue",
     companyRevenue: "Company Revenue",
