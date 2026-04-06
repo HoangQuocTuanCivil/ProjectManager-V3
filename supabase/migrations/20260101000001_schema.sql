@@ -1130,5 +1130,15 @@ CREATE INDEX idx_alloc_results_deduction ON allocation_results (deduction_id)
 CREATE INDEX idx_pdf_project ON project_dept_factors (project_id);
 CREATE INDEX idx_pdf_dept    ON project_dept_factors (dept_id);
 
+-- Đảm bảo Supabase roles có quyền truy cập schema public
+-- (cần thiết khi schema được tạo lại sau DROP CASCADE)
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
+
 SELECT '✅ 001_schema: Tất cả bảng, enum, index đã tạo xong' AS status;
 
