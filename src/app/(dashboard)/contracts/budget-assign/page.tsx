@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useProjects } from "@/lib/hooks/use-projects";
+import { useContracts } from "@/lib/hooks/use-contracts";
 import { useDeptBudgetAllocations, useUpsertDeptBudgetAllocation, useDeleteDeptBudgetAllocation } from "@/lib/hooks/use-kpi";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
@@ -51,9 +52,20 @@ export default function BudgetAssignPage() {
   const { t } = useI18n();
   const { user } = useAuthStore();
   const { data: projects = [] } = useProjects();
+  const { data: contracts = [] } = useContracts();
   const { data: departments = [] } = useDepartments();
   const { data: centers = [] } = useCenters();
   const [filterProjectId, setFilterProjectId] = useState<string>("all");
+
+  // Quỹ khoán = tổng giá trị hợp đồng active/completed per dự án
+  const projectContractFund = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of contracts) {
+      if (!c.project_id || !["active", "completed"].includes(c.status)) continue;
+      map.set(c.project_id, (map.get(c.project_id) || 0) + Number(c.contract_value || 0));
+    }
+    return map;
+  }, [contracts]);
 
   const { data: allocations = [] } = useDeptBudgetAllocations(
     filterProjectId !== "all" ? filterProjectId : undefined,
@@ -78,7 +90,8 @@ export default function BudgetAssignPage() {
     [allocations, form.project_id],
   );
   const totalAssigned = projectAllocations.reduce((s, a) => s + Number(a.allocated_amount), 0);
-  const fund = selectedProject?.allocation_fund || 0;
+  // Quỹ khoán = tổng giá trị hợp đồng active/completed của dự án
+  const fund = projectContractFund.get(form.project_id) || 0;
 
   const handleSubmit = async () => {
     if (!form.project_id) { toast.error("Vui lòng chọn dự án"); return; }
@@ -156,7 +169,7 @@ export default function BudgetAssignPage() {
                 onChange={(val) => setForm({ ...form, project_id: val, dept_id: "", allocated_amount: 0 })}
                 options={projects.map((p: any) => ({
                   value: p.id,
-                  label: `${p.code} — ${p.name} (${formatVND(p.allocation_fund || 0)})`,
+                  label: `${p.code} — ${p.name} (${formatVND(projectContractFund.get(p.id) || 0)})`,
                 }))}
                 placeholder={t.kpi.selectProject}
                 className="mt-1"
@@ -248,7 +261,7 @@ export default function BudgetAssignPage() {
       ) : (
         <div className="space-y-5">
           {groupedByProject.map(({ projectId, project, items, total }) => {
-            const projFund = project?.allocation_fund || 0;
+            const projFund = projectContractFund.get(projectId) || 0;
             return (
               <div key={projectId} className="bg-card border border-border rounded-xl overflow-hidden">
                 {/* Project header */}
