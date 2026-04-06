@@ -51,8 +51,8 @@ export default function ContractsPage() {
       {/* ── Dashboard Overview ── */}
       <DashboardOverview outgoing={outgoing} incoming={incoming} />
 
-      {/* ── Tabs ── */}
-      <div className="flex items-center gap-1 border-b border-border">
+      {/* ── Tabs + Filter + Action ── */}
+      <div className="flex items-center gap-3 border-b border-border">
         <TabButton
           active={activeTab === "outgoing"}
           onClick={() => setActiveTab("outgoing")}
@@ -65,11 +65,8 @@ export default function ContractsPage() {
           label={t.contracts.tabIncoming}
           count={incoming.length}
         />
-      </div>
-
-      {/* ── Filter + Action ── */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="w-64">
+        <div className="flex-1" />
+        <div className="w-52 pb-1">
           <SearchSelect
             value={filterProjectId}
             onChange={setFilterProjectId}
@@ -81,11 +78,13 @@ export default function ContractsPage() {
           />
         </div>
         {canManage && (
-          <CreateContractButton
-            activeTab={activeTab}
-            projects={projects}
-            filterProjectId={filterProjectId}
-          />
+          <div className="pb-1">
+            <CreateContractButton
+              activeTab={activeTab}
+              projects={projects}
+              filterProjectId={filterProjectId}
+            />
+          </div>
         )}
       </div>
 
