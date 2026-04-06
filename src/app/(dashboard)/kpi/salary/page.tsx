@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSalaryRecords, useCreateSalaryBatch, useSalaryDeductions } from "@/features/kpi";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";
 import { formatVND } from "@/lib/utils/kpi";
 import { toast } from "sonner";
-import { Wallet, AlertTriangle, Plus } from "lucide-react";
+import { Wallet, AlertTriangle, Download, Upload } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 
@@ -84,11 +85,58 @@ function SalaryInputSection({ month, setMonth, deptId, setDeptId, canManage }: {
   const { data: users = [] } = useDeptUsers(deptId || undefined);
   const { data: existing } = useSalaryRecords({ month, dept_id: deptId || undefined });
   const createBatch = useCreateSalaryBatch();
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // Map existing salary by user_id cho pre-fill
   const existingMap = new Map((existing?.data ?? []).map((r: any) => [r.user_id, r]));
 
   const [rows, setRows] = useState<Record<string, number>>({});
+
+  // Tải mẫu Excel: danh sách NV trong PB với cột lương để điền
+  const handleDownloadTemplate = () => {
+    if (!deptId || users.length === 0) { toast.error("Chọn PB có nhân viên trước"); return; }
+    const dept = depts.find((d) => d.id === deptId);
+    const headers = ["user_id", "Họ tên", "Email", "Lương cơ bản (VNĐ)"];
+    const dataRows = users.map((u) => [
+      u.id,
+      u.full_name,
+      u.email || "",
+      existingMap.get(u.id)?.base_salary ?? 0,
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+    ws["!cols"] = [{ wch: 40 }, { wch: 25 }, { wch: 30 }, { wch: 20 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Lương tháng");
+    XLSX.writeFile(wb, `Luong_${dept?.code || "PB"}_${month.slice(0, 7)}.xlsx`);
+    toast.success("Đã tải mẫu Excel");
+  };
+
+  // Import Excel: đọc file và điền vào form
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const wb = XLSX.read(evt.target?.result, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const jsonRows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
+
+      const newRows: Record<string, number> = {};
+      let imported = 0;
+      for (const row of jsonRows) {
+        const uid = row["user_id"] || row["User ID"] || "";
+        const salary = Number(row["Lương cơ bản (VNĐ)"] || row["base_salary"] || row["Lương"] || 0);
+        if (uid && salary > 0) {
+          newRows[uid] = salary;
+          imported++;
+        }
+      }
+      setRows(newRows);
+      toast.success(`Đã import ${imported} bản ghi từ Excel`);
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
 
   // Sync rows khi users hoặc existing thay đổi
   const effectiveRows = users.map((u) => ({
@@ -132,7 +180,18 @@ function SalaryInputSection({ month, setMonth, deptId, setDeptId, canManage }: {
             className="mt-1" />
         </div>
         {canManage && deptId && (
-          <div className="self-end">
+          <div className="self-end flex items-center gap-2">
+            <button onClick={handleDownloadTemplate}
+              className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors"
+              title="Tải mẫu Excel">
+              <Download size={13} /> Tải mẫu
+            </button>
+            <button onClick={() => fileRef.current?.click()}
+              className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors"
+              title="Import từ Excel">
+              <Upload size={13} /> Import
+            </button>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
             <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>
               {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
             </Button>
