@@ -46,8 +46,12 @@ function useDeptUsers(deptId?: string) {
 
 type CostsTab = "costs" | "salary";
 
+// Phân loại chi phí theo chuẩn kế toán VN
 const CATEGORY_COLORS: Record<string, string> = {
-  personnel: "#3b82f6", survey: "#f59e0b", procurement: "#8b5cf6", overhead: "#94a3b8",
+  cogs: "#ef4444",       // Giá vốn hàng bán — đỏ (chi phí trực tiếp)
+  selling: "#f59e0b",    // Chi phí bán hàng — cam
+  admin: "#3b82f6",      // Chi phí QLDN — xanh dương
+  financial: "#8b5cf6",  // Chi phí tài chính — tím
 };
 
 export default function CostsPage() {
@@ -96,7 +100,7 @@ function CostsSection({ canManage }: { canManage: boolean }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     project_id: "" as string | null, contract_id: "" as string | null, dept_id: "" as string | null,
-    category: "overhead" as CostCategory, description: "", amount: 0, budget_amount: 0,
+    category: "admin" as CostCategory, description: "", amount: 0, budget_amount: 0,
     period_start: "", period_end: "", notes: "",
   });
 
@@ -135,7 +139,7 @@ function CostsSection({ canManage }: { canManage: boolean }) {
       });
       toast.success("Ghi nhận chi phí thành công!");
       setShowForm(false);
-      setForm({ project_id: "", contract_id: "", dept_id: "", category: "overhead", description: "", amount: 0, budget_amount: 0, period_start: "", period_end: "", notes: "" });
+      setForm({ project_id: "", contract_id: "", dept_id: "", category: "admin", description: "", amount: 0, budget_amount: 0, period_start: "", period_end: "", notes: "" });
     } catch (e: any) { toast.error(e.message); }
   };
 
@@ -160,7 +164,7 @@ function CostsSection({ canManage }: { canManage: boolean }) {
           <p className={`text-lg font-bold font-mono ${variance < 0 ? "text-destructive" : "text-primary"}`}>{variance >= 0 ? "+" : ""}{formatVND(variance)}</p>
           {overBudgetCount > 0 && <p className="text-[10px] text-destructive font-medium">{overBudgetCount} {t.revenue.overBudgetAlert}</p>}
         </div>
-        {(["personnel", "survey"] as const).map((cat) => (
+        {(["cogs", "selling"] as const).map((cat) => (
           <div key={cat} className="bg-card border border-border rounded-xl p-3">
             <p className="text-[11px] text-muted-foreground">{catLabel(cat)}</p>
             <p className="text-sm font-bold font-mono" style={{ color: CATEGORY_COLORS[cat] }}>{formatVND(catSummary[cat]?.actual || 0)}</p>
@@ -179,10 +183,10 @@ function CostsSection({ canManage }: { canManage: boolean }) {
           <SearchSelect value={filterCategory} onChange={setFilterCategory}
             options={[
               { value: "", label: t.revenue.allCategories },
-              { value: "personnel", label: t.revenue.catPersonnel },
-              { value: "survey", label: t.revenue.catSurvey },
-              { value: "procurement", label: t.revenue.catProcurement },
-              { value: "overhead", label: t.revenue.catOverhead },
+              { value: "cogs", label: t.revenue.catCogs },
+              { value: "selling", label: t.revenue.catSelling },
+              { value: "admin", label: t.revenue.catAdmin },
+              { value: "financial", label: t.revenue.catFinancial },
             ]} />
         </div>
         <div className="flex-1" />
@@ -202,10 +206,10 @@ function CostsSection({ canManage }: { canManage: boolean }) {
               <label className="text-sm text-muted-foreground font-medium">{t.revenue.category}</label>
               <SearchSelect value={form.category} onChange={(v) => setForm({ ...form, category: v as CostCategory })}
                 options={[
-                  { value: "personnel", label: t.revenue.catPersonnel },
-                  { value: "survey", label: t.revenue.catSurvey },
-                  { value: "procurement", label: t.revenue.catProcurement },
-                  { value: "overhead", label: t.revenue.catOverhead },
+                  { value: "cogs", label: t.revenue.catCogs },
+                  { value: "selling", label: t.revenue.catSelling },
+                  { value: "admin", label: t.revenue.catAdmin },
+                  { value: "financial", label: t.revenue.catFinancial },
                 ]} className="mt-1" />
             </div>
             <div>

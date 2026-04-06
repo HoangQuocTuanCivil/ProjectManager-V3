@@ -9,7 +9,8 @@ CREATE TYPE recognition_method AS ENUM ('acceptance', 'completion_rate', 'time_b
 CREATE TYPE revenue_source AS ENUM ('billing_milestone', 'acceptance', 'manual');
 CREATE TYPE revenue_entry_status AS ENUM ('draft', 'confirmed', 'adjusted', 'cancelled');
 CREATE TYPE internal_revenue_status AS ENUM ('pending', 'approved', 'recorded');
-CREATE TYPE cost_category AS ENUM ('personnel', 'survey', 'procurement', 'overhead');
+-- Phân loại chi phí theo chuẩn kế toán Việt Nam
+CREATE TYPE cost_category AS ENUM ('cogs', 'selling', 'admin', 'financial');
 CREATE TYPE product_service_category AS ENUM ('design', 'consulting', 'survey', 'supervision', 'other');
 
 -- ─── SẢN PHẨM / DỊCH VỤ (master data) ─────────────────────────────────────
@@ -108,7 +109,7 @@ CREATE TABLE cost_entries (
   project_id    UUID REFERENCES projects(id) ON DELETE SET NULL,
   contract_id   UUID REFERENCES contracts(id) ON DELETE SET NULL,
   dept_id       UUID REFERENCES departments(id) ON DELETE SET NULL,
-  category      cost_category NOT NULL DEFAULT 'overhead',
+  category      cost_category NOT NULL DEFAULT 'admin',
   description   TEXT NOT NULL,
   amount        NUMERIC(15,0) NOT NULL DEFAULT 0,
   budget_amount NUMERIC(15,0) DEFAULT 0,
