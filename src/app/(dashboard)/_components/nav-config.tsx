@@ -53,15 +53,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
       { href: "/revenue/internal", tKey: "internalRevenue" },
     ],
   },
-  {
-    href: "/revenue/costs",
-    icon: <Receipt {...ICON_PROPS} />,
-    tKey: "costs",
-    children: [
-      { href: "/revenue/costs", tKey: "costsOverview" },
-      { href: "/kpi/salary", tKey: "salary" },
-    ],
-  },
+  { href: "/revenue/costs", icon: <Receipt {...ICON_PROPS} />, tKey: "costs" },
   { href: "/goals", icon: <Flag {...ICON_PROPS} />, tKey: "goals" },
   { href: "/workflows", icon: <Zap {...ICON_PROPS} />, tKey: "workflow" },
   { href: "/reports", icon: <BarChart3 {...ICON_PROPS} />, tKey: "reports" },
