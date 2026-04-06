@@ -100,16 +100,16 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 VALUES ('contract-files', 'contract-files', false, 52428800, NULL)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY "contract_files_select" ON storage.objects FOR SELECT
-  TO authenticated
-  USING (bucket_id = 'contract-files');
+DO $$ BEGIN
+  CREATE POLICY "contract_files_select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'contract-files');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "contract_files_insert" ON storage.objects FOR INSERT
-  TO authenticated
-  WITH CHECK (bucket_id = 'contract-files');
+DO $$ BEGIN
+  CREATE POLICY "contract_files_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'contract-files');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "contract_files_delete" ON storage.objects FOR DELETE
-  TO authenticated
-  USING (bucket_id = 'contract-files');
+DO $$ BEGIN
+  CREATE POLICY "contract_files_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'contract-files');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 SELECT '✅ 006_contracts: Hợp đồng đầu ra đã tạo xong' AS status;
