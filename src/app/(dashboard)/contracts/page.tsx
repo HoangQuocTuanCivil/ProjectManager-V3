@@ -46,13 +46,36 @@ export default function ContractsPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <p className="text-sm text-muted-foreground">{t.contracts.pageSubtitle}</p>
+      {/* ── Header: subtitle + filter + action ── */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">{t.contracts.pageSubtitle}</p>
+        <div className="flex items-center gap-2">
+          <div className="w-52">
+            <SearchSelect
+              value={filterProjectId}
+              onChange={setFilterProjectId}
+              options={[
+                { value: "all", label: t.contracts.allProjects },
+                ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` })),
+              ]}
+              placeholder={t.contracts.selectProject}
+            />
+          </div>
+          {canManage && (
+            <CreateContractButton
+              activeTab={activeTab}
+              projects={projects}
+              filterProjectId={filterProjectId}
+            />
+          )}
+        </div>
+      </div>
 
       {/* ── Dashboard Overview ── */}
       <DashboardOverview outgoing={outgoing} incoming={incoming} />
 
-      {/* ── Tabs + Filter + Action ── */}
-      <div className="flex items-center gap-3 border-b border-border">
+      {/* ── Tabs ── */}
+      <div className="flex items-center gap-1 border-b border-border">
         <TabButton
           active={activeTab === "outgoing"}
           onClick={() => setActiveTab("outgoing")}
@@ -65,27 +88,6 @@ export default function ContractsPage() {
           label={t.contracts.tabIncoming}
           count={incoming.length}
         />
-        <div className="flex-1" />
-        <div className="w-52 pb-1">
-          <SearchSelect
-            value={filterProjectId}
-            onChange={setFilterProjectId}
-            options={[
-              { value: "all", label: t.contracts.allProjects },
-              ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` })),
-            ]}
-            placeholder={t.contracts.selectProject}
-          />
-        </div>
-        {canManage && (
-          <div className="pb-1">
-            <CreateContractButton
-              activeTab={activeTab}
-              projects={projects}
-              filterProjectId={filterProjectId}
-            />
-          </div>
-        )}
       </div>
 
       {/* ── Contract List ── */}
