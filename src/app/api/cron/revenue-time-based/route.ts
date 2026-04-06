@@ -48,7 +48,12 @@ export async function POST(req: NextRequest) {
 
     if (!adminUser) continue;
 
-    await admin.from("revenue_entries").insert({
+    const monthStart = `${currentMonth}-01`;
+    // Ngày cuối tháng hiện tại
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const monthEnd = `${currentMonth}-${String(lastDay).padStart(2, "0")}`;
+
+    const { data: entry } = await admin.from("revenue_entries").insert({
       org_id: contract.org_id,
       project_id: contract.project_id,
       contract_id: contract.id,
@@ -57,10 +62,17 @@ export async function POST(req: NextRequest) {
       source: "manual",
       amount: monthlyAmount,
       description: `Phân bổ theo thời gian T${today.getMonth() + 1}/${today.getFullYear()}`,
-      recognition_date: `${currentMonth}-01`,
+      recognition_date: monthStart,
       status: "confirmed",
+      period_start: monthStart,
+      period_end: monthEnd,
       created_by: adminUser.id,
-    });
+    }).select("id").single();
+
+    // Phân bổ doanh thu cho các phòng ban tham gia dự án
+    if (entry) {
+      await admin.rpc("fn_allocate_dept_revenue", { p_entry_id: entry.id });
+    }
 
     created++;
   }

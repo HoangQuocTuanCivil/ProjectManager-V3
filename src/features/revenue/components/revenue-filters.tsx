@@ -27,6 +27,7 @@ export interface RevenueFilterValues {
   dept_id?: string;
   dimension?: string;
   method?: string;
+  source?: string;
   status?: string;
   product_service_id?: string;
   date_from?: string;
@@ -92,6 +93,15 @@ export function RevenueFilters({ value, onChange }: Props) {
             { value: "confirmed", label: t.revenue.statusConfirmed },
             { value: "adjusted", label: t.revenue.statusAdjusted },
             { value: "cancelled", label: t.revenue.statusCancelled },
+          ]} />
+      </div>
+      <div className="w-36">
+        <SearchSelect value={value.source || ""} onChange={(v) => set("source", v)}
+          options={[
+            { value: "", label: t.revenue.allSources },
+            { value: "billing_milestone", label: t.revenue.sourceBilling },
+            { value: "acceptance", label: t.revenue.sourceAcceptance },
+            { value: "manual", label: t.revenue.sourceManual },
           ]} />
       </div>
       <div className="w-44">

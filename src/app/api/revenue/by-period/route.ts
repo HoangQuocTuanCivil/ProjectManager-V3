@@ -49,9 +49,16 @@ export async function GET(req: NextRequest) {
     periodMap.set(key, (periodMap.get(key) || 0) + Number(e.amount));
   }
 
-  const result = Array.from(periodMap.entries())
+  const periods = Array.from(periodMap.entries())
     .map(([period, amount]) => ({ period, amount }))
     .sort((a, b) => a.period.localeCompare(b.period));
+
+  // Tính thay đổi so với kỳ trước: MoM/QoQ/YoY
+  const result = periods.map((cur, i) => {
+    const prev = i > 0 ? periods[i - 1].amount : 0;
+    const change = prev > 0 ? Math.round(((cur.amount - prev) / prev) * 10000) / 100 : null;
+    return { ...cur, prev_amount: i > 0 ? prev : null, change_pct: change };
+  });
 
   return jsonResponse(result);
 }

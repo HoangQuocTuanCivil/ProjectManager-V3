@@ -225,204 +225,315 @@ FROM (SELECT id FROM organizations LIMIT 1) o,
 
 -- ─── FUNCTIONS ──────────────────────────────────────────────────────────────
 
+-- Phân bổ doanh thu của một revenue_entry cho các phòng ban tham gia dự án.
+-- Tỷ lệ phân bổ dựa trên dept_budget_allocations nếu có, chia đều nếu không.
+-- Idempotent: xoá allocation cũ trước khi tạo mới (hỗ trợ gọi lại khi amount thay đổi).
+-- PB cuối cùng hấp thụ sai lệch làm tròn → SUM(allocated_amount) = entry.amount chính xác.
+
 CREATE OR REPLACE FUNCTION fn_allocate_dept_revenue(p_entry_id UUID)
-RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
-  v_entry      RECORD;
-  v_dept       RECORD;
-  v_total      NUMERIC(15,0);
-  v_dept_count INT;
-  v_top_dept   UUID;
+  v_entry       RECORD;
+  v_alloc       RECORD;
+  v_running_amt NUMERIC(15,0) := 0;
+  v_running_pct NUMERIC(5,2)  := 0;
+  v_top_dept    UUID;
+  v_top_pct     NUMERIC(5,2)  := -1;
 BEGIN
-  SELECT re.id, re.amount, re.project_id, re.org_id
-  INTO v_entry
-  FROM revenue_entries re
-  WHERE re.id = p_entry_id;
+  -- Lấy thông tin revenue entry cần phân bổ
+  SELECT id, amount, project_id, org_id
+    INTO v_entry
+    FROM revenue_entries
+   WHERE id = p_entry_id;
 
   IF NOT FOUND OR v_entry.project_id IS NULL THEN
     RETURN;
   END IF;
 
-  FOR v_dept IN
-    SELECT
-      d.dept_id,
-      COALESCE(dba.allocated_amount, 0) AS budget,
-      COALESCE(
-        ROUND(dba.allocated_amount * 100.0 / NULLIF(SUM(dba.allocated_amount) OVER (), 0), 2),
-        0
-      ) AS pct
-    FROM project_departments d
-    LEFT JOIN dept_budget_allocations dba
-      ON dba.project_id = d.project_id AND dba.dept_id = d.dept_id
-    WHERE d.project_id = v_entry.project_id
-  LOOP
-    v_dept_count := COALESCE(v_dept_count, 0) + 1;
-  END LOOP;
+  -- Xoá allocation cũ để cho phép gọi lại khi amount thay đổi
+  DELETE FROM dept_revenue_allocations
+   WHERE revenue_entry_id = v_entry.id;
 
-  IF COALESCE(v_dept_count, 0) = 0 THEN
-    RETURN;
-  END IF;
-
-  SELECT SUM(COALESCE(dba.allocated_amount, 0)) INTO v_total
-  FROM project_departments d
-  LEFT JOIN dept_budget_allocations dba
-    ON dba.project_id = d.project_id AND dba.dept_id = d.dept_id
-  WHERE d.project_id = v_entry.project_id;
-
-  FOR v_dept IN
-    SELECT
-      d.dept_id,
-      CASE
-        WHEN COALESCE(v_total, 0) > 0 THEN
-          ROUND(COALESCE(dba.allocated_amount, 0) * 100.0 / v_total, 2)
-        ELSE
-          ROUND(100.0 / v_dept_count, 2)
-      END AS pct,
-      CASE
-        WHEN COALESCE(v_total, 0) > 0 THEN
-          ROUND(v_entry.amount * COALESCE(dba.allocated_amount, 0) / v_total)
-        ELSE
-          ROUND(v_entry.amount / v_dept_count)
-      END AS amt
-    FROM project_departments d
-    LEFT JOIN dept_budget_allocations dba
-      ON dba.project_id = d.project_id AND dba.dept_id = d.dept_id
-    WHERE d.project_id = v_entry.project_id
-  LOOP
-    INSERT INTO dept_revenue_allocations (
-      revenue_entry_id, dept_id, project_id, allocation_percentage, allocated_amount
-    ) VALUES (
-      v_entry.id, v_dept.dept_id, v_entry.project_id, v_dept.pct, v_dept.amt
+  -- Một CTE duy nhất: lấy danh sách PB, tính tỷ lệ budget, đánh số thứ tự
+  FOR v_alloc IN
+    WITH depts AS (
+      SELECT
+        pd.dept_id,
+        COALESCE(dba.allocated_amount, 0)                  AS budget,
+        COUNT(*) OVER ()                                   AS dept_count,
+        SUM(COALESCE(dba.allocated_amount, 0)) OVER ()     AS budget_total,
+        ROW_NUMBER() OVER (
+          ORDER BY COALESCE(dba.allocated_amount, 0) DESC, pd.dept_id
+        ) AS rn
+      FROM project_departments pd
+      LEFT JOIN dept_budget_allocations dba
+        ON dba.project_id = pd.project_id
+       AND dba.dept_id    = pd.dept_id
+      WHERE pd.project_id = v_entry.project_id
     )
-    ON CONFLICT (revenue_entry_id, dept_id) DO NOTHING;
+    SELECT
+      dept_id,
+      dept_count,
+      rn,
+      CASE WHEN budget_total > 0
+        THEN ROUND(budget * 100.0 / budget_total, 2)
+        ELSE ROUND(100.0 / dept_count, 2)
+      END AS pct,
+      CASE WHEN budget_total > 0
+        THEN ROUND(v_entry.amount * budget / budget_total)
+        ELSE ROUND(v_entry.amount::NUMERIC / dept_count)
+      END AS amt
+    FROM depts
+    ORDER BY rn
+  LOOP
+    -- PB cuối nhận phần dư để tổng khớp chính xác với entry.amount
+    IF v_alloc.rn = v_alloc.dept_count THEN
+      v_alloc.amt := v_entry.amount - v_running_amt;
+      v_alloc.pct := 100.00 - v_running_pct;
+    END IF;
 
-    IF v_top_dept IS NULL OR v_dept.pct > COALESCE(
-      (SELECT allocation_percentage FROM dept_revenue_allocations
-       WHERE revenue_entry_id = v_entry.id AND dept_id = v_top_dept), 0
-    ) THEN
-      v_top_dept := v_dept.dept_id;
+    INSERT INTO dept_revenue_allocations (
+      revenue_entry_id, dept_id, project_id,
+      allocation_percentage, allocated_amount
+    ) VALUES (
+      v_entry.id, v_alloc.dept_id, v_entry.project_id,
+      v_alloc.pct, v_alloc.amt
+    );
+
+    v_running_amt := v_running_amt + v_alloc.amt;
+    v_running_pct := v_running_pct + v_alloc.pct;
+
+    -- Theo dõi PB có tỷ lệ cao nhất để gán làm PB chính
+    IF v_alloc.pct > v_top_pct THEN
+      v_top_pct  := v_alloc.pct;
+      v_top_dept := v_alloc.dept_id;
     END IF;
   END LOOP;
 
+  -- Gán PB chính (có % cao nhất) vào revenue_entries.dept_id
   IF v_top_dept IS NOT NULL THEN
     UPDATE revenue_entries SET dept_id = v_top_dept WHERE id = v_entry.id;
   END IF;
 END;
 $$;
 
+-- Tự động tạo revenue_entry khi billing_milestone chuyển sang 'paid'.
+-- Gán nguồn gốc (source) = 'billing_milestone' để truy vết về mốc thanh toán gốc.
+-- Sau khi tạo entry, phân bổ doanh thu cho các phòng ban qua fn_allocate_dept_revenue.
+
 CREATE OR REPLACE FUNCTION fn_revenue_from_billing()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   v_contract     RECORD;
+  v_creator_id   UUID;
   v_new_entry_id UUID;
 BEGIN
+  -- Guard: chỉ xử lý khi status thực sự thay đổi sang 'paid'
   IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW; END IF;
   IF NEW.status <> 'paid' THEN RETURN NEW; END IF;
 
+  -- Idempotent: nếu milestone này đã có revenue entry → bỏ qua
   IF EXISTS (
     SELECT 1 FROM revenue_entries
     WHERE source = 'billing_milestone' AND source_id = NEW.id
   ) THEN RETURN NEW; END IF;
 
-  SELECT c.id, c.org_id, c.project_id, u.id AS creator_id
-  INTO v_contract
-  FROM contracts c
-  JOIN users u ON u.org_id = c.org_id AND u.role = 'admin'
-  WHERE c.id = NEW.contract_id
-  LIMIT 1;
+  -- Lấy thông tin hợp đồng (org, project) để gán vào revenue entry
+  SELECT c.id, c.org_id, c.project_id
+    INTO v_contract
+    FROM contracts c
+   WHERE c.id = NEW.contract_id;
 
   IF NOT FOUND THEN RETURN NEW; END IF;
 
+  -- Ưu tiên user đang thao tác, fallback về admin của org khi gọi từ cron/system
+  v_creator_id := COALESCE(
+    auth.uid(),
+    (SELECT id FROM users
+      WHERE org_id = v_contract.org_id AND role = 'admin' AND is_active = TRUE
+      ORDER BY created_at LIMIT 1)
+  );
+
+  IF v_creator_id IS NULL THEN RETURN NEW; END IF;
+
+  -- Tạo revenue entry từ thông tin milestone và hợp đồng
   INSERT INTO revenue_entries (
-    org_id, project_id, contract_id, dimension, method, source, source_id,
-    amount, description, recognition_date, status, created_by
+    org_id, project_id, contract_id,
+    dimension, method, source, source_id,
+    amount, description,
+    recognition_date, status,
+    period_start, period_end,
+    created_by
   ) VALUES (
     v_contract.org_id, v_contract.project_id, v_contract.id,
-    'contract', 'acceptance', 'billing_milestone', NEW.id,
-    NEW.amount, NEW.title, COALESCE(NEW.paid_date, CURRENT_DATE),
-    'confirmed', v_contract.creator_id
+    'contract',                              -- doanh thu theo hợp đồng
+    'acceptance',                            -- phương pháp nghiệm thu
+    'billing_milestone', NEW.id,             -- trỏ về milestone gốc
+    NEW.amount, NEW.title,
+    COALESCE(NEW.paid_date, CURRENT_DATE),   -- ngày ghi nhận = ngày thanh toán
+    'confirmed',                             -- tự động xác nhận từ billing
+    NEW.paid_date, NEW.paid_date,            -- kỳ ghi nhận = ngày thanh toán
+    v_creator_id
   )
   RETURNING id INTO v_new_entry_id;
 
+  -- Phân bổ doanh thu cho các phòng ban tham gia dự án
   PERFORM fn_allocate_dept_revenue(v_new_entry_id);
   RETURN NEW;
 END;
 $$;
 
+-- Tự động tạo revenue_entry khi task đồng thời thoả 2 điều kiện:
+--   1. kpi_evaluated_at IS NOT NULL  (đã nghiệm thu KPI)
+--   2. metadata->>'payment_status' = 'paid'  (đã thanh toán)
+-- Hỗ trợ cả 2 thứ tự: KPI trước rồi payment, hoặc payment trước rồi KPI.
+-- Guard: chỉ tạo revenue khi UPDATE này làm cả 2 điều kiện lần đầu đồng thời thoả.
+
 CREATE OR REPLACE FUNCTION fn_revenue_from_acceptance()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
-  v_payment_status TEXT;
-  v_old_payment    TEXT;
-  v_amount         NUMERIC(15,0);
+  v_amount      NUMERIC(15,0);
+  v_recog_date  DATE;
 BEGIN
+  -- Điều kiện hiện tại: cả 2 phải thoả trên NEW
   IF NEW.kpi_evaluated_at IS NULL THEN RETURN NEW; END IF;
+  IF (NEW.metadata->>'payment_status') IS DISTINCT FROM 'paid' THEN RETURN NEW; END IF;
 
-  v_payment_status := NEW.metadata->>'payment_status';
-  v_old_payment    := OLD.metadata->>'payment_status';
+  -- Guard chống trùng: nếu TRƯỚC update cả 2 đã đồng thời thoả → không phải
+  -- lần đầu chuyển trạng thái, bỏ qua để tránh tạo revenue entry trùng lặp
+  IF OLD.kpi_evaluated_at IS NOT NULL
+     AND (OLD.metadata->>'payment_status') = 'paid'
+  THEN
+    RETURN NEW;
+  END IF;
 
-  IF v_payment_status IS DISTINCT FROM 'paid' THEN RETURN NEW; END IF;
-  IF v_old_payment IS NOT DISTINCT FROM 'paid' THEN RETURN NEW; END IF;
-
+  -- Idempotent: task này đã có revenue entry rồi → bỏ qua
   IF EXISTS (
     SELECT 1 FROM revenue_entries
     WHERE source = 'acceptance' AND source_id = NEW.id
   ) THEN RETURN NEW; END IF;
 
+  -- Lấy số tiền thanh toán từ metadata, bỏ qua nếu = 0 hoặc không hợp lệ
   v_amount := (NEW.metadata->>'payment_amount')::numeric;
   IF COALESCE(v_amount, 0) = 0 THEN RETURN NEW; END IF;
 
+  -- Ngày ghi nhận: ưu tiên payment_date từ form, fallback về hôm nay
+  v_recog_date := COALESCE(
+    (NEW.metadata->>'payment_date')::date,
+    CURRENT_DATE
+  );
+
+  -- Tạo revenue entry liên kết trực tiếp với phòng ban thực hiện task
   INSERT INTO revenue_entries (
-    org_id, project_id, dept_id, dimension, method, source, source_id,
-    amount, description, recognition_date, status, created_by
+    org_id, project_id, dept_id,
+    dimension, method, source, source_id,
+    amount, description,
+    recognition_date, status,
+    period_start, period_end,
+    created_by
   ) VALUES (
     NEW.org_id, NEW.project_id, NEW.dept_id,
-    'project', 'acceptance', 'acceptance', NEW.id,
-    v_amount, NEW.title, CURRENT_DATE,
-    'confirmed', COALESCE(NEW.kpi_evaluated_by, NEW.assigner_id)
+    'project',                                -- doanh thu theo dự án
+    'acceptance',                              -- phương pháp nghiệm thu
+    'acceptance', NEW.id,                      -- trỏ về task gốc
+    v_amount, NEW.title,
+    v_recog_date,                              -- ngày ghi nhận doanh thu
+    'confirmed',                               -- tự động xác nhận
+    v_recog_date, v_recog_date,                -- kỳ ghi nhận
+    COALESCE(NEW.kpi_evaluated_by, NEW.assigner_id)
   );
+
   RETURN NEW;
 END;
 $$;
 
+-- Khi phụ lục hợp đồng được thêm, tự động:
+--   1. Cập nhật contracts.contract_value và projects.budget theo value_change
+--   2. Ghi audit trail vào revenue_adjustments (old/new amount)
+--   3. Tạo revenue_entry draft cho phần chênh lệch (dương = tăng, âm = giảm)
+-- Frontend KHÔNG cần tự update contract_value — trigger xử lý toàn bộ.
+
 CREATE OR REPLACE FUNCTION fn_revenue_adjustment()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
-  v_contract  RECORD;
-  v_new_value NUMERIC(15,0);
+  v_contract       RECORD;
+  v_new_value      NUMERIC(15,0);
+  v_new_entry_id   UUID;
+  v_recog_date     DATE;
 BEGIN
-  SELECT c.contract_value, c.project_id, c.org_id, u.id AS admin_id
-  INTO v_contract
-  FROM contracts c
-  JOIN users u ON u.org_id = c.org_id AND u.role = 'admin'
-  WHERE c.id = NEW.contract_id
-  LIMIT 1;
+  -- Lấy thông tin hợp đồng hiện tại (giá trị trước điều chỉnh)
+  SELECT c.id, c.contract_value, c.project_id, c.org_id
+    INTO v_contract
+    FROM contracts c
+   WHERE c.id = NEW.contract_id;
 
   IF NOT FOUND THEN RETURN NEW; END IF;
 
-  v_new_value := v_contract.contract_value + NEW.value_change;
+  v_new_value  := v_contract.contract_value + NEW.value_change;
+  v_recog_date := COALESCE(NEW.signed_date, CURRENT_DATE);
 
-  INSERT INTO revenue_adjustments (
-    org_id, contract_id, addendum_id,
-    old_amount, new_amount, reason, adjusted_by
-  ) VALUES (
-    v_contract.org_id, NEW.contract_id, NEW.id,
-    v_contract.contract_value, v_new_value,
-    'PL ' || NEW.addendum_no, NEW.created_by
-  );
+  -- Cập nhật giá trị hợp đồng (cộng/trừ theo value_change)
+  UPDATE contracts
+     SET contract_value = v_new_value,
+         end_date       = COALESCE(NEW.new_end_date, end_date),
+         updated_at     = NOW()
+   WHERE id = NEW.contract_id;
 
+  -- Đồng bộ budget dự án theo giá trị hợp đồng mới
+  UPDATE projects
+     SET budget     = v_new_value,
+         updated_at = NOW()
+   WHERE id = v_contract.project_id;
+
+  -- Tạo revenue entry draft cho phần chênh lệch (cả dương lẫn âm)
   IF NEW.value_change <> 0 THEN
     INSERT INTO revenue_entries (
       org_id, project_id, contract_id, addendum_id,
       dimension, method, source, source_id,
-      amount, description, recognition_date, status, created_by
+      amount, description,
+      recognition_date, status,
+      period_start, period_end,
+      created_by
     ) VALUES (
       v_contract.org_id, v_contract.project_id, NEW.contract_id, NEW.id,
-      'contract', 'acceptance', 'manual', NEW.id,
-      NEW.value_change, 'Điều chỉnh PL ' || NEW.addendum_no,
-      COALESCE(NEW.signed_date, CURRENT_DATE), 'draft', NEW.created_by
-    );
+      'contract',                                    -- doanh thu theo hợp đồng
+      'acceptance',                                  -- phương pháp nghiệm thu
+      'manual', NEW.id,                              -- nguồn: phụ lục thủ công
+      NEW.value_change,                              -- dương = tăng DT, âm = giảm DT
+      'Điều chỉnh PL ' || NEW.addendum_no,
+      v_recog_date, 'draft',                         -- draft chờ admin xác nhận
+      v_recog_date, v_recog_date,                    -- kỳ ghi nhận
+      NEW.created_by
+    )
+    RETURNING id INTO v_new_entry_id;
   END IF;
+
+  -- Ghi audit trail: giá trị cũ → mới, liên kết với revenue entry nếu có
+  INSERT INTO revenue_adjustments (
+    org_id, contract_id, addendum_id, revenue_entry_id,
+    old_amount, new_amount,
+    reason, adjusted_by
+  ) VALUES (
+    v_contract.org_id, NEW.contract_id, NEW.id, v_new_entry_id,
+    v_contract.contract_value, v_new_value,
+    'PL ' || NEW.addendum_no, NEW.created_by
+  );
 
   RETURN NEW;
 END;
@@ -432,11 +543,11 @@ $$;
 
 CREATE TRIGGER trg_billing_paid
   AFTER UPDATE OF status ON billing_milestones
-  FOR EACH ROW WHEN (NEW.status = 'paid')
+  FOR EACH ROW WHEN (NEW.status = 'paid' AND OLD.status IS DISTINCT FROM 'paid')
   EXECUTE FUNCTION fn_revenue_from_billing();
 
 CREATE TRIGGER trg_task_acceptance_paid
-  AFTER UPDATE ON tasks
+  AFTER UPDATE OF status, metadata, kpi_evaluated_at ON tasks
   FOR EACH ROW WHEN (NEW.status IN ('review', 'completed') AND NEW.kpi_evaluated_at IS NOT NULL)
   EXECUTE FUNCTION fn_revenue_from_acceptance();
 

@@ -16,8 +16,12 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
   const { data: summary, isLoading } = useRevenueSummary({ from, to, project_id: projectId });
   const { data: forecast } = useRevenueForecast({ project_id: projectId });
 
+  const confirmed = summary?.total ?? 0;
+  const projected = forecast?.projected_from_milestones ?? 0;
+  const recognizedPct = projected > 0 ? Math.round((confirmed / projected) * 100) : null;
+
   const cards = [
-    { label: t.revenue.totalRevenue, value: summary?.total ?? 0, color: "text-primary" },
+    { label: t.revenue.totalRevenue, value: confirmed, color: "text-primary" },
     {
       label: t.revenue.growthRate,
       value: summary?.growthRate,
@@ -28,9 +32,24 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
         return <span className={`flex items-center gap-1 ${color}`} aria-label={`${v > 0 ? "+" : ""}${v}%`}><Icon size={14} aria-hidden="true" />{v > 0 ? "+" : ""}{v}%</span>;
       },
     },
-    { label: t.revenue.totalConfirmed, value: summary?.total ?? 0, color: "text-green-500" },
+    {
+      label: t.revenue.recognizedVsForecast,
+      value: null,
+      render: () => (
+        <div>
+          <p className="text-lg font-bold font-mono text-green-500">{formatVND(confirmed)}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${Math.min(recognizedPct ?? 0, 100)}%` }} />
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono">{recognizedPct ?? 0}%</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{t.revenue.forecast}: {formatVND(projected)}</p>
+        </div>
+      ),
+    },
     { label: t.revenue.statusDraft, value: summary?.draft ?? 0, color: "text-yellow-500" },
-    { label: t.revenue.forecast, value: forecast?.projected_from_milestones ?? 0, color: "text-accent" },
+    { label: t.revenue.forecast, value: projected, color: "text-accent" },
   ];
 
   return (

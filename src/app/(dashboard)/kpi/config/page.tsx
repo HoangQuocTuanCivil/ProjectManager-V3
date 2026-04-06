@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAllocationConfig, kpiKeys } from "@/lib/hooks/use-kpi";
+import { useAllocationConfig, useAllocationCycle, useUpdateAllocationCycle, kpiKeys } from "@/lib/hooks/use-kpi";
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
 import { Section, Button } from "@/components/shared";
@@ -152,6 +152,94 @@ export default function KPIConfigPage() {
           </div>
         </Section>
       )}
+
+      {/* ─── Cấu hình kỳ khoán ─── */}
+      <AllocationCycleSection canEdit={!!canEdit} />
     </div>
+  );
+}
+
+/** Cấu hình kỳ khoán: chu kỳ 3/6 tháng và tháng bắt đầu */
+function AllocationCycleSection({ canEdit }: { canEdit: boolean }) {
+  const { data: cycle } = useAllocationCycle();
+  const updateCycle = useUpdateAllocationCycle();
+  const [cycleForm, setCycleForm] = useState({ cycle_months: 3, start_month: 1 });
+  const [cycleEditing, setCycleEditing] = useState(false);
+
+  useEffect(() => {
+    if (cycle) setCycleForm({ cycle_months: cycle.cycle_months, start_month: cycle.start_month });
+  }, [cycle]);
+
+  const monthNames = ["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"];
+
+  const handleSaveCycle = () => {
+    updateCycle.mutate(cycleForm, {
+      onSuccess: () => { toast.success("Lưu cấu hình kỳ khoán!"); setCycleEditing(false); },
+      onError: (e) => toast.error(e.message),
+    });
+  };
+
+  return (
+    <Section title="Cấu hình kỳ khoán">
+      <div className="p-5 space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Chu kỳ khoán xác định khoảng thời gian tính sản lượng vs lương.
+          Cuối mỗi kỳ, hệ thống so sánh sản lượng thực tế với tổng lương đã ứng.
+        </p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs text-muted-foreground font-medium">Chu kỳ</label>
+            {cycleEditing ? (
+              <SearchSelect value={String(cycleForm.cycle_months)} onChange={(v) => setCycleForm({ ...cycleForm, cycle_months: +v })}
+                options={[{ value: "3", label: "3 tháng (Quý)" }, { value: "6", label: "6 tháng (Nửa năm)" }]}
+                className="mt-1" />
+            ) : (
+              <p className="mt-1 text-base font-bold">{cycle?.cycle_months ?? 3} tháng</p>
+            )}
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground font-medium">Tháng bắt đầu</label>
+            {cycleEditing ? (
+              <SearchSelect value={String(cycleForm.start_month)} onChange={(v) => setCycleForm({ ...cycleForm, start_month: +v })}
+                options={monthNames.map((m, i) => ({ value: String(i + 1), label: m }))}
+                className="mt-1" />
+            ) : (
+              <p className="mt-1 text-base font-bold">{monthNames[(cycle?.start_month ?? 1) - 1]}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Preview chu kỳ */}
+        {!cycleEditing && cycle && (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {Array.from({ length: 12 / cycle.cycle_months }, (_, i) => {
+              const start = ((cycle.start_month - 1 + i * cycle.cycle_months) % 12) + 1;
+              const end = ((start - 1 + cycle.cycle_months - 1) % 12) + 1;
+              return (
+                <span key={i} className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+                  Kỳ {i + 1}: {monthNames[start - 1]} → {monthNames[end - 1]}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {canEdit && (
+          <div className="flex justify-end gap-2 pt-2">
+            {cycleEditing ? (
+              <>
+                <Button onClick={() => setCycleEditing(false)}>Huỷ</Button>
+                <Button variant="primary" onClick={handleSaveCycle} disabled={updateCycle.isPending}>
+                  {updateCycle.isPending ? "Đang lưu..." : "Lưu"}
+                </Button>
+              </>
+            ) : (
+              <Button variant="primary" onClick={() => setCycleEditing(true)}>Chỉnh sửa</Button>
+            )}
+          </div>
+        )}
+      </div>
+    </Section>
   );
 }

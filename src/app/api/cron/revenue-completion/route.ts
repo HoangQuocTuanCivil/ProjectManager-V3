@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
 
     if (!adminUser) continue;
 
-    await admin.from("revenue_entries").insert({
+    const recognitionDate = new Date().toISOString().split("T")[0];
+    const { data: entry } = await admin.from("revenue_entries").insert({
       org_id: contract.org_id,
       project_id: contract.project_id,
       contract_id: contract.id,
@@ -58,11 +59,18 @@ export async function POST(req: NextRequest) {
       source: "manual",
       amount: delta,
       description: `Ghi nhận theo % hoàn thành (${Math.round(avgProgress)}%)`,
-      recognition_date: new Date().toISOString().split("T")[0],
+      recognition_date: recognitionDate,
       status: "confirmed",
       completion_percentage: Math.round(avgProgress * 100) / 100,
+      period_start: recognitionDate,
+      period_end: recognitionDate,
       created_by: adminUser.id,
-    });
+    }).select("id").single();
+
+    // Phân bổ doanh thu cho các phòng ban tham gia dự án
+    if (entry) {
+      await admin.rpc("fn_allocate_dept_revenue", { p_entry_id: entry.id });
+    }
 
     created++;
   }

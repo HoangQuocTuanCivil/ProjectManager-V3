@@ -10,5 +10,13 @@ export {
   useDeptBudgetAllocations,
   useUpsertDeptBudgetAllocation,
   useDeleteDeptBudgetAllocation,
+  useFundSummary,
+  useEmployeeBonus,
+  useAllocationCycle,
+  useUpdateAllocationCycle,
+  useCalculateBonus,
+  useSalaryRecords,
+  useCreateSalaryBatch,
+  useSalaryDeductions,
   kpiKeys,
 } from './hooks/use-kpi';

@@ -47,11 +47,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (existing.status !== "draft") return errorResponse("Chỉ chỉnh sửa được bút toán nháp", 400);
 
   const body = await req.json();
+  // Xoá trường hệ thống và immutable — chỉ cho phép sửa nội dung nghiệp vụ
   delete body.id;
   delete body.org_id;
   delete body.created_by;
   delete body.created_at;
   delete body.status;
+  delete body.source;
+  delete body.source_id;
+  delete body.original_entry_id;
 
   const { data, error } = await supabase
     .from("revenue_entries")

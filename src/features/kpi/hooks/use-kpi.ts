@@ -15,6 +15,11 @@ export const kpiKeys = {
   period: (id: string) => [...kpiKeys.all, "period", id] as const,
   config: () => [...kpiKeys.all, "config"] as const,
   budgetAllocations: (projectId?: string) => [...kpiKeys.all, "budget-alloc", projectId] as const,
+  fundSummary: () => [...kpiKeys.all, "fund-summary"] as const,
+  employeeBonus: (periodId?: string) => [...kpiKeys.all, "employee-bonus", periodId] as const,
+  cycle: () => [...kpiKeys.all, "cycle"] as const,
+  salary: (filters?: Record<string, string | undefined>) => [...kpiKeys.all, "salary", filters] as const,
+  deductions: () => [...kpiKeys.all, "deductions"] as const,
 };
 
 /** Lấy danh sách bản ghi KPI, có thể lọc theo user */
@@ -249,5 +254,148 @@ export function useDeleteDeptBudgetAllocation() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() }),
+  });
+}
+
+/* ───── Fund Summary, Bonus, Cycle, Salary ──────────────────────── */
+
+/** Bảng tổng hợp quỹ PB: dự kiến / thực tế / chi phí / lương / còn lại */
+export function useFundSummary() {
+  return useQuery({
+    queryKey: kpiKeys.fundSummary(),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("v_dept_fund_summary").select("*");
+      if (error) throw error;
+      return data as {
+        dept_id: string; org_id: string; dept_name: string; dept_code: string;
+        expected_fund: number; actual_revenue: number; internal_rev: number;
+        total_costs: number; total_salary: number; net_fund: number;
+      }[];
+    },
+  });
+}
+
+/** Bảng thưởng/nợ cá nhân — filter theo đợt khoán */
+export function useEmployeeBonus(periodId?: string) {
+  return useQuery({
+    queryKey: kpiKeys.employeeBonus(periodId),
+    enabled: !!periodId,
+    queryFn: async () => {
+      let query = supabase
+        .from("v_employee_bonus")
+        .select("*")
+        .order("bonus_amount", { ascending: false });
+      if (periodId) query = query.eq("period_id", periodId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as {
+        result_id: string; period_id: string; period_name: string;
+        period_start: string; period_end: string; org_id: string;
+        user_id: string; full_name: string; email: string;
+        dept_id: string; dept_name: string;
+        allocated_amount: number; total_salary: number;
+        bonus_amount: number; deduction_remaining: number;
+        outcome: "bonus" | "deduction" | "balanced";
+      }[];
+    },
+  });
+}
+
+/** Cấu hình kỳ khoán (3/6 tháng) — mỗi org 1 bản ghi */
+export function useAllocationCycle() {
+  return useQuery({
+    queryKey: kpiKeys.cycle(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("allocation_cycle_config")
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; org_id: string; cycle_months: number; start_month: number; is_active: boolean } | null;
+    },
+  });
+}
+
+/** Cập nhật cấu hình kỳ khoán */
+export function useUpdateAllocationCycle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { cycle_months: number; start_month: number; is_active?: boolean }) => {
+      const res = await fetch("/api/allocation-cycle", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.cycle() }),
+  });
+}
+
+/** Gọi fn_calc_bonus cho 1 đợt khoán */
+export function useCalculateBonus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (periodId: string) => {
+      const res = await fetch("/api/kpi/allocation/calculate-bonus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period_id: periodId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: kpiKeys.periods() });
+      qc.invalidateQueries({ queryKey: kpiKeys.employeeBonus() });
+      qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
+    },
+  });
+}
+
+/** Danh sách bảng lương — filter tháng / PB / NV */
+export function useSalaryRecords(filters?: { month?: string; dept_id?: string; user_id?: string }) {
+  return useQuery({
+    queryKey: kpiKeys.salary(filters as Record<string, string | undefined>),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters?.month) params.set("month", filters.month);
+      if (filters?.dept_id) params.set("dept_id", filters.dept_id);
+      if (filters?.user_id) params.set("user_id", filters.user_id);
+      params.set("per_page", "200");
+      const res = await fetch(`/api/salary?${params}`);
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json() as Promise<{ data: any[]; count: number }>;
+    },
+  });
+}
+
+/** Nhập lương hàng loạt */
+export function useCreateSalaryBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (records: { user_id: string; dept_id?: string; month: string; base_salary: number; notes?: string }[]) => {
+      const res = await fetch("/api/salary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(records),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.salary() }),
+  });
+}
+
+/** Danh sách khấu trừ lương */
+export function useSalaryDeductions() {
+  return useQuery({
+    queryKey: kpiKeys.deductions(),
+    queryFn: async () => {
+      const res = await fetch("/api/salary/deductions?per_page=100");
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json() as Promise<{ data: any[]; count: number }>;
+    },
   });
 }

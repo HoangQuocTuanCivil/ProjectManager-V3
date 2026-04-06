@@ -129,34 +129,16 @@ export function useCreateAddendum() {
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Insert addendum
+      // Insert addendum — trigger fn_revenue_adjustment() tự động:
+      //   1. Cập nhật contracts.contract_value + projects.budget
+      //   2. Tạo revenue_adjustments (audit trail)
+      //   3. Tạo revenue_entries draft cho phần chênh lệch
       const { data, error } = await supabase
         .from("contract_addendums")
         .insert({ ...input, created_by: user!.id })
         .select()
         .single();
       if (error) throw error;
-
-      // Auto-update contract value & project budget
-      const { data: contract } = await supabase
-        .from("contracts")
-        .select("id, contract_value, project_id")
-        .eq("id", input.contract_id)
-        .single();
-      if (contract) {
-        const newValue = Number(contract.contract_value) + input.value_change;
-        await supabase.from("contracts").update({
-          contract_value: newValue,
-          ...(input.new_end_date ? { end_date: input.new_end_date } : {}),
-          updated_at: new Date().toISOString(),
-        }).eq("id", contract.id);
-
-        // Sync project budget
-        await supabase.from("projects").update({
-          budget: newValue,
-          updated_at: new Date().toISOString(),
-        }).eq("id", contract.project_id);
-      }
 
       return data;
     },

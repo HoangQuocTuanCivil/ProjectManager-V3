@@ -30,7 +30,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (entry.project_id) {
     const admin = getAdminSupabase();
-    try { await admin.rpc("fn_allocate_dept_revenue", { p_entry_id: params.id }); } catch {};
+    const { error: allocErr } = await admin.rpc("fn_allocate_dept_revenue", { p_entry_id: params.id });
+    if (allocErr) console.error("Dept allocation failed:", allocErr.message);
   }
 
   return jsonResponse(data);

@@ -79,11 +79,28 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await getServerSupabase();
+
+  // Chỉ cho phép set các trường nghiệp vụ — chặn injection trường hệ thống
   const { data, error } = await supabase
     .from("revenue_entries")
     .insert({
-      ...body,
       org_id: profile.org_id,
+      project_id: body.project_id ?? null,
+      contract_id: body.contract_id ?? null,
+      dept_id: body.dept_id ?? null,
+      dimension: body.dimension ?? "project",
+      method: body.method ?? "acceptance",
+      source: body.source ?? "manual",
+      source_id: body.source_id ?? null,
+      amount: body.amount,
+      description: body.description,
+      period_start: body.period_start ?? null,
+      period_end: body.period_end ?? null,
+      notes: body.notes ?? null,
+      product_service_id: body.product_service_id ?? null,
+      addendum_id: body.addendum_id ?? null,
+      recognition_date: body.recognition_date ?? new Date().toISOString().split("T")[0],
+      completion_percentage: body.completion_percentage ?? 0,
       status: "draft",
       created_by: user.id,
     })

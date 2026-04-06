@@ -6,14 +6,14 @@ import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
 import { EmptyState } from "@/components/shared";
 import { toast } from "sonner";
-import { Check, X, Trash2, ChevronLeft, ChevronRight, Coins } from "lucide-react";
+import { Check, X, Trash2, ChevronLeft, ChevronRight, Coins, Zap } from "lucide-react";
 import type { RevenueEntryStatus } from "@/lib/types";
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-yellow-500/10 text-yellow-600",
   confirmed: "bg-green-500/10 text-green-600",
   adjusted: "bg-blue-500/10 text-blue-600",
-  cancelled: "bg-red-500/10 text-red-500",
+  cancelled: "bg-red-500/10 text-red-500 line-through",
 };
 
 interface Props {
@@ -42,6 +42,15 @@ export function RevenueTable({ filters, canManage }: Props) {
       confirmed: t.revenue.statusConfirmed,
       adjusted: t.revenue.statusAdjusted,
       cancelled: t.revenue.statusCancelled,
+    };
+    return map[s] || s;
+  };
+
+  const sourceLabel = (s: string) => {
+    const map: Record<string, string> = {
+      billing_milestone: t.revenue.sourceBilling,
+      acceptance: t.revenue.sourceAcceptance,
+      manual: t.revenue.sourceManual,
     };
     return map[s] || s;
   };
@@ -100,7 +109,7 @@ export function RevenueTable({ filters, canManage }: Props) {
           <tr className="border-b border-border text-muted-foreground">
             <SortHeader col="description">{t.revenue.description}</SortHeader>
             <th className="text-left px-4 py-2.5 font-medium">{t.contracts.status}</th>
-            <th className="text-left px-4 py-2.5 font-medium">{t.revenue.dimension}</th>
+            <th className="text-left px-4 py-2.5 font-medium">{t.revenue.source}</th>
             <th className="text-left px-4 py-2.5 font-medium">{t.revenue.selectProject}</th>
             <SortHeader col="recognition_date">{t.revenue.recognitionDate}</SortHeader>
             <SortHeader col="amount">{t.revenue.amount}</SortHeader>
@@ -116,7 +125,14 @@ export function RevenueTable({ filters, canManage }: Props) {
                   {statusLabel(e.status ?? "draft")}
                 </span>
               </td>
-              <td className="px-4 py-2.5 text-muted-foreground">{e.dimension}</td>
+              <td className="px-4 py-2.5">
+                <span className="text-muted-foreground">{sourceLabel(e.source ?? "manual")}</span>
+                {e.source !== "manual" && (
+                  <span className="ml-1 inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-accent/10 text-accent text-[9px] font-medium">
+                    <Zap size={8} aria-hidden="true" />{t.revenue.autoSource}
+                  </span>
+                )}
+              </td>
               <td className="px-4 py-2.5 text-muted-foreground">{(e as any).project?.code || "—"}</td>
               <td className="px-4 py-2.5 text-muted-foreground">{formatDate(e.recognition_date ?? null)}</td>
               <td className="px-4 py-2.5 text-right font-mono font-semibold">{formatVND(Number(e.amount))}</td>

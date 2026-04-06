@@ -12,7 +12,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const { data: entry } = await supabase
     .from("revenue_entries")
-    .select("id, status, amount, org_id, project_id, contract_id, dept_id, dimension, method, description")
+    .select(`
+      id, status, amount, org_id, project_id, contract_id, dept_id,
+      dimension, method, source, description,
+      product_service_id, addendum_id, period_start, period_end
+    `)
     .eq("id", params.id)
     .single();
 
@@ -26,7 +30,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (updateErr) return errorResponse(updateErr.message, 500);
 
+  // Bút toán đã xác nhận + có giá trị → tạo bản đối ứng âm để triệt tiêu doanh thu
   if (entry.status === "confirmed" && entry.amount !== 0) {
+    const today = new Date().toISOString().split("T")[0];
     await supabase
       .from("revenue_entries")
       .insert({
@@ -36,12 +42,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         dept_id: entry.dept_id,
         dimension: entry.dimension,
         method: entry.method,
-        source: "manual" as const,
+        source: entry.source,
         amount: -entry.amount,
         description: `Huỷ: ${entry.description}`,
-        recognition_date: new Date().toISOString().split("T")[0],
+        recognition_date: today,
         status: "confirmed" as const,
         original_entry_id: entry.id,
+        product_service_id: entry.product_service_id,
+        addendum_id: entry.addendum_id,
+        period_start: entry.period_start,
+        period_end: entry.period_end,
         created_by: user.id,
       });
   }
