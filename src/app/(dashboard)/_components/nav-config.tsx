@@ -76,6 +76,7 @@ export const PAGE_TITLE_KEYS: Record<string, string> = {
   "/revenue": "revenueManagement",
   "/revenue/internal": "revenueManagement",
   "/revenue/costs": "costs",
+  "/reports/business": "reports",
   "/revenue/allocation": "revenueManagement",
   "/goals": "goalsOkr",
   "/workflows": "workflowApproval",
