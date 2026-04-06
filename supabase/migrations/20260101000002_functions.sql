@@ -132,19 +132,28 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ─── ALLOCATION (CHIA KHOÁN) ─────────────────────────────────────────────────
 
 -- Tính khoán thông minh: tính KPI trung bình mỗi user từ tasks hoàn thành trong kỳ,
--- chia quỹ khoán theo tỷ lệ weighted score
--- Phiên bản cuối: có COALESCE cho NULL values, xử lý NULL period dates
+-- Chia quỹ khoán theo tỷ lệ weighted score — giao về trung tâm (center)
+--
+-- Mode per_project: chia khoán riêng cho 1 dự án.
+--   Chỉ NV thuộc center tham gia DA đó được chia, KPI tính bình thường.
+--
+-- Mode global: gộp quỹ nhiều DA trong trung tâm.
+--   KPI mỗi task được nhân hệ số khó của dự án (project_dept_factors):
+--     DA khó (factor > 1.0) → KPI tăng → NV được chia nhiều hơn
+--     DA dễ (factor < 1.0) → KPI giảm → NV được chia ít hơn
+--   Hệ số do trưởng trung tâm thiết lập trước khi tính khoán.
+
 CREATE OR REPLACE FUNCTION fn_allocate_smart(
   p_period_id UUID,
   p_use_actual BOOLEAN DEFAULT TRUE
 ) RETURNS JSONB AS $$
 DECLARE
   v_period   RECORD;
-  v_config   RECORD;
   v_total_ws NUMERIC := 0;
   v_count    INT := 0;
   r          RECORD;
 BEGIN
+  -- Lấy đợt khoán kèm cấu hình trọng số KPI
   SELECT ap.*, ac.weight_volume, ac.weight_quality, ac.weight_difficulty, ac.weight_ahead
   INTO v_period
   FROM allocation_periods ap
@@ -155,40 +164,64 @@ BEGIN
     RETURN jsonb_build_object('error', 'Không tìm thấy đợt khoán');
   END IF;
 
-  IF v_period.status = 'approved' OR v_period.status = 'paid' THEN
+  IF v_period.status IN ('approved', 'paid') THEN
     RETURN jsonb_build_object('error', 'Đợt khoán đã được duyệt, không thể tính lại');
   END IF;
 
+  -- Xoá kết quả cũ trước khi tính lại
   DELETE FROM allocation_results WHERE period_id = p_period_id;
 
+  -- Tính KPI cho từng NV: group tasks → weighted score → nhân hệ số khó (global mode)
   FOR r IN
     SELECT
       t.assignee_id AS user_id,
       COUNT(*)::INT AS task_count,
+      -- KPI trung bình per component
       AVG(COALESCE(CASE WHEN p_use_actual THEN t.actual_volume   ELSE t.expect_volume   END, 50))::NUMERIC(5,2) AS avg_vol,
       AVG(COALESCE(CASE WHEN p_use_actual THEN t.actual_quality  ELSE t.expect_quality  END, 50))::NUMERIC(5,2) AS avg_qual,
       AVG(COALESCE(CASE WHEN p_use_actual THEN t.actual_difficulty ELSE t.expect_difficulty END, 50))::NUMERIC(5,2) AS avg_diff,
-      AVG(COALESCE(CASE WHEN p_use_actual THEN t.actual_ahead    ELSE t.expect_ahead    END, 50))::NUMERIC(5,2) AS avg_ahd
+      AVG(COALESCE(CASE WHEN p_use_actual THEN t.actual_ahead    ELSE t.expect_ahead    END, 50))::NUMERIC(5,2) AS avg_ahd,
+      -- Global mode: tính trung bình hệ số khó theo các DA mà NV tham gia
+      -- Per-project mode: luôn = 1.0 (không áp hệ số)
+      CASE
+        WHEN v_period.mode = 'global' THEN
+          COALESCE(AVG(COALESCE(pdf.difficulty_factor, 1.00)), 1.00)
+        ELSE 1.00
+      END::NUMERIC(4,2) AS avg_factor
     FROM tasks t
+    JOIN users u ON u.id = t.assignee_id
+    -- LEFT JOIN hệ số khó per dự án/phòng ban (chỉ ảnh hưởng global mode)
+    LEFT JOIN project_dept_factors pdf
+      ON pdf.project_id = t.project_id AND pdf.dept_id = t.dept_id
     WHERE t.org_id = v_period.org_id
       AND t.status = 'completed'
       AND t.assignee_id IS NOT NULL
+      -- Lọc theo khoảng thời gian
       AND (
         (v_period.period_start IS NOT NULL AND v_period.period_end IS NOT NULL
          AND t.completed_at::DATE BETWEEN v_period.period_start AND v_period.period_end)
         OR (v_period.period_start IS NULL OR v_period.period_end IS NULL)
       )
+      -- Lọc theo trung tâm: NV phải thuộc center được giao khoán
+      AND (v_period.center_id IS NULL OR u.center_id = v_period.center_id)
+      -- per_project: chỉ tasks của DA đó; global: tất cả tasks trong center
       AND (v_period.mode = 'global' OR (v_period.project_id IS NOT NULL AND t.project_id = v_period.project_id))
+      -- Lọc thêm theo phòng ban nếu chỉ định
       AND (v_period.dept_id IS NULL OR t.dept_id = v_period.dept_id)
     GROUP BY t.assignee_id
   LOOP
     DECLARE
       ws NUMERIC(7,2);
+      adjusted_ws NUMERIC(7,2);
     BEGIN
+      -- Điểm KPI gốc theo trọng số cấu hình
       ws := r.avg_vol  * v_period.weight_volume
           + r.avg_qual * v_period.weight_quality
           + r.avg_diff * v_period.weight_difficulty
           + r.avg_ahd  * v_period.weight_ahead;
+
+      -- Nhân hệ số khó: global mode điều chỉnh theo độ khó DA
+      adjusted_ws := ws * r.avg_factor;
 
       INSERT INTO allocation_results (
         period_id, user_id, project_id, mode,
@@ -197,15 +230,16 @@ BEGIN
       ) VALUES (
         p_period_id, r.user_id, v_period.project_id, v_period.mode,
         r.avg_vol, r.avg_qual, r.avg_diff, r.avg_ahd,
-        ws, r.task_count,
+        adjusted_ws, r.task_count,
         jsonb_build_object(
           'volume', r.avg_vol, 'quality', r.avg_qual,
           'difficulty', r.avg_diff, 'ahead', r.avg_ahd,
+          'raw_score', ws, 'difficulty_factor', r.avg_factor,
           'use_actual', p_use_actual
         )
       );
 
-      v_total_ws := v_total_ws + ws;
+      v_total_ws := v_total_ws + adjusted_ws;
       v_count := v_count + 1;
     END;
   END LOOP;
@@ -215,6 +249,7 @@ BEGIN
     RETURN jsonb_build_object('status', 'calculated', 'user_count', 0, 'message', 'Không có task hoàn thành trong kỳ');
   END IF;
 
+  -- Phân bổ quỹ theo tỷ lệ adjusted weighted score
   UPDATE allocation_results
   SET share_percentage = CASE WHEN v_total_ws > 0 THEN (weighted_score / v_total_ws) ELSE 0 END,
       allocated_amount = CASE WHEN v_total_ws > 0 THEN ROUND((weighted_score / v_total_ws) * v_period.total_fund) ELSE 0 END,
@@ -229,10 +264,11 @@ BEGIN
     'user_count', v_count,
     'total_weighted_score', ROUND(v_total_ws, 2),
     'total_fund', v_period.total_fund,
-    'mode', v_period.mode
+    'mode', v_period.mode,
+    'center_id', v_period.center_id
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
 

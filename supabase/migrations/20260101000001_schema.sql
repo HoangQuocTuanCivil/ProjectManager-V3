@@ -464,11 +464,14 @@ CREATE TABLE allocation_configs (
   UNIQUE(org_id, name)
 );
 
--- Đợt chia khoán
+-- Đợt chia khoán — giao về trung tâm (center_id)
+-- mode per_project: chia khoán riêng cho 1 dự án, chỉ NV tham gia DA đó được chia
+-- mode global: gộp quỹ nhiều DA, nhân hệ số khó per project cho KPI từng người
 CREATE TABLE allocation_periods (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   config_id UUID NOT NULL REFERENCES allocation_configs(id),
+  center_id UUID REFERENCES centers(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   project_id UUID REFERENCES projects(id),
   dept_id UUID REFERENCES departments(id),
