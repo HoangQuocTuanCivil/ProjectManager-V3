@@ -9,6 +9,7 @@ const en: Translations = {
     kpi: "KPI & Allocation",
     kpiOverview: "KPI Overview",
     kpiAllocation: "Allocation Periods",
+    salaryInput: "Salary Input",
     kpiConfig: "Config",
     contractManagement: "Contract Management",
     budgetAssignTab: "Budget Assignment",

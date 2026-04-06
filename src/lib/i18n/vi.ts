@@ -8,6 +8,7 @@ const vi = {
     kpi: "KPI & Khoán",
     kpiOverview: "Tổng quan KPI",
     kpiAllocation: "Khoán",
+    salaryInput: "Nhập lương",
     kpiConfig: "Cấu hình",
     contractManagement: "Quản lý hợp đồng",
     budgetAssignTab: "Giao khoán",

@@ -31,6 +31,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
     children: [
       { href: "/kpi", tKey: "kpiOverview" },
       { href: "/kpi/allocation", tKey: "kpiAllocation" },
+      { href: "/kpi/salary", tKey: "salaryInput" },
       { href: "/kpi/config", tKey: "kpiConfig" },
     ],
   },
@@ -66,6 +67,7 @@ export const PAGE_TITLE_KEYS: Record<string, string> = {
   "/kpi": "kpiAllocation",
   "/kpi/allocation": "kpiAllocation",
   "/kpi/config": "kpiAllocation",
+  "/kpi/salary": "kpiAllocation",
   "/contracts": "contractManagement",
   "/contracts/budget-assign": "contractManagement",
   "/revenue": "revenueManagement",
