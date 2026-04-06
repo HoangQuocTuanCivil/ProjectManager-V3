@@ -258,21 +258,35 @@ BEGIN
   DELETE FROM dept_revenue_allocations
    WHERE revenue_entry_id = v_entry.id;
 
-  -- Một CTE duy nhất: lấy danh sách PB, tính tỷ lệ budget, đánh số thứ tự
+  -- CTE: lấy PB từ giao khoán (dept trực tiếp + center → dept)
+  -- Tỷ lệ phân bổ DT dựa trên số tiền đã giao khoán trong Quản lý HĐ
   FOR v_alloc IN
-    WITH depts AS (
+    WITH budget_depts AS (
+      -- Giao khoán trực tiếp cho PB
+      SELECT dba.dept_id, dba.allocated_amount AS budget
+      FROM dept_budget_allocations dba
+      WHERE dba.project_id = v_entry.project_id AND dba.dept_id IS NOT NULL
+      UNION ALL
+      -- Giao khoán cho TT → chia đều cho PB trong TT
+      SELECT dep.id AS dept_id,
+        ROUND(dba.allocated_amount::NUMERIC / GREATEST(
+          (SELECT COUNT(*) FROM departments d2 WHERE d2.center_id = dba.center_id AND d2.is_active), 1
+        )) AS budget
+      FROM dept_budget_allocations dba
+      JOIN departments dep ON dep.center_id = dba.center_id AND dep.is_active = TRUE
+      WHERE dba.project_id = v_entry.project_id AND dba.center_id IS NOT NULL AND dba.dept_id IS NULL
+    ),
+    depts AS (
       SELECT
-        pd.dept_id,
-        COALESCE(dba.allocated_amount, 0)                  AS budget,
+        COALESCE(bd.dept_id, pd.dept_id) AS dept_id,
+        COALESCE(bd.budget, 0)                             AS budget,
         COUNT(*) OVER ()                                   AS dept_count,
-        SUM(COALESCE(dba.allocated_amount, 0)) OVER ()     AS budget_total,
+        SUM(COALESCE(bd.budget, 0)) OVER ()                AS budget_total,
         ROW_NUMBER() OVER (
-          ORDER BY COALESCE(dba.allocated_amount, 0) DESC, pd.dept_id
+          ORDER BY COALESCE(bd.budget, 0) DESC, COALESCE(bd.dept_id, pd.dept_id)
         ) AS rn
       FROM project_departments pd
-      LEFT JOIN dept_budget_allocations dba
-        ON dba.project_id = pd.project_id
-       AND dba.dept_id    = pd.dept_id
+      LEFT JOIN budget_depts bd ON bd.dept_id = pd.dept_id
       WHERE pd.project_id = v_entry.project_id
     )
     SELECT
@@ -561,31 +575,44 @@ CREATE TRIGGER trg_addendum_created
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ─── VIEW: QUỸ DỰ KIẾN THEO PHÒNG BAN ──────────────────────────────────────
--- expected_fund = SUM(contract_value × budget_share × difficulty_factor)
+-- Quỹ dự kiến = SỐ TIỀN ĐÃ GIAO KHOÁN (từ Quản lý HĐ → Giao khoán) × hệ số khó.
+-- Nguồn dữ liệu: dept_budget_allocations.allocated_amount — lấy trực tiếp, không tính lại.
+-- Hỗ trợ 2 kiểu giao: cho phòng ban (dept_id) hoặc cho trung tâm (center_id).
+-- Giao cho trung tâm → quỹ thuộc tất cả PB trong trung tâm đó.
 
 CREATE OR REPLACE VIEW v_expected_fund AS
-WITH project_budget AS (
+WITH budget_by_dept AS (
+  -- Giao khoán trực tiếp cho phòng ban
   SELECT
-    pd.project_id, pd.dept_id, c.contract_value, p.org_id,
-    COALESCE(dba.allocated_amount, 0)                    AS dept_budget,
-    SUM(COALESCE(dba.allocated_amount, 0)) OVER (PARTITION BY pd.project_id) AS total_budget,
-    COUNT(*) OVER (PARTITION BY pd.project_id)           AS dept_count
-  FROM project_departments pd
-  JOIN projects p ON p.id = pd.project_id
-  JOIN contracts c ON c.project_id = pd.project_id AND c.status IN ('active', 'completed')
-  LEFT JOIN dept_budget_allocations dba
-    ON dba.project_id = pd.project_id AND dba.dept_id = pd.dept_id
+    dba.org_id,
+    dba.project_id,
+    dba.dept_id,
+    dba.allocated_amount AS base_fund
+  FROM dept_budget_allocations dba
+  WHERE dba.dept_id IS NOT NULL
+
+  UNION ALL
+
+  -- Giao khoán cho trung tâm → phân bổ đều cho các PB trong TT đó
+  SELECT
+    dba.org_id,
+    dba.project_id,
+    dep.id AS dept_id,
+    ROUND(dba.allocated_amount::NUMERIC / GREATEST(COUNT(*) OVER (PARTITION BY dba.id), 1)) AS base_fund
+  FROM dept_budget_allocations dba
+  JOIN departments dep ON dep.center_id = dba.center_id AND dep.is_active = TRUE
+  WHERE dba.center_id IS NOT NULL AND dba.dept_id IS NULL
 ),
 fund_calc AS (
-  SELECT pb.org_id, pb.dept_id, pb.project_id, pb.contract_value,
-    CASE WHEN pb.total_budget > 0
-      THEN pb.contract_value * pb.dept_budget / pb.total_budget
-      ELSE pb.contract_value / pb.dept_count
-    END AS base_fund,
+  SELECT
+    bd.org_id,
+    bd.dept_id,
+    bd.project_id,
+    bd.base_fund,
     COALESCE(pdf.difficulty_factor, 1.00) AS factor
-  FROM project_budget pb
+  FROM budget_by_dept bd
   LEFT JOIN project_dept_factors pdf
-    ON pdf.project_id = pb.project_id AND pdf.dept_id = pb.dept_id
+    ON pdf.project_id = bd.project_id AND pdf.dept_id = bd.dept_id
 )
 SELECT
   fc.org_id, fc.dept_id,
