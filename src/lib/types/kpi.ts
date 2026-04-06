@@ -50,14 +50,16 @@ export interface DeptBudgetAllocation {
   id: string;
   org_id: string;
   project_id: string;
+  contract_id: string | null;
   dept_id: string;
   allocated_amount: number;
+  delivery_progress: number;
   note: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
-  // Joined
   project?: Pick<Project, 'id' | 'code' | 'name' | 'budget' | 'allocation_fund'>;
+  contract?: { id: string; contract_no: string; title: string };
   department?: Pick<Department, 'id' | 'name' | 'code'>;
   creator?: Pick<User, 'id' | 'full_name'>;
 }

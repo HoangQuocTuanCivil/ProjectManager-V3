@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useAllTeams, useCreateTeam, useUpdateTeam, useDeleteTeam } from "@/lib/hooks/use-teams";
+import { useMultiSelect } from "@/lib/hooks/use-multi-select";
 import { Section, Button, UserAvatar, Toggle, EmptyState } from "@/components/shared";
 import { Users } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
@@ -51,6 +52,7 @@ export default function TeamsSettingsPage() {
   const createTeam = useCreateTeam();
   const updateTeam = useUpdateTeam();
   const deleteTeam = useDeleteTeam();
+  const { selected, toggle, toggleAll, clear, isAllSelected, isPartial } = useMultiSelect(teams as any[]);
   const [showCreate, setShowCreate] = useState(false);
   const [editTeam, setEditTeam] = useState<Team | null>(null);
   const [manageTeam, setManageTeam] = useState<Team | null>(null);
@@ -169,6 +171,27 @@ export default function TeamsSettingsPage() {
         />
       )}
 
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-xl">
+          <span className="text-sm font-medium">{selected.size} đã chọn</span>
+          <div className="flex-1" />
+          <button onClick={clear} className="text-sm text-muted-foreground hover:text-foreground">Bỏ chọn</button>
+          <Button size="sm" variant="primary"
+            className="!bg-destructive hover:!bg-destructive/90"
+            disabled={deleteTeam.isPending}
+            onClick={() => {
+              if (!confirm(`Xóa ${selected.size} nhóm? Thành viên sẽ được gỡ khỏi nhóm.`)) return;
+              const ids = Array.from(selected);
+              Promise.all(ids.map((id) => deleteTeam.mutateAsync(id)))
+                .then(() => { toast.success(`Đã xóa ${ids.length} nhóm`); clear(); })
+                .catch((e: any) => toast.error(e.message));
+            }}
+          >
+            {deleteTeam.isPending ? "Đang xóa..." : `Xóa ${selected.size} nhóm`}
+          </Button>
+        </div>
+      )}
+
       {/* Teams grouped by department */}
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-secondary rounded-lg animate-pulse" />)}</div>
@@ -185,6 +208,11 @@ export default function TeamsSettingsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border bg-secondary/50">
+                      <th className="w-10 px-4 py-2.5">
+                        <input type="checkbox" checked={isAllSelected}
+                          ref={(el) => { if (el) el.indeterminate = isPartial; }}
+                          onChange={toggleAll} className="rounded border-border" />
+                      </th>
                       {["Mã", "Tên nhóm", "Trưởng nhóm", "Thành viên", "Trạng thái", ""].map((h) => (
                         <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{h}</th>
                       ))}
@@ -194,7 +222,15 @@ export default function TeamsSettingsPage() {
                     {dept.teams.map((team: any) => {
                       const memberCount = allUsers.filter((u: any) => u.team_id === team.id).length;
                       return (
-                        <tr key={team.id} className="border-b border-border/40 hover:bg-secondary/20 transition-colors">
+                        <tr key={team.id} className={`border-b border-border/40 hover:bg-secondary/20 transition-colors ${selected.has(team.id) ? "bg-primary/5" : ""}`}>
+                          <td className="w-10 px-4 py-3">
+                            <input type="checkbox" checked={selected.has(team.id)}
+                              onChange={(e) => {
+                                const flatIdx = (teams as any[]).findIndex((t: any) => t.id === team.id);
+                                toggle(team.id, flatIdx, e.nativeEvent instanceof MouseEvent && (e.nativeEvent as MouseEvent).shiftKey);
+                              }}
+                              className="rounded border-border" />
+                          </td>
                           <td className="px-4 py-3 font-mono text-sm text-primary font-bold">{team.code || "—"}</td>
                           <td className="px-4 py-3 text-base font-semibold">{team.name}</td>
                           <td className="px-4 py-3">

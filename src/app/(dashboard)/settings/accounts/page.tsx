@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useUsers, useUpdateUser, useDeleteUser, useCreateUser } from "@/lib/hooks/use-users";
+import { useUsers, useUpdateUser, useDeleteUser, useBulkDeleteUsers, useCreateUser } from "@/lib/hooks/use-users";
+import { useMultiSelect } from "@/lib/hooks/use-multi-select";
 import { useCustomRoles } from "@/lib/hooks/use-org-settings";
 import { useAllTeams, useCenters } from "@/lib/hooks/use-teams";
 import { Section, Button, UserAvatar, RoleBadge, Toggle, EmptyState } from "@/components/shared";
@@ -163,6 +164,22 @@ export default function AccountsSettingsPage() {
     }
     return list;
   }, [users, search, filterCenter, filterDept, filterTeam, filterDeptOptions, allCenters, departments, allTeams]);
+
+  const { selected, toggle, toggleAll, clear, isAllSelected, isPartial } = useMultiSelect(filtered);
+  const bulkDelete = useBulkDeleteUsers();
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selected);
+    if (!confirm(`Xác nhận XÓA VĨNH VIỄN ${ids.length} tài khoản?\n\nCác bộ phận được gán trưởng phòng/giám đốc sẽ tự động trả về None.\nHành động này không thể hoàn tác!`)) return;
+    try {
+      const result = await bulkDelete.mutateAsync(ids);
+      toast.success(`Đã xóa ${result.deleted} tài khoản`);
+      if (result.errors?.length) toast.error(`${result.errors.length} tài khoản lỗi`);
+      clear();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
 
   const handleCreate = async () => {
     if (!createForm.email || !createForm.password || !createForm.full_name) {
@@ -382,6 +399,19 @@ export default function AccountsSettingsPage() {
         />
       )}
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-xl animate-slide-in-bottom">
+          <span className="text-sm font-medium">{selected.size} đã chọn</span>
+          <div className="flex-1" />
+          <button onClick={clear} className="text-sm text-muted-foreground hover:text-foreground">Bỏ chọn</button>
+          <Button size="sm" variant="primary" onClick={handleBulkDelete} disabled={bulkDelete.isPending}
+            className="!bg-destructive hover:!bg-destructive/90">
+            {bulkDelete.isPending ? "Đang xóa..." : `Xóa ${selected.size} tài khoản`}
+          </Button>
+        </div>
+      )}
+
       {/* Search + Cascading Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative">
@@ -445,14 +475,31 @@ export default function AccountsSettingsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-secondary/50">
+                  <th className="w-10 px-4 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      ref={(el) => { if (el) el.indeterminate = isPartial; }}
+                      onChange={toggleAll}
+                      className="rounded border-border"
+                    />
+                  </th>
                   {["Người dùng", "Email", "Vai trò", "Trung tâm", "Phòng ban", "Nhóm", "Đăng nhập cuối", "Trạng thái", ""].map((h) => (
                     <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((u: any) => (
-                  <tr key={u.id} className="border-b border-border/40 hover:bg-secondary/20 transition-colors">
+                {filtered.map((u: any, idx: number) => (
+                  <tr key={u.id} className={`border-b border-border/40 hover:bg-secondary/20 transition-colors ${selected.has(u.id) ? "bg-primary/5" : ""}`}>
+                    <td className="w-10 px-4 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(u.id)}
+                        onChange={(e) => toggle(u.id, idx, e.nativeEvent instanceof MouseEvent && (e.nativeEvent as MouseEvent).shiftKey)}
+                        className="rounded border-border"
+                      />
+                    </td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
                         <UserAvatar name={u.full_name} color={ROLE_CONFIG[u.role as keyof typeof ROLE_CONFIG]?.color} size="sm" src={u.avatar_url} />

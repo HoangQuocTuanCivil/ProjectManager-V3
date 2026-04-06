@@ -79,6 +79,40 @@ export function useUpdateCenter() {
   });
 }
 
+export function useDeleteCenter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("departments").update({ center_id: null }).eq("center_id", id);
+      await supabase.from("users").update({ center_id: null }).eq("center_id", id);
+      const { error } = await supabase.from("centers").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: centerKeys.all });
+      qc.invalidateQueries({ queryKey: ["departments"] });
+      qc.invalidateQueries({ queryKey: userKeys.list() });
+    },
+  });
+}
+
+export function useDeleteDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("teams" as any).update({ dept_id: null }).eq("dept_id", id);
+      await supabase.from("users").update({ dept_id: null }).eq("dept_id", id);
+      const { error } = await supabase.from("departments").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["departments"] });
+      qc.invalidateQueries({ queryKey: teamKeys.all });
+      qc.invalidateQueries({ queryKey: userKeys.list() });
+    },
+  });
+}
+
 // ─── Nhóm (Team) ────────────────────────────────────────────────────
 
 export const teamKeys = {

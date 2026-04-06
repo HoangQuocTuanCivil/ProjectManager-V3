@@ -1,27 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { Contract, ContractAddendum, BillingMilestone } from "@/lib/types";
+import type { Contract, ContractAddendum, BillingMilestone, ContractType } from "@/lib/types";
 
 const supabase = createClient();
 
+const CONTRACT_SELECT = "*, project:projects(id, code, name, budget), creator:users!created_by(id, full_name), addendums:contract_addendums(*, creator:users!created_by(id, full_name)), milestones:billing_milestones(*)";
+
 export const contractKeys = {
   all: ["contracts"] as const,
-  list: (projectId?: string) => [...contractKeys.all, "list", projectId] as const,
+  list: (filters?: { projectId?: string; type?: ContractType }) =>
+    [...contractKeys.all, "list", filters?.projectId, filters?.type] as const,
   detail: (id: string) => [...contractKeys.all, "detail", id] as const,
 };
 
 /* ───── Contracts ──────────────────────────────────────────────── */
 
-/** Danh sách hợp đồng, có thể lọc theo dự án */
-export function useContracts(projectId?: string) {
+export function useContracts(filters?: { projectId?: string; type?: ContractType }) {
   return useQuery({
-    queryKey: contractKeys.list(projectId),
+    queryKey: contractKeys.list(filters),
     queryFn: async () => {
       let query = supabase
         .from("contracts")
-        .select("*, project:projects(id, code, name, budget), creator:users!created_by(id, full_name), addendums:contract_addendums(*, creator:users!created_by(id, full_name)), milestones:billing_milestones(*)")
+        .select(CONTRACT_SELECT)
         .order("created_at", { ascending: false });
-      if (projectId) query = query.eq("project_id", projectId);
+      if (filters?.projectId) query = query.eq("project_id", filters.projectId);
+      if (filters?.type) query = query.eq("contract_type", filters.type);
       const { data, error } = await query;
       if (error) throw error;
       return data as unknown as Contract[];
@@ -29,7 +32,6 @@ export function useContracts(projectId?: string) {
   });
 }
 
-/** Chi tiết hợp đồng kèm phụ lục + mốc thanh toán */
 export function useContract(id: string) {
   return useQuery({
     queryKey: contractKeys.detail(id),
@@ -37,7 +39,7 @@ export function useContract(id: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contracts")
-        .select("*, project:projects(id, code, name, budget), creator:users!created_by(id, full_name), addendums:contract_addendums(*, creator:users!created_by(id, full_name)), milestones:billing_milestones(*)")
+        .select(CONTRACT_SELECT)
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -46,16 +48,18 @@ export function useContract(id: string) {
   });
 }
 
-/** Tạo hợp đồng */
 export function useCreateContract() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
       project_id: string;
+      contract_type?: ContractType;
       contract_no: string;
       title: string;
       client_name?: string;
+      bid_package?: string;
       contract_value: number;
+      vat_value?: number;
       signed_date?: string;
       start_date?: string;
       end_date?: string;
@@ -64,6 +68,9 @@ export function useCreateContract() {
       status?: string;
       file_url?: string;
       notes?: string;
+      subcontractor_name?: string;
+      work_content?: string;
+      person_in_charge?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profile } = await supabase.from("users").select("org_id").eq("id", user!.id).single();
@@ -121,7 +128,7 @@ export function useCreateAddendum() {
       contract_id: string;
       addendum_no: string;
       title: string;
-      value_change: number;
+      addendum_value: number;
       new_end_date?: string;
       description?: string;
       signed_date?: string;
@@ -129,13 +136,29 @@ export function useCreateAddendum() {
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Insert addendum — trigger fn_revenue_adjustment() tự động:
-      //   1. Cập nhật contracts.contract_value + projects.budget
-      //   2. Tạo revenue_adjustments (audit trail)
-      //   3. Tạo revenue_entries draft cho phần chênh lệch
+      const { data: contract } = await supabase
+        .from("contracts")
+        .select("contract_value")
+        .eq("id", input.contract_id)
+        .single();
+      if (!contract) throw new Error("Không tìm thấy hợp đồng");
+
+      const value_change = input.addendum_value - Number(contract.contract_value);
+
       const { data, error } = await supabase
         .from("contract_addendums")
-        .insert({ ...input, created_by: user!.id })
+        .insert({
+          contract_id: input.contract_id,
+          addendum_no: input.addendum_no,
+          title: input.title,
+          addendum_value: input.addendum_value,
+          value_change,
+          new_end_date: input.new_end_date,
+          description: input.description,
+          signed_date: input.signed_date,
+          file_url: input.file_url,
+          created_by: user!.id,
+        })
         .select()
         .single();
       if (error) throw error;

@@ -83,6 +83,28 @@ export function useDeleteUser() {
   });
 }
 
+export function useBulkDeleteUsers() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await fetch("/api/users/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi xóa hàng loạt");
+      return data as { deleted: number; errors?: string[] };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: userKeys.list() });
+      qc.invalidateQueries({ queryKey: ["departments"] });
+      qc.invalidateQueries({ queryKey: ["centers"] });
+      qc.invalidateQueries({ queryKey: ["teams"] });
+    },
+  });
+}
+
 /** Đặt lại mật khẩu user */
 export function useResetPassword() {
   return useMutation({

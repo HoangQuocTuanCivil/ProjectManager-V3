@@ -8,6 +8,8 @@ import { Landmark } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { toast } from "sonner";
+import { useDeleteDepartment } from "@/lib/hooks/use-teams";
+import { useMultiSelect } from "@/lib/hooks/use-multi-select";
 
 const supabase = createClient();
 
@@ -71,6 +73,8 @@ export default function DepartmentsSettingsPage() {
   const { data: users = [] } = useUsers();
   const { data: teams = [] } = useTeamsAll();
   const { data: centers = [] } = useCentersAll();
+  const deleteMutation = useDeleteDepartment();
+  const { selected, toggle, toggleAll, clear, isAllSelected, isPartial } = useMultiSelect(departments as any[]);
   const [showCreate, setShowCreate] = useState(false);
   const [editDept, setEditDept] = useState<any>(null);
   const [createForm, setCreateForm] = useState({ name: "", code: "", description: "", head_user_id: "", center_id: "" });
@@ -217,6 +221,27 @@ export default function DepartmentsSettingsPage() {
         />
       )}
 
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-xl">
+          <span className="text-sm font-medium">{selected.size} đã chọn</span>
+          <div className="flex-1" />
+          <button onClick={clear} className="text-sm text-muted-foreground hover:text-foreground">Bỏ chọn</button>
+          <Button size="sm" variant="primary"
+            className="!bg-destructive hover:!bg-destructive/90"
+            disabled={deleteMutation.isPending}
+            onClick={() => {
+              if (!confirm(`Xóa ${selected.size} phòng ban? Nhóm và nhân sự thuộc phòng ban sẽ được gỡ liên kết.`)) return;
+              const ids = Array.from(selected);
+              Promise.all(ids.map((id) => deleteMutation.mutateAsync(id)))
+                .then(() => { toast.success(`Đã xóa ${ids.length} phòng ban`); clear(); })
+                .catch((e: any) => toast.error(e.message));
+            }}
+          >
+            {deleteMutation.isPending ? "Đang xóa..." : `Xóa ${selected.size} phòng ban`}
+          </Button>
+        </div>
+      )}
+
       <Section title="Danh sách phòng ban">
         {isLoading ? (
           <div className="p-4 space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-secondary rounded-lg animate-pulse" />)}</div>
@@ -227,17 +252,27 @@ export default function DepartmentsSettingsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-secondary/50">
+                  <th className="w-10 px-4 py-2.5">
+                    <input type="checkbox" checked={isAllSelected}
+                      ref={(el) => { if (el) el.indeterminate = isPartial; }}
+                      onChange={toggleAll} className="rounded border-border" />
+                  </th>
                   {["Mã", "Tên phòng ban", "Trung tâm", "Trưởng phòng", "Nhóm", "Nhân sự", "Mô tả", "Trạng thái", ""].map((h) => (
                     <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {departments.map((dept: any) => {
+                {departments.map((dept: any, idx: number) => {
                   const deptTeams = teams.filter((t: any) => t.dept_id === dept.id);
                   const deptUsers = users.filter((u: any) => u.dept_id === dept.id);
                   return (
-                  <tr key={dept.id} className="border-b border-border/40 hover:bg-secondary/20 transition-colors">
+                  <tr key={dept.id} className={`border-b border-border/40 hover:bg-secondary/20 transition-colors ${selected.has(dept.id) ? "bg-primary/5" : ""}`}>
+                    <td className="w-10 px-4 py-3">
+                      <input type="checkbox" checked={selected.has(dept.id)}
+                        onChange={(e) => toggle(dept.id, idx, e.nativeEvent instanceof MouseEvent && (e.nativeEvent as MouseEvent).shiftKey)}
+                        className="rounded border-border" />
+                    </td>
                     <td className="px-4 py-3 font-mono text-sm text-primary font-bold">{dept.code}</td>
                     <td className="px-4 py-3 text-base font-semibold">{dept.name}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">

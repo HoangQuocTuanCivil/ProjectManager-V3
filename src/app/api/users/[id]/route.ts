@@ -46,16 +46,28 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const admin = getAdminSupabase();
 
-  // Clean up FK references that would block deletion
   await Promise.all([
+    admin.from("goals").update({ owner_id: null }).eq("owner_id", targetId),
+    admin.from("departments").update({ head_user_id: null }).eq("head_user_id", targetId),
+    admin.from("centers").update({ director_id: null }).eq("director_id", targetId),
+    admin.from("teams").update({ leader_id: null }).eq("leader_id", targetId),
+    admin.from("projects").update({ manager_id: null }).eq("manager_id", targetId),
+    admin.from("tasks").update({ kpi_evaluated_by: null }).eq("kpi_evaluated_by", targetId),
+    admin.from("tasks").update({ assigner_id: user.id }).eq("assigner_id", targetId),
+    admin.from("tasks").update({ assignee_id: null }).eq("assignee_id", targetId),
+    admin.from("workflow_steps").update({ assigned_user_id: null }).eq("assigned_user_id", targetId),
+    admin.from("audit_logs").update({ user_id: null }).eq("user_id", targetId),
     admin.from("task_comments").delete().eq("user_id", targetId),
     admin.from("task_status_logs").delete().eq("user_id", targetId),
     admin.from("allocation_results").delete().eq("user_id", targetId),
     admin.from("user_invitations").delete().eq("invited_by", targetId),
-    admin.from("tasks").update({ kpi_evaluated_by: null }).eq("kpi_evaluated_by", targetId),
-    admin.from("tasks").update({ assigner_id: user.id }).eq("assigner_id", targetId),
-    admin.from("workflow_steps").update({ assigned_user_id: null }).eq("assigned_user_id", targetId),
-    admin.from("audit_logs").update({ user_id: null }).eq("user_id", targetId),
+    admin.from("task_scores").delete().eq("scored_by", targetId),
+    admin.from("task_attachments").delete().eq("uploaded_by", targetId),
+    admin.from("time_entries").delete().eq("user_id", targetId),
+    admin.from("dashboards").delete().eq("owner_id", targetId),
+    admin.from("task_proposals" as any).update({ approver_id: null }).eq("approver_id", targetId),
+    admin.from("task_proposals").delete().eq("proposed_by", targetId),
+    admin.from("allocation_periods").update({ approved_by: null }).eq("approved_by", targetId),
   ]);
 
   // Delete user record (CASCADE handles notifications, sessions, kpi_records, etc.)

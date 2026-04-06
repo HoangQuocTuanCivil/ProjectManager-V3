@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useCenters, useCreateCenter, useUpdateCenter } from "@/lib/hooks/use-teams";
+import { useCenters, useCreateCenter, useUpdateCenter, useDeleteCenter } from "@/lib/hooks/use-teams";
+import { useMultiSelect } from "@/lib/hooks/use-multi-select";
 import { useQuery } from "@tanstack/react-query";
 import { Section, Button, UserAvatar, Toggle, EmptyState } from "@/components/shared";
 import { Landmark } from "lucide-react";
@@ -37,6 +38,8 @@ export default function CentersSettingsPage() {
   const { data: departments = [] } = useDepartments();
   const createMutation = useCreateCenter();
   const updateMutation = useUpdateCenter();
+  const deleteMutation = useDeleteCenter();
+  const { selected, toggle, toggleAll, clear, isAllSelected, isPartial } = useMultiSelect(centers as any[]);
   const [showCreate, setShowCreate] = useState(false);
   const [editCenter, setEditCenter] = useState<any>(null);
   const [createForm, setCreateForm] = useState({ name: "", code: "", description: "", director_id: "" });
@@ -122,6 +125,27 @@ export default function CentersSettingsPage() {
         />
       )}
 
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-xl">
+          <span className="text-sm font-medium">{selected.size} đã chọn</span>
+          <div className="flex-1" />
+          <button onClick={clear} className="text-sm text-muted-foreground hover:text-foreground">Bỏ chọn</button>
+          <Button size="sm" variant="primary"
+            className="!bg-destructive hover:!bg-destructive/90"
+            disabled={deleteMutation.isPending}
+            onClick={() => {
+              if (!confirm(`Xóa ${selected.size} trung tâm? Phòng ban thuộc trung tâm sẽ được gỡ liên kết.`)) return;
+              const ids = Array.from(selected);
+              Promise.all(ids.map((id) => deleteMutation.mutateAsync(id)))
+                .then(() => { toast.success(`Đã xóa ${ids.length} trung tâm`); clear(); })
+                .catch((e: any) => toast.error(e.message));
+            }}
+          >
+            {deleteMutation.isPending ? "Đang xóa..." : `Xóa ${selected.size} trung tâm`}
+          </Button>
+        </div>
+      )}
+
       <Section title="Danh sách trung tâm">
         {isLoading ? (
           <div className="p-4 space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-14 bg-secondary rounded-lg animate-pulse" />)}</div>
@@ -132,17 +156,27 @@ export default function CentersSettingsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-secondary/50">
+                  <th className="w-10 px-4 py-2.5">
+                    <input type="checkbox" checked={isAllSelected}
+                      ref={(el) => { if (el) el.indeterminate = isPartial; }}
+                      onChange={toggleAll} className="rounded border-border" />
+                  </th>
                   {["Mã", "Tên trung tâm", "Giám đốc", "Phòng ban", "Nhân sự", "Mô tả", "Trạng thái", ""].map((h) => (
                     <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {centers.map((center: any) => {
+                {centers.map((center: any, idx: number) => {
                   const centerDepts = departments.filter((d: any) => d.center_id === center.id);
                   const centerUsers = users.filter((u: any) => u.center_id === center.id || centerDepts.some((d: any) => d.id === u.dept_id));
                   return (
-                    <tr key={center.id} className="border-b border-border/40 hover:bg-secondary/20 transition-colors">
+                    <tr key={center.id} className={`border-b border-border/40 hover:bg-secondary/20 transition-colors ${selected.has(center.id) ? "bg-primary/5" : ""}`}>
+                      <td className="w-10 px-4 py-3">
+                        <input type="checkbox" checked={selected.has(center.id)}
+                          onChange={(e) => toggle(center.id, idx, e.nativeEvent instanceof MouseEvent && (e.nativeEvent as MouseEvent).shiftKey)}
+                          className="rounded border-border" />
+                      </td>
                       <td className="px-4 py-3 font-mono text-sm text-primary font-bold">{center.code || "—"}</td>
                       <td className="px-4 py-3 text-base font-semibold">{center.name}</td>
                       <td className="px-4 py-3">

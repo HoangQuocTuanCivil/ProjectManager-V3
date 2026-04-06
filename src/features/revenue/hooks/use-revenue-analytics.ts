@@ -9,6 +9,8 @@ const analyticsKeys = {
   center: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "center", filters] as const,
   period: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "period", filters] as const,
   forecast: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "forecast", filters] as const,
+  contract: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "contract", filters] as const,
+  productService: (filters?: Record<string, string | undefined>) => [...analyticsKeys.all, "productService", filters] as const,
 };
 
 async function apiFetch<T>(path: string): Promise<T> {
@@ -80,5 +82,23 @@ export function useRevenueForecast(filters?: { project_id?: string; months?: str
   return useQuery({
     queryKey: analyticsKeys.forecast(filters as Record<string, string | undefined>),
     queryFn: () => apiFetch<RevenueForecast>(buildUrl("/api/revenue/forecast", filters as Record<string, string | undefined>)),
+  });
+}
+
+export function useRevenueByContract(filters?: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: analyticsKeys.contract(filters as Record<string, string | undefined>),
+    queryFn: () => apiFetch<Array<{
+      contract_id: string; contract_no: string; contract_title: string; total: number; entry_count: number;
+    }>>(buildUrl("/api/revenue/by-contract", filters as Record<string, string | undefined>)),
+  });
+}
+
+export function useRevenueByProductService(filters?: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: analyticsKeys.productService(filters as Record<string, string | undefined>),
+    queryFn: () => apiFetch<Array<{
+      product_service_id: string; code: string; name: string; category: string; total: number; entry_count: number;
+    }>>(buildUrl("/api/revenue/by-product-service", filters as Record<string, string | undefined>)),
   });
 }

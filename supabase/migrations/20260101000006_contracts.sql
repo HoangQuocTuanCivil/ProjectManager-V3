@@ -1,23 +1,26 @@
 -- ============================================================================
--- A2Z WORKHUB — HỢP ĐỒNG ĐẦU RA (Output Contracts)
+-- A2Z WORKHUB — HỢP ĐỒNG (Đầu ra & Đầu vào)
 -- Enums, tables, indexes, RLS, storage
 -- ============================================================================
 
 -- ─── ENUMS ───────────────────────────────────────────────────────────────────
-CREATE TYPE contract_status AS ENUM ('draft', 'active', 'completed', 'terminated');
+CREATE TYPE contract_type AS ENUM ('outgoing', 'incoming');
+CREATE TYPE contract_status AS ENUM ('draft', 'active', 'completed', 'terminated', 'paused', 'settled');
 CREATE TYPE billing_milestone_status AS ENUM ('upcoming', 'invoiced', 'paid', 'overdue');
 
 -- ─── TABLES ──────────────────────────────────────────────────────────────────
 
--- Hợp đồng chính với chủ đầu tư
 CREATE TABLE contracts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  contract_type contract_type NOT NULL DEFAULT 'outgoing',
   contract_no TEXT NOT NULL,
   title TEXT NOT NULL,
   client_name TEXT,
+  bid_package TEXT,
   contract_value NUMERIC(15,0) NOT NULL DEFAULT 0,
+  vat_value NUMERIC(15,0) DEFAULT 0,
   signed_date DATE,
   start_date DATE,
   end_date DATE,
@@ -26,18 +29,21 @@ CREATE TABLE contracts (
   status contract_status NOT NULL DEFAULT 'draft',
   file_url TEXT,
   notes TEXT,
+  subcontractor_name TEXT,
+  work_content TEXT,
+  person_in_charge TEXT,
   created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(org_id, contract_no)
 );
 
--- Phụ lục hợp đồng (Addendum)
 CREATE TABLE contract_addendums (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   contract_id UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
   addendum_no TEXT NOT NULL,
   title TEXT NOT NULL,
+  addendum_value NUMERIC(15,0) NOT NULL DEFAULT 0,
   value_change NUMERIC(15,0) NOT NULL DEFAULT 0,
   new_end_date DATE,
   description TEXT,
@@ -47,7 +53,6 @@ CREATE TABLE contract_addendums (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Mốc thanh toán (Billing Milestones)
 CREATE TABLE billing_milestones (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   contract_id UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
@@ -67,6 +72,7 @@ CREATE TABLE billing_milestones (
 -- ─── INDEXES ─────────────────────────────────────────────────────────────────
 CREATE INDEX idx_contracts_project ON contracts(project_id, status);
 CREATE INDEX idx_contracts_org ON contracts(org_id, status);
+CREATE INDEX idx_contracts_type ON contracts(org_id, contract_type, status);
 CREATE INDEX idx_addendums_contract ON contract_addendums(contract_id, created_at DESC);
 CREATE INDEX idx_billing_contract ON billing_milestones(contract_id, sort_order);
 CREATE INDEX idx_billing_due ON billing_milestones(due_date, status) WHERE status IN ('upcoming', 'overdue');
@@ -76,19 +82,16 @@ ALTER TABLE contracts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contract_addendums ENABLE ROW LEVEL SECURITY;
 ALTER TABLE billing_milestones ENABLE ROW LEVEL SECURITY;
 
--- Contracts
 CREATE POLICY "ct_r" ON contracts FOR SELECT USING (org_id = public.user_org_id());
 CREATE POLICY "ct_m" ON contracts FOR ALL
   USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
 
--- Contract Addendums
 CREATE POLICY "ca_r" ON contract_addendums FOR SELECT
   USING (contract_id IN (SELECT id FROM contracts WHERE org_id = public.user_org_id()));
 CREATE POLICY "ca_m" ON contract_addendums FOR ALL
   USING (contract_id IN (SELECT id FROM contracts WHERE org_id = public.user_org_id())
     AND public.user_role() IN ('admin', 'leader', 'director'));
 
--- Billing Milestones
 CREATE POLICY "bm_r" ON billing_milestones FOR SELECT
   USING (contract_id IN (SELECT id FROM contracts WHERE org_id = public.user_org_id()));
 CREATE POLICY "bm_m" ON billing_milestones FOR ALL
@@ -112,4 +115,4 @@ DO $$ BEGIN
   CREATE POLICY "contract_files_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'contract-files');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-SELECT '✅ 006_contracts: Hợp đồng đầu ra đã tạo xong' AS status;
+SELECT '✅ 006_contracts: Hợp đồng đầu ra & đầu vào đã tạo xong' AS status;

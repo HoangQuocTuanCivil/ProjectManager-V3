@@ -519,9 +519,12 @@ CREATE TABLE dept_budget_allocations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  contract_id UUID REFERENCES contracts(id) ON DELETE SET NULL,
   dept_id UUID REFERENCES departments(id) ON DELETE CASCADE,
   center_id UUID REFERENCES centers(id) ON DELETE CASCADE,
   allocated_amount NUMERIC(15,0) NOT NULL DEFAULT 0,
+  delivery_progress NUMERIC(5,2) DEFAULT 0
+    CONSTRAINT chk_delivery_progress CHECK (delivery_progress BETWEEN 0 AND 100),
   note TEXT,
   created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -978,9 +981,9 @@ CREATE INDEX idx_alloc_results ON allocation_results(period_id, weighted_score D
 CREATE INDEX idx_alloc_results_user ON allocation_results(user_id, calculated_at DESC);
 CREATE INDEX idx_dept_budget_alloc ON dept_budget_allocations(project_id);
 -- Mỗi PB chỉ được giao 1 lần per dự án; mỗi TT chỉ được giao 1 lần per dự án
-CREATE UNIQUE INDEX uq_budget_project_dept ON dept_budget_allocations(project_id, dept_id)
+CREATE UNIQUE INDEX uq_budget_project_dept ON dept_budget_allocations(project_id, COALESCE(contract_id, '00000000-0000-0000-0000-000000000000'), dept_id)
   WHERE dept_id IS NOT NULL;
-CREATE UNIQUE INDEX uq_budget_project_center ON dept_budget_allocations(project_id, center_id)
+CREATE UNIQUE INDEX uq_budget_project_center ON dept_budget_allocations(project_id, COALESCE(contract_id, '00000000-0000-0000-0000-000000000000'), center_id)
   WHERE center_id IS NOT NULL;
 
 -- Thông báo

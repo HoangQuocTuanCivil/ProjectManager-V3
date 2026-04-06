@@ -1,6 +1,6 @@
 "use client";
 
-import { useRevenueByPeriod, useRevenueSummary } from "../hooks/use-revenue-analytics";
+import { useRevenueByPeriod, useRevenueSummary, useRevenueByContract, useRevenueByProductService } from "../hooks/use-revenue-analytics";
 import { useI18n } from "@/lib/i18n";
 import { formatVND } from "@/lib/utils/format";
 import {
@@ -9,7 +9,7 @@ import {
   LineChart, Line,
 } from "recharts";
 
-const COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444"];
+const COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4"];
 
 interface Props {
   from?: string;
@@ -22,6 +22,8 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
   const { t } = useI18n();
   const { data: periodData = [], isLoading: loadingPeriod } = useRevenueByPeriod({ group_by: groupBy, from, to, project_id: projectId });
   const { data: summary, isLoading: loadingSummary } = useRevenueSummary({ from, to, project_id: projectId });
+  const { data: contractData = [] } = useRevenueByContract({ from, to });
+  const { data: psData = [] } = useRevenueByProductService({ from, to });
   const isLoading = loadingPeriod || loadingSummary;
 
   const sourceData = summary?.bySource
@@ -90,6 +92,35 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {contractData.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4" role="img" aria-label={t.revenue.byContract}>
+          <p className="text-xs font-medium text-muted-foreground mb-3">{t.revenue.byContract}</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={contractData.slice(0, 8)} layout="vertical">
+              <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
+              <YAxis type="category" dataKey="contract_no" tick={{ fontSize: 9 }} width={80} />
+              <Tooltip formatter={(v: number) => formatVND(v)} />
+              <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {psData.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4" role="img" aria-label={t.revenue.byProductService}>
+          <p className="text-xs font-medium text-muted-foreground mb-3">{t.revenue.byProductService}</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={psData} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                {psData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              </Pie>
+              <Tooltip formatter={(v: number) => formatVND(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }

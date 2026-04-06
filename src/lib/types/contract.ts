@@ -1,4 +1,4 @@
-import type { ContractStatus, BillingMilestoneStatus } from './enums';
+import type { ContractType, ContractStatus, BillingMilestoneStatus } from './enums';
 import type { User } from './organization';
 import type { Project } from './project';
 
@@ -6,10 +6,13 @@ export interface Contract {
   id: string;
   org_id: string;
   project_id: string;
+  contract_type: ContractType;
   contract_no: string;
   title: string;
   client_name: string | null;
+  bid_package: string | null;
   contract_value: number;
+  vat_value: number;
   signed_date: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -18,6 +21,9 @@ export interface Contract {
   status: ContractStatus;
   file_url: string | null;
   notes: string | null;
+  subcontractor_name: string | null;
+  work_content: string | null;
+  person_in_charge: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -33,6 +39,7 @@ export interface ContractAddendum {
   contract_id: string;
   addendum_no: string;
   title: string;
+  addendum_value: number;
   value_change: number;
   new_end_date: string | null;
   description: string | null;
