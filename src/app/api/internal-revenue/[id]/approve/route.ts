@@ -14,11 +14,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const { data: entry } = await supabase
     .from("internal_revenue")
-    .select("id, status")
+    .select("id, status, org_id")
     .eq("id", params.id)
     .single();
 
   if (!entry) return errorResponse("Không tìm thấy bản ghi DT nội bộ", 404);
+  if (entry.org_id !== profile.org_id) return errorResponse("Không có quyền", 403);
 
   // Xác định bước duyệt tiếp theo dựa trên trạng thái hiện tại
   const nextStatus = entry.status === "pending" ? "approved" : entry.status === "approved" ? "recorded" : null;

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse } from "@/lib/api/helpers";
+import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse } from "@/lib/api/helpers";
 
 // So sánh ngân sách dự kiến vs chi thực tế theo phòng ban hoặc dự án.
 // Dùng cho báo cáo budget variance analysis.
@@ -7,13 +7,13 @@ export async function GET(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
 
-  const supabase = await getServerSupabase();
+  const admin = getUntypedAdmin();
   const { searchParams } = new URL(req.url);
   const group = searchParams.get("group") || "dept";
 
   if (group === "dept") {
     // Tổng hợp theo phòng ban: budget từ dept_budget_allocations vs chi từ cost_entries
-    const { data, error } = await supabase.from("v_dept_fund_summary").select("*");
+    const { data, error } = await admin.from("v_dept_fund_summary").select("*");
     if (error) return errorResponse(error.message, 500);
 
     const result = (data ?? []).map((d: any) => ({
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Tổng hợp theo dự án: contract_value vs cost_entries
-  const { data, error } = await supabase.from("v_contract_profitloss").select("*");
+  const { data, error } = await admin.from("v_contract_profitloss").select("*");
   if (error) return errorResponse(error.message, 500);
 
   const result = (data ?? []).map((c: any) => ({

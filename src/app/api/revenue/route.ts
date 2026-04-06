@@ -37,17 +37,38 @@ export async function GET(req: NextRequest) {
   const date_to = searchParams.get("date_to");
   const search = searchParams.get("search");
 
-  if (status && status !== "all") query = query.eq("status", status as any);
-  if (dimension && dimension !== "all") query = query.eq("dimension", dimension as any);
-  if (method && method !== "all") query = query.eq("method", method as any);
-  if (source && source !== "all") query = query.eq("source", source as any);
+  // Validate enum filters — chặn giá trị không hợp lệ trước khi gửi DB
+  const VALID_STATUS = ["draft", "confirmed", "adjusted", "cancelled"];
+  const VALID_DIMENSION = ["project", "contract", "period", "product_service"];
+  const VALID_METHOD = ["acceptance", "completion_rate", "time_based"];
+  const VALID_SOURCE = ["billing_milestone", "acceptance", "manual"];
+
+  if (status && status !== "all") {
+    if (!VALID_STATUS.includes(status)) return errorResponse("status không hợp lệ", 400);
+    query = query.eq("status", status as any);
+  }
+  if (dimension && dimension !== "all") {
+    if (!VALID_DIMENSION.includes(dimension)) return errorResponse("dimension không hợp lệ", 400);
+    query = query.eq("dimension", dimension as any);
+  }
+  if (method && method !== "all") {
+    if (!VALID_METHOD.includes(method)) return errorResponse("method không hợp lệ", 400);
+    query = query.eq("method", method as any);
+  }
+  if (source && source !== "all") {
+    if (!VALID_SOURCE.includes(source)) return errorResponse("source không hợp lệ", 400);
+    query = query.eq("source", source as any);
+  }
   if (project_id && project_id !== "all") query = query.eq("project_id", project_id);
   if (contract_id && contract_id !== "all") query = query.eq("contract_id", contract_id);
   if (dept_id && dept_id !== "all") query = query.eq("dept_id", dept_id);
   if (product_service_id) query = query.eq("product_service_id", product_service_id);
   if (date_from) query = query.gte("recognition_date", date_from);
   if (date_to) query = query.lte("recognition_date", date_to);
-  if (search) query = query.ilike("description", `%${search}%`);
+  if (search) {
+    if (search.length > 200) return errorResponse("Từ khoá tìm kiếm quá dài", 400);
+    query = query.ilike("description", `%${search}%`);
+  }
 
   const sort = searchParams.get("sort");
   if (sort) {

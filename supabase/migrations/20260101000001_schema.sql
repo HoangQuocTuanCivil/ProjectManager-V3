@@ -1038,5 +1038,97 @@ CREATE INDEX idx_proposals_status ON task_proposals(status);
 CREATE INDEX idx_pd_project ON project_departments(project_id);
 CREATE INDEX idx_pd_dept ON project_departments(dept_id);
 
+-- ─── PHASE 2: LƯƠNG, KỲ KHOÁN, HỆ SỐ KHÓ ──────────────────────────────────
+-- Mô hình "Lương = Ứng trước": lương hàng tháng là khoản ứng trước.
+-- Cuối kỳ khoán (3/6 tháng), so sánh sản lượng vs tổng lương:
+--   Sản lượng > Lương → bonus (thưởng)
+--   Sản lượng < Lương → salary_deductions (trừ dần)
+
+CREATE TYPE salary_deduction_status AS ENUM ('active', 'completed', 'cancelled');
+
+-- Cấu hình kỳ khoán: mỗi org 1 bản ghi, chu kỳ 3 hoặc 6 tháng
+CREATE TABLE allocation_cycle_config (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id       UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  cycle_months INT NOT NULL DEFAULT 3
+    CONSTRAINT chk_cycle_months CHECK (cycle_months IN (3, 6)),
+  start_month  INT NOT NULL DEFAULT 1
+    CONSTRAINT chk_start_month CHECK (start_month BETWEEN 1 AND 12),
+  is_active    BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_cycle_config_org UNIQUE (org_id)
+);
+
+-- Bảng lương hàng tháng: ghi nhận lương ứng trước cho từng nhân viên
+-- net_salary = base_salary − deduction_applied (computed column)
+CREATE TABLE salary_records (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id            UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id           UUID NOT NULL REFERENCES users(id),
+  dept_id           UUID REFERENCES departments(id) ON DELETE SET NULL,
+  month             DATE NOT NULL,
+  base_salary       NUMERIC(15,0) NOT NULL DEFAULT 0,
+  deduction_applied NUMERIC(15,0) NOT NULL DEFAULT 0
+    CONSTRAINT chk_deduction_non_negative CHECK (deduction_applied >= 0),
+  net_salary        NUMERIC(15,0) GENERATED ALWAYS AS (base_salary - deduction_applied) STORED,
+  notes             TEXT,
+  created_by        UUID NOT NULL REFERENCES users(id),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_salary_user_month UNIQUE (org_id, user_id, month)
+);
+
+-- Khấu trừ lương: phát sinh khi sản lượng < lương, trừ dần hàng tháng
+CREATE TABLE salary_deductions (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id            UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id           UUID NOT NULL REFERENCES users(id),
+  period_id         UUID NOT NULL REFERENCES allocation_periods(id) ON DELETE CASCADE,
+  total_amount      NUMERIC(15,0) NOT NULL DEFAULT 0
+    CONSTRAINT chk_deduction_total_positive CHECK (total_amount > 0),
+  remaining_amount  NUMERIC(15,0) NOT NULL DEFAULT 0
+    CONSTRAINT chk_remaining_non_negative CHECK (remaining_amount >= 0),
+  monthly_deduction NUMERIC(15,0) NOT NULL DEFAULT 0
+    CONSTRAINT chk_monthly_positive CHECK (monthly_deduction > 0),
+  status            salary_deduction_status NOT NULL DEFAULT 'active',
+  reason            TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_deduction_user_period UNIQUE (user_id, period_id)
+);
+
+-- Mở rộng allocation_results: liên kết kết quả khoán với dữ liệu lương
+ALTER TABLE allocation_results
+  ADD COLUMN total_salary_paid NUMERIC(15,0) NOT NULL DEFAULT 0,
+  ADD COLUMN bonus_amount      NUMERIC(15,0) NOT NULL DEFAULT 0,
+  ADD COLUMN deduction_id      UUID REFERENCES salary_deductions(id) ON DELETE SET NULL;
+
+-- Hệ số khó: điều chỉnh mức đóng góp PB trong dự án (>1.0 = khó hơn, <1.0 = dễ hơn)
+CREATE TABLE project_dept_factors (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id        UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  dept_id           UUID NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+  difficulty_factor NUMERIC(4,2) NOT NULL DEFAULT 1.00
+    CONSTRAINT chk_factor_positive CHECK (difficulty_factor > 0),
+  notes             TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_project_dept_factor UNIQUE (project_id, dept_id)
+);
+
+CREATE INDEX idx_salary_org      ON salary_records (org_id, month DESC);
+CREATE INDEX idx_salary_user     ON salary_records (user_id, month);
+CREATE INDEX idx_salary_dept     ON salary_records (dept_id, month DESC) WHERE dept_id IS NOT NULL;
+CREATE INDEX idx_deduction_org   ON salary_deductions (org_id, status);
+CREATE INDEX idx_deduction_user  ON salary_deductions (user_id, status);
+CREATE INDEX idx_deduction_period ON salary_deductions (period_id);
+CREATE INDEX idx_deduction_active ON salary_deductions (user_id, created_at)
+  WHERE status = 'active' AND remaining_amount > 0;
+CREATE INDEX idx_alloc_results_deduction ON allocation_results (deduction_id)
+  WHERE deduction_id IS NOT NULL;
+CREATE INDEX idx_pdf_project ON project_dept_factors (project_id);
+CREATE INDEX idx_pdf_dept    ON project_dept_factors (dept_id);
+
 SELECT '✅ 001_schema: Tất cả bảng, enum, index đã tạo xong' AS status;
 

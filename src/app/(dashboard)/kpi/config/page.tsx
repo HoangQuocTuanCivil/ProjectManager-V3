@@ -6,6 +6,7 @@ import { useAllocationConfig, useAllocationCycle, useUpdateAllocationCycle, kpiK
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
 import { Section, Button } from "@/components/shared";
+import { SearchSelect } from "@/components/shared/search-select";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 

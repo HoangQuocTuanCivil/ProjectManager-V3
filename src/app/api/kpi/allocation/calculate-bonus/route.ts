@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getAdminSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
 
 // Tính thưởng khoán cho 1 đợt: gọi fn_calc_bonus trên DB
 // Yêu cầu role leader trở lên — thao tác quan trọng ảnh hưởng lương NV
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const { period_id } = await req.json();
   if (!period_id) return errorResponse("period_id is required", 400);
 
-  const admin = getAdminSupabase();
+  const admin = getUntypedAdmin();
   const { data, error } = await admin.rpc("fn_calc_bonus", {
     p_period_id: period_id,
   });

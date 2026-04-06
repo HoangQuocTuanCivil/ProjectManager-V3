@@ -2,4 +2,4 @@
 export { jsonResponse, errorResponse } from './response';
 export { getAuthUser, getUserProfile, getAuthProfile, requireMinRole, verifyCronSecret } from './auth';
 export { parsePagination } from './pagination';
-export { getServerSupabase, getAdminSupabase } from './supabase';
+export { getServerSupabase, getAdminSupabase, getUntypedAdmin } from './supabase';

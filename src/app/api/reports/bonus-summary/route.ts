@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse } from "@/lib/api/helpers";
+import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse } from "@/lib/api/helpers";
 
 // Báo cáo thưởng khoán tổng hợp: theo kỳ, theo PB, top/bottom performers.
 // Dữ liệu từ view v_employee_bonus.
@@ -7,11 +7,11 @@ export async function GET(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
 
-  const supabase = await getServerSupabase();
+  const admin = getUntypedAdmin();
   const { searchParams } = new URL(req.url);
   const period_id = searchParams.get("period_id");
 
-  let query = supabase.from("v_employee_bonus").select("*");
+  let query = admin.from("v_employee_bonus").select("*");
   if (period_id) query = query.eq("period_id", period_id);
 
   const { data, error } = await query;

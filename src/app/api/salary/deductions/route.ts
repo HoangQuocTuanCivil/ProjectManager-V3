@@ -1,16 +1,16 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, parsePagination } from "@/lib/api/helpers";
+import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse, parsePagination } from "@/lib/api/helpers";
 
 // Danh sách công nợ khoán âm — filter theo trạng thái và phòng ban
 export async function GET(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
 
-  const supabase = await getServerSupabase();
+  const admin = getUntypedAdmin();
   const { searchParams } = new URL(req.url);
   const { from, to, page, per_page } = parsePagination(searchParams);
 
-  let query = supabase
+  let query = admin
     .from("salary_deductions")
     .select(`
       *,
@@ -23,7 +23,10 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status");
   const user_id = searchParams.get("user_id");
 
-  if (status && status !== "all") query = query.eq("status", status as any);
+  if (status && status !== "all") {
+    if (!["active", "completed", "cancelled"].includes(status)) return errorResponse("status không hợp lệ", 400);
+    query = query.eq("status", status as any);
+  }
   if (user_id) query = query.eq("user_id", user_id);
 
   const { data, error, count } = await query;

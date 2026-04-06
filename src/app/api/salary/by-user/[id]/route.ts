@@ -1,13 +1,20 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse } from "@/lib/api/helpers";
+import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
 
 // Lịch sử lương cá nhân — sắp xếp theo tháng mới nhất
+// Chỉ chính NV đó hoặc leader+ mới xem được
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { profile } = await getAuthProfile();
-  if (!profile) return errorResponse("Unauthorized", 401);
+  const { user, profile } = await getAuthProfile();
+  if (!user || !profile) return errorResponse("Unauthorized", 401);
 
-  const supabase = await getServerSupabase();
-  const { data, error } = await supabase
+  // NV chỉ xem được lương của chính mình, leader+ xem được tất cả
+  if (user.id !== params.id) {
+    const roleErr = requireMinRole(profile, "leader");
+    if (roleErr) return errorResponse("Không có quyền xem lương người khác", 403);
+  }
+
+  const admin = getUntypedAdmin();
+  const { data, error } = await admin
     .from("salary_records")
     .select("*, department:departments(id, name, code)")
     .eq("user_id", params.id)

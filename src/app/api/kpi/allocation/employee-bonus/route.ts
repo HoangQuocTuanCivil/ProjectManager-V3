@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, parsePagination } from "@/lib/api/helpers";
+import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse, parsePagination } from "@/lib/api/helpers";
 
 // Bảng thưởng/nợ cá nhân — dữ liệu từ view v_employee_bonus
 // Filter theo đợt khoán, phòng ban, loại kết quả (bonus/deduction/balanced)
@@ -7,11 +7,11 @@ export async function GET(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
 
-  const supabase = await getServerSupabase();
+  const admin = getUntypedAdmin();
   const { searchParams } = new URL(req.url);
   const { from, to, page, per_page } = parsePagination(searchParams);
 
-  let query = supabase
+  let query = admin
     .from("v_employee_bonus")
     .select("*", { count: "exact" })
     .order("bonus_amount", { ascending: false })
@@ -23,7 +23,10 @@ export async function GET(req: NextRequest) {
 
   if (period_id) query = query.eq("period_id", period_id);
   if (dept_id) query = query.eq("dept_id", dept_id);
-  if (outcome && outcome !== "all") query = query.eq("outcome", outcome);
+  if (outcome && outcome !== "all") {
+    if (!["bonus", "deduction", "balanced"].includes(outcome)) return errorResponse("outcome không hợp lệ", 400);
+    query = query.eq("outcome", outcome);
+  }
 
   const { data, error, count } = await query;
   if (error) return errorResponse(error.message, 500);

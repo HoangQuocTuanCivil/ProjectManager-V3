@@ -264,13 +264,13 @@ export function useFundSummary() {
   return useQuery({
     queryKey: kpiKeys.fundSummary(),
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_dept_fund_summary").select("*");
-      if (error) throw error;
-      return data as {
+      const res = await fetch("/api/kpi/allocation/fund-summary");
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json() as Promise<{
         dept_id: string; org_id: string; dept_name: string; dept_code: string;
         expected_fund: number; actual_revenue: number; internal_rev: number;
         total_costs: number; total_salary: number; net_fund: number;
-      }[];
+      }[]>;
     },
   });
 }
@@ -281,14 +281,12 @@ export function useEmployeeBonus(periodId?: string) {
     queryKey: kpiKeys.employeeBonus(periodId),
     enabled: !!periodId,
     queryFn: async () => {
-      let query = supabase
-        .from("v_employee_bonus")
-        .select("*")
-        .order("bonus_amount", { ascending: false });
-      if (periodId) query = query.eq("period_id", periodId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as {
+      const params = new URLSearchParams();
+      if (periodId) params.set("period_id", periodId);
+      const res = await fetch(`/api/kpi/allocation/employee-bonus?${params}`);
+      if (!res.ok) throw new Error((await res.json()).error);
+      const json = await res.json();
+      return (json.data ?? json) as {
         result_id: string; period_id: string; period_name: string;
         period_start: string; period_end: string; org_id: string;
         user_id: string; full_name: string; email: string;
@@ -306,12 +304,9 @@ export function useAllocationCycle() {
   return useQuery({
     queryKey: kpiKeys.cycle(),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("allocation_cycle_config")
-        .select("*")
-        .maybeSingle();
-      if (error) throw error;
-      return data as { id: string; org_id: string; cycle_months: number; start_month: number; is_active: boolean } | null;
+      const res = await fetch("/api/allocation-cycle");
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json() as Promise<{ id: string; org_id: string; cycle_months: number; start_month: number; is_active: boolean } | null>;
     },
   });
 }

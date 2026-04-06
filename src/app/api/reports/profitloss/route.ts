@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse } from "@/lib/api/helpers";
+import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse } from "@/lib/api/helpers";
 
 // Báo cáo lãi lỗ theo hợp đồng — dữ liệu từ view v_contract_profitloss.
 // Filter theo trạng thái HĐ, dự án, và sắp xếp theo margin.
@@ -7,12 +7,12 @@ export async function GET(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
 
-  const supabase = await getServerSupabase();
+  const admin = getUntypedAdmin();
   const { searchParams } = new URL(req.url);
   const project_id = searchParams.get("project_id");
   const status = searchParams.get("status");
 
-  let query = supabase.from("v_contract_profitloss").select("*");
+  let query = admin.from("v_contract_profitloss").select("*");
 
   if (project_id) query = query.eq("project_id", project_id);
   if (status && status !== "all") query = query.eq("contract_status", status);

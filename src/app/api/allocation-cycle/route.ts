@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
 
 // Lấy cấu hình kỳ khoán của org hiện tại (mỗi org chỉ có 1)
 export async function GET(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
 
-  const supabase = await getServerSupabase();
-  const { data, error } = await supabase
+  const admin = getUntypedAdmin();
+  const { data, error } = await admin
     .from("allocation_cycle_config")
     .select("*")
     .eq("org_id", profile.org_id)
@@ -28,8 +28,8 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
 
-  const supabase = await getServerSupabase();
-  const { data, error } = await supabase
+  const admin = getUntypedAdmin();
+  const { data, error } = await admin
     .from("allocation_cycle_config")
     .upsert({
       org_id: profile.org_id,

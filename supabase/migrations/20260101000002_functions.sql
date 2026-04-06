@@ -492,4 +492,10 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
 
+-- Phase 2: updated_at triggers cho bảng lương, khoán, hệ số
+CREATE TRIGGER trg_cycle_config_ts BEFORE UPDATE ON allocation_cycle_config FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
+CREATE TRIGGER trg_salary_ts       BEFORE UPDATE ON salary_records          FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
+CREATE TRIGGER trg_deduction_ts    BEFORE UPDATE ON salary_deductions       FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
+CREATE TRIGGER trg_pdf_ts          BEFORE UPDATE ON project_dept_factors    FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
+
 SELECT '✅ 002_functions: Tất cả functions và triggers đã tạo xong' AS status;

@@ -412,5 +412,33 @@ CREATE POLICY "tp_insert" ON task_proposals FOR INSERT
 CREATE POLICY "tp_update" ON task_proposals FOR UPDATE
   USING (org_id = public.user_org_id() AND (proposed_by = auth.uid() OR approver_id = auth.uid()));
 
+-- ─── PHASE 2: LƯƠNG, KHOÁN, HỆ SỐ ──────────────────────────────────────────
+
+ALTER TABLE allocation_cycle_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE salary_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE salary_deductions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_dept_factors ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY acc_r ON allocation_cycle_config FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY acc_m ON allocation_cycle_config FOR ALL
+  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
+
+CREATE POLICY sr_r ON salary_records FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY sr_m ON salary_records FOR ALL
+  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
+
+CREATE POLICY sd_r ON salary_deductions FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY sd_m ON salary_deductions FOR ALL
+  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
+
+CREATE POLICY pdf_r ON project_dept_factors FOR SELECT
+  USING (project_id IN (SELECT id FROM projects WHERE org_id = public.user_org_id()));
+CREATE POLICY pdf_m ON project_dept_factors FOR ALL
+  USING (project_id IN (SELECT id FROM projects WHERE org_id = public.user_org_id())
+    AND public.user_role() IN ('admin', 'leader', 'director'));
+
 SELECT '✅ 003_rls: Tất cả RLS policies đã tạo xong' AS status;
 
