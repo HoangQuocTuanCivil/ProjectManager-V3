@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   useAllocationPeriods, useCreateAllocationPeriod, useCalculateAllocation,
   useApproveAllocation, useDeleteAllocationPeriod,
@@ -15,23 +15,68 @@ import { AllocationTable } from "@/components/kpi";
 import { formatVND } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
 import type { AllocationPeriod, AllocationMode } from "@/lib/types";
 
+const supabase = createClient();
+
+function useCenters() {
+  return useQuery({
+    queryKey: ["centers"],
+    queryFn: async () => {
+      const { data } = await supabase.from("centers").select("id, name, code").eq("is_active", true).order("sort_order");
+      return data ?? [];
+    },
+  });
+}
+
+function useDepartments() {
+  return useQuery({
+    queryKey: ["departments"],
+    queryFn: async () => {
+      const { data } = await supabase.from("departments").select("id, name, code, center_id").eq("is_active", true).order("sort_order");
+      return data ?? [];
+    },
+  });
+}
+
 type ActiveTab = "fund" | "periods" | "bonus";
+
+// Roles có quyền xem tất cả trung tâm (Tài chính kế toán + Ban LĐ)
+const GLOBAL_VIEW_ROLES = ["admin", "leader", "director"];
 
 export default function AllocationPage() {
   const { t } = useI18n();
   const { user } = useAuthStore();
-  const canManage = !!user && ["admin", "leader", "director"].includes(user.role);
+  const canManage = !!user && GLOBAL_VIEW_ROLES.includes(user.role);
+  // Xem toàn bộ: admin/leader/director. NV khác chỉ thấy TT mình.
+  const canViewAll = canManage;
 
   const [tab, setTab] = useState<ActiveTab>("fund");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
+  const [selectedCenter, setSelectedCenter] = useState<string>("all");
   const [showForm, setShowForm] = useState(false);
 
   const { data: periods = [] } = useAllocationPeriods();
-  const { data: fundSummary = [] } = useFundSummary();
+  const { data: fundSummaryAll = [] } = useFundSummary();
   const { data: bonusData = [] } = useEmployeeBonus(selectedPeriod || undefined);
+  const { data: centers = [] } = useCenters();
+  const { data: departments = [] } = useDepartments();
   const calcBonus = useCalculateBonus();
+
+  // Lọc quỹ theo trung tâm: NV thường chỉ thấy TT của mình
+  const userCenterId = user?.center_id as string | undefined;
+  const effectiveCenter = canViewAll ? selectedCenter : (userCenterId || "none");
+
+  const fundSummary = useMemo(() => {
+    if (effectiveCenter === "all") return fundSummaryAll;
+    // Tìm các PB thuộc trung tâm được chọn
+    const deptIdsInCenter = new Set(
+      departments.filter((d) => d.center_id === effectiveCenter).map((d) => d.id)
+    );
+    return fundSummaryAll.filter((f: any) => deptIdsInCenter.has(f.dept_id));
+  }, [fundSummaryAll, effectiveCenter, departments]);
 
   // Auto-select first period when available
   if (!selectedPeriod && periods.length > 0) setSelectedPeriod(periods[0].id);
@@ -55,6 +100,17 @@ export default function AllocationPage() {
           ))}
         </div>
         <div className="flex items-center gap-2">
+          {/* Lọc theo trung tâm — chỉ admin/LĐ thấy dropdown, NV thường tự lọc theo TT mình */}
+          {tab === "fund" && canViewAll && centers.length > 0 && (
+            <div className="w-52">
+              <SearchSelect value={selectedCenter} onChange={setSelectedCenter}
+                options={[
+                  { value: "all", label: "Tất cả trung tâm" },
+                  ...centers.map((c) => ({ value: c.id, label: `${c.code || ""} — ${c.name}` })),
+                ]}
+                placeholder="Lọc trung tâm" />
+            </div>
+          )}
           {(tab === "bonus" || tab === "periods") && periods.length > 0 && (
             <div className="w-56">
               <SearchSelect value={selectedPeriod} onChange={setSelectedPeriod}
@@ -80,6 +136,12 @@ export default function AllocationPage() {
           )}
         </div>
       </div>
+
+      {/* Hiện tên TT khi NV thường xem (không có dropdown) */}
+      {tab === "fund" && !canViewAll && userCenterId && (() => {
+        const c = centers.find((ct) => ct.id === userCenterId);
+        return c ? <p className="text-sm text-muted-foreground">Trung tâm: <span className="font-semibold text-foreground">{c.name}</span></p> : null;
+      })()}
 
       {/* ═══ Phần 1+2: Quỹ phòng ban — dự kiến vs thực tế ═══ */}
       {tab === "fund" && <FundSummarySection data={fundSummary} />}
