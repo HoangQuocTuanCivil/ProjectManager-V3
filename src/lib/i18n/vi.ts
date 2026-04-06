@@ -644,6 +644,8 @@ const vi = {
     workReportDesc: "Thống kê CV theo khoảng thời gian, phân loại theo nhân sự",
     progressSummary: "Tiến độ tổng hợp",
     progressSummaryDesc: "Tiến độ dự án, task theo thời gian",
+    businessReport: "Báo cáo kinh doanh",
+    businessReportDesc: "Lãi/Lỗ theo HĐ: DT − Giá vốn − Chi phí",
     kpiSummary: "Tổng hợp KPI",
     kpiSummaryDesc: "Phân tích KPI E vs A, verdict",
     allocationReport: "Báo cáo chia khoán",

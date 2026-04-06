@@ -617,6 +617,8 @@ const en: Translations = {
     workReportDesc: "Task statistics by time period, by personnel",
     progressSummary: "Progress Summary",
     progressSummaryDesc: "Project & task progress over time",
+    businessReport: "Business Report",
+    businessReportDesc: "P&L by Contract: Revenue − COGS − Expenses",
     kpiSummary: "KPI Summary",
     kpiSummaryDesc: "KPI Expected vs Actual analysis",
     allocationReport: "Allocation Report",

@@ -149,7 +149,7 @@ export default function ReportsPage() {
   //  Report cards 
   const reportCards = [
     { href: "/reports/work-report", icon: "📋", title: t.reports.workReport, desc: t.reports.workReportDesc },
-    { href: "/reports/progress", icon: "📊", title: t.reports.progressSummary, desc: t.reports.progressSummaryDesc },
+    { href: "/revenue/reports", icon: "📊", title: t.reports.businessReport, desc: t.reports.businessReportDesc },
     { href: "/reports/kpi-summary", icon: "🎯", title: t.reports.kpiSummary, desc: t.reports.kpiSummaryDesc },
     { href: "/reports/allocation-summary", icon: "💰", title: t.reports.allocationReport, desc: t.reports.allocationReportDesc },
   ];
