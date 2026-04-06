@@ -20,6 +20,7 @@ const en: Translations = {
     revenue: "Revenue",
     companyRevenue: "Company Revenue",
     internalRevenue: "Internal Revenue",
+    businessReport: "Business Report",
     costs: "Costs",
     deptAllocation: "Department Allocation",
     goals: "Goals & OKR",

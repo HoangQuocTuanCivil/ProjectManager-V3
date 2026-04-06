@@ -19,6 +19,7 @@ const vi = {
     revenue: "Doanh thu",
     companyRevenue: "Doanh thu công ty",
     internalRevenue: "Doanh thu nội bộ",
+    businessReport: "Báo cáo kinh doanh",
     costs: "Chi phí",
     deptAllocation: "Phân bổ phòng ban",
     goals: "Goals & OKR",
