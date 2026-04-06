@@ -30,11 +30,29 @@ function useDepartments() {
   });
 }
 
+function useCenters() {
+  return useQuery({
+    queryKey: ["centers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("centers")
+        .select("id, name, code")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+type AssignTarget = "dept" | "center";
+
 export default function BudgetAssignPage() {
   const { t } = useI18n();
   const { user } = useAuthStore();
   const { data: projects = [] } = useProjects();
   const { data: departments = [] } = useDepartments();
+  const { data: centers = [] } = useCenters();
   const [filterProjectId, setFilterProjectId] = useState<string>("all");
 
   const { data: allocations = [] } = useDeptBudgetAllocations(
@@ -47,9 +65,10 @@ export default function BudgetAssignPage() {
   // Dept heads only see their own department (RLS enforces this server-side too)
   const isDeptScoped = user && !["admin", "leader", "director"].includes(user.role);
 
-  // Form state
+  // Form state — hỗ trợ giao cho trung tâm hoặc phòng ban
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ project_id: "", dept_id: "", allocated_amount: 0, note: "" });
+  const [assignTarget, setAssignTarget] = useState<AssignTarget>("dept");
+  const [form, setForm] = useState({ project_id: "", dept_id: "", center_id: "", allocated_amount: 0, note: "" });
 
   const selectedProject = projects.find((p: any) => p.id === form.project_id);
 
@@ -62,23 +81,20 @@ export default function BudgetAssignPage() {
   const fund = selectedProject?.allocation_fund || 0;
 
   const handleSubmit = async () => {
-    if (!form.project_id || !form.dept_id) {
-      toast.error("Vui lòng chọn dự án và phòng ban");
-      return;
-    }
-    if (form.allocated_amount <= 0) {
-      toast.error("Số tiền phải lớn hơn 0");
-      return;
-    }
+    if (!form.project_id) { toast.error("Vui lòng chọn dự án"); return; }
+    if (assignTarget === "dept" && !form.dept_id) { toast.error("Vui lòng chọn phòng ban"); return; }
+    if (assignTarget === "center" && !form.center_id) { toast.error("Vui lòng chọn trung tâm"); return; }
+    if (form.allocated_amount <= 0) { toast.error("Số tiền phải lớn hơn 0"); return; }
     try {
       await upsert.mutateAsync({
         project_id: form.project_id,
-        dept_id: form.dept_id,
+        dept_id: assignTarget === "dept" ? form.dept_id : "",
+        center_id: assignTarget === "center" ? form.center_id : undefined,
         allocated_amount: form.allocated_amount,
         note: form.note || undefined,
       });
       toast.success("Giao khoán thành công!");
-      setForm({ project_id: form.project_id, dept_id: "", allocated_amount: 0, note: "" });
+      setForm({ project_id: form.project_id, dept_id: "", center_id: "", allocated_amount: 0, note: "" });
     } catch (e: any) {
       toast.error(e.message || "Lỗi giao khoán");
     }
@@ -147,19 +163,32 @@ export default function BudgetAssignPage() {
               />
             </div>
 
-            {/* Department */}
+            {/* Giao cho: Trung tâm hoặc Phòng ban */}
             <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.kpi.deptName}</label>
-              <SearchSelect
-                value={form.dept_id}
-                onChange={(val) => setForm({ ...form, dept_id: val })}
-                options={departments.map((d) => ({
-                  value: d.id,
-                  label: `${d.code} — ${d.name}`,
-                }))}
-                placeholder={t.kpi.selectDept}
-                className="mt-1"
-              />
+              <label className="text-sm text-muted-foreground font-medium">Giao cho</label>
+              <div className="flex items-center gap-1 mt-1 mb-2">
+                {(["center", "dept"] as const).map((t) => (
+                  <button key={t} onClick={() => { setAssignTarget(t); setForm({ ...form, dept_id: "", center_id: "" }); }}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${assignTarget === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
+                    {t === "center" ? "Trung tâm" : "Phòng ban"}
+                  </button>
+                ))}
+              </div>
+              {assignTarget === "dept" ? (
+                <SearchSelect
+                  value={form.dept_id}
+                  onChange={(val) => setForm({ ...form, dept_id: val })}
+                  options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
+                  placeholder="Chọn phòng ban"
+                />
+              ) : (
+                <SearchSelect
+                  value={form.center_id}
+                  onChange={(val) => setForm({ ...form, center_id: val })}
+                  options={(centers ?? []).map((c) => ({ value: c.id, label: `${c.code || ""} — ${c.name}` }))}
+                  placeholder="Chọn trung tâm"
+                />
+              )}
             </div>
 
             {/* Amount */}
@@ -273,8 +302,10 @@ export default function BudgetAssignPage() {
                     {items.map((a) => (
                       <tr key={a.id} className="hover:bg-secondary/20 transition-colors">
                         <td className="px-4 py-2.5 font-medium">
-                          {a.department?.code && <span className="text-muted-foreground mr-1">{a.department.code}</span>}
-                          {a.department?.name}
+                          {(a as any).center?.name
+                            ? <><span className="px-1 py-0.5 rounded bg-accent/10 text-accent text-[9px] mr-1">TT</span>{(a as any).center.code || (a as any).center.name}</>
+                            : <>{a.department?.code && <span className="text-muted-foreground mr-1">{a.department.code}</span>}{a.department?.name}</>
+                          }
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono font-semibold">{formatVND(Number(a.allocated_amount))}</td>
                         {!isDeptScoped && (

@@ -206,7 +206,7 @@ export function useDeptBudgetAllocations(projectId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("dept_budget_allocations")
-        .select("*, project:projects(id, code, name, budget, allocation_fund), department:departments(id, name, code), creator:users!created_by(id, full_name)")
+        .select("*, project:projects(id, code, name, budget, allocation_fund), department:departments(id, name, code), center:centers(id, name, code), creator:users!created_by(id, full_name)")
         .order("created_at", { ascending: false });
       if (projectId) query = query.eq("project_id", projectId);
       const { data, error } = await query;
@@ -216,26 +216,29 @@ export function useDeptBudgetAllocations(projectId?: string) {
   });
 }
 
-/** Tạo / cập nhật giao khoán cho phòng ban (upsert theo project_id + dept_id) */
+/** Tạo / cập nhật giao khoán cho trung tâm hoặc phòng ban */
 export function useUpsertDeptBudgetAllocation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { project_id: string; dept_id: string; allocated_amount: number; note?: string }) => {
+    mutationFn: async (input: { project_id: string; dept_id?: string; center_id?: string; allocated_amount: number; note?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profile } = await supabase.from("users").select("org_id").eq("id", user!.id).single();
       if (!profile) throw new Error("Không tìm thấy profile");
 
+      // Insert — unique index (project+dept hoặc project+center) ngăn trùng
+      const row: Record<string, any> = {
+        org_id: profile.org_id,
+        project_id: input.project_id,
+        allocated_amount: input.allocated_amount,
+        note: input.note || null,
+        created_by: user!.id,
+      };
+      if (input.dept_id) row.dept_id = input.dept_id;
+      if (input.center_id) row.center_id = input.center_id;
+
       const { data, error } = await supabase
         .from("dept_budget_allocations")
-        .upsert({
-          org_id: profile.org_id,
-          project_id: input.project_id,
-          dept_id: input.dept_id,
-          allocated_amount: input.allocated_amount,
-          note: input.note || null,
-          created_by: user!.id,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "project_id,dept_id" })
+        .insert(row as any)
         .select()
         .single();
       if (error) throw error;
