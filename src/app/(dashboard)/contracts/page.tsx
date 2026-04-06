@@ -84,6 +84,7 @@ export default function ContractsPage() {
           <CreateContractButton
             activeTab={activeTab}
             projects={projects}
+            filterProjectId={filterProjectId}
           />
         )}
       </div>
@@ -246,14 +247,16 @@ function TabButton({ active, onClick, label, count }: { active: boolean; onClick
    Create Contract Button + Form
    ═══════════════════════════════════════════════════════════════════ */
 
-function CreateContractButton({ activeTab, projects }: { activeTab: ActiveTab; projects: any[] }) {
+function CreateContractButton({ activeTab, projects, filterProjectId }: { activeTab: ActiveTab; projects: any[]; filterProjectId: string }) {
   const { t } = useI18n();
   const [showForm, setShowForm] = useState(false);
   const createContract = useCreateContract();
   const isOutgoing = activeTab === "outgoing";
 
+  const preselectedProject = filterProjectId !== "all" ? filterProjectId : "";
+
   const emptyForm = {
-    project_id: "", contract_no: "", title: "", client_name: "", bid_package: "",
+    project_id: preselectedProject, contract_no: "", title: "", client_name: "", bid_package: "",
     contract_value: 0, vat_value: 0, signed_date: "", start_date: "", end_date: "",
     guarantee_value: 0, guarantee_expiry: "", status: "draft" as string, notes: "",
     subcontractor_name: "", work_content: "", person_in_charge: "",
@@ -314,7 +317,10 @@ function CreateContractButton({ activeTab, projects }: { activeTab: ActiveTab; p
 
   return (
     <>
-      <Button variant="primary" onClick={() => setShowForm(!showForm)}>
+      <Button variant="primary" onClick={() => {
+        if (!showForm) setForm({ ...emptyForm, project_id: preselectedProject });
+        setShowForm(!showForm);
+      }}>
         {showForm ? t.common.cancel : t.contracts.newContract}
       </Button>
 
@@ -324,13 +330,19 @@ function CreateContractButton({ activeTab, projects }: { activeTab: ActiveTab; p
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className={labelCls}>{t.contracts.selectProject} *</label>
-              <SearchSelect
-                value={form.project_id}
-                onChange={(v) => set({ project_id: v })}
-                options={projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
-                placeholder={t.contracts.selectProject}
-                className="mt-1"
-              />
+              {preselectedProject ? (
+                <p className="mt-1 h-9 px-3 flex items-center rounded-lg border border-border bg-secondary/50 text-base">
+                  {projects.find((p: any) => p.id === preselectedProject)?.code} — {projects.find((p: any) => p.id === preselectedProject)?.name}
+                </p>
+              ) : (
+                <SearchSelect
+                  value={form.project_id}
+                  onChange={(v) => set({ project_id: v })}
+                  options={projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+                  placeholder={t.contracts.selectProject}
+                  className="mt-1"
+                />
+              )}
             </div>
             <div>
               <label className={labelCls}>{t.contracts.contractNo} *</label>
