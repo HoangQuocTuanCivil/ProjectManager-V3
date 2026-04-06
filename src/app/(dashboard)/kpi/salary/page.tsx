@@ -57,7 +57,7 @@ export default function SalaryPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1" role="tablist">
           {([
-            { key: "input" as const, label: "Nhập lương" },
+            { key: "input" as const, label: "Lương" },
             { key: "deductions" as const, label: "Công nợ khoán" },
           ]).map(v => (
             <button key={v.key} onClick={() => setTab(v.key)} role="tab" aria-selected={tab === v.key}
