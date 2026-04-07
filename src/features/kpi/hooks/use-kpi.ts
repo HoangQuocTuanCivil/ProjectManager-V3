@@ -247,20 +247,39 @@ export function useUpsertDeptBudgetAllocation() {
         .single();
       if (error) throw error;
 
-      // Tạo HĐ đầu vào (incoming) tự động — giao khoán = chi phí cho PB/TT
+      // Tạo HĐ đầu vào (incoming) — mỗi giao khoán = 1 chi phí riêng
+      // 1 HĐ đầu ra có thể sinh nhiều HĐ đầu vào (nhiều PB/TT khác nhau)
       if (data && input.contract_id) {
         const { data: srcContract } = await supabase
           .from("contracts")
-          .select("contract_no, title, project_id")
+          .select("contract_no, title")
           .eq("id", input.contract_id)
           .single();
-        const incomingNo = input.allocation_code || `GK-${srcContract?.contract_no || ""}`;
+
+        // Đếm số giao khoán đã có cho HĐ gốc để tạo mã tuần tự
+        const { count } = await supabase
+          .from("dept_budget_allocations")
+          .select("id", { count: "exact", head: true })
+          .eq("contract_id", input.contract_id);
+        const seq = String(count ?? 1).padStart(2, "0");
+
+        // Mã HĐ đầu vào: dùng allocation_code nếu có, ngược lại sinh tự động
+        const baseNo = srcContract?.contract_no || "HD";
+        const incomingNo = input.allocation_code || `GK-${baseNo}-${seq}`;
+
+        // Tên đơn vị nhận giao khoán (TT hoặc PB)
+        const targetLabel = input.center_id
+          ? (await supabase.from("centers").select("name").eq("id", input.center_id).single()).data?.name
+          : input.dept_id
+          ? (await supabase.from("departments").select("name").eq("id", input.dept_id).single()).data?.name
+          : "";
+
         await supabase.from("contracts").insert({
           org_id: profile.org_id,
           project_id: input.project_id,
           contract_type: "incoming",
           contract_no: incomingNo,
-          title: `Giao khoán: ${srcContract?.title || ""}`,
+          title: `GK: ${srcContract?.title || ""} → ${targetLabel || ""}`,
           contract_value: input.allocated_amount,
           status: "active",
           start_date: input.delivery_date || null,
