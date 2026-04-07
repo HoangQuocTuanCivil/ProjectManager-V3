@@ -49,10 +49,7 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
       else internal += amt;
     }
 
-    // Nháp = entries chưa xác nhận
-    const draftTotal = entries.filter((e: any) => e.status === "draft").reduce((s, e: any) => s + Number(e.amount), 0);
-
-    return { totalRevenue, internal, external, draftTotal, contractCount: outgoingContracts.length };
+    return { totalRevenue, internal, external, contractCount: outgoingContracts.length };
   }, [entriesRes, allContracts, projectId]);
 
   const cards = [
@@ -76,11 +73,10 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
         </div>
       ),
     },
-    { label: t.revenue.statusDraft, value: stats.draftTotal, color: "text-yellow-500" },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" role="list" aria-label={t.revenue.totalRevenue}>
+    <div className="grid grid-cols-3 gap-3" role="list" aria-label={t.revenue.totalRevenue}>
       {cards.map((c, i) => (
         <div key={i} className="bg-card border border-border rounded-xl p-3" role="listitem">
           <p className="text-[11px] text-muted-foreground mb-1">{c.label}</p>
