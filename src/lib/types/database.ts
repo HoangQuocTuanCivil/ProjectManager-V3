@@ -94,6 +94,7 @@ export type Database = {
           subcontractor_name: string | null
           work_content: string | null
           person_in_charge: string | null
+          contract_scope: string
           created_by: string
           created_at: string | null
           updated_at: string | null
@@ -120,6 +121,7 @@ export type Database = {
           subcontractor_name?: string | null
           work_content?: string | null
           person_in_charge?: string | null
+          contract_scope?: string
           created_by: string
           created_at?: string | null
           updated_at?: string | null
@@ -146,6 +148,7 @@ export type Database = {
           subcontractor_name?: string | null
           work_content?: string | null
           person_in_charge?: string | null
+          contract_scope?: string
           created_by?: string
           created_at?: string | null
           updated_at?: string | null

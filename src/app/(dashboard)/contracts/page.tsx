@@ -261,6 +261,7 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
     contract_value: 0, vat_value: 0, signed_date: "", start_date: "", end_date: "",
     guarantee_value: 0, guarantee_expiry: "", status: "draft" as string, notes: "",
     subcontractor_name: "", work_content: "", person_in_charge: "",
+    contract_scope: "internal" as string,
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -289,6 +290,7 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
         subcontractor_name: form.subcontractor_name || undefined,
         work_content: form.work_content || undefined,
         person_in_charge: form.person_in_charge || undefined,
+        contract_scope: form.contract_scope,
       });
       toast.success("Tạo hợp đồng thành công!");
       setShowForm(false);
@@ -350,7 +352,7 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
 
             {/* Nội dung form */}
             <div className="p-6 space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <label className={labelCls}>{t.contracts.selectProject} *</label>
                   {preselectedProject ? (
@@ -380,18 +382,42 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
                     className="mt-1"
                   />
                 </div>
+                <div>
+                  <label className={labelCls}>Phạm vi</label>
+                  <SearchSelect
+                    value={form.contract_scope}
+                    onChange={(v) => set({ contract_scope: v })}
+                    options={[
+                      { value: "internal", label: "Trong hệ thống" },
+                      { value: "external", label: "Ngoài hệ thống" },
+                    ]}
+                    className="mt-1"
+                  />
+                </div>
 
                 <div className="col-span-2">
                   <label className={labelCls}>{t.contracts.contractTitle} *</label>
                   <input value={form.title} onChange={(e) => set({ title: e.target.value })} className={inputCls} />
                 </div>
 
-                {isOutgoing ? (
-                  <div>
-                    <label className={labelCls}>{t.contracts.clientName}</label>
-                    <input value={form.client_name} onChange={(e) => set({ client_name: e.target.value })} className={inputCls} />
-                  </div>
-                ) : (
+                <div>
+                  <label className={labelCls}>{t.contracts.clientName}</label>
+                  <SearchSelect
+                    value={form.client_name}
+                    onChange={(v) => set({ client_name: v })}
+                    options={[
+                      { value: "design", label: "Thiết kế" },
+                      { value: "consulting", label: "Tư vấn" },
+                      { value: "survey", label: "Khảo sát" },
+                      { value: "supervision", label: "Giám sát" },
+                      { value: "other", label: "Khác" },
+                    ]}
+                    placeholder="Chọn loại hình..."
+                    className="mt-1"
+                  />
+                </div>
+
+                {!isOutgoing && (
                   <div>
                     <label className={labelCls}>{t.contracts.subcontractorName} *</label>
                     <input value={form.subcontractor_name} onChange={(e) => set({ subcontractor_name: e.target.value })} className={inputCls} />
@@ -458,7 +484,7 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
                   </>
                 )}
 
-                <div className="col-span-3">
+                <div className="col-span-4">
                   <label className={labelCls}>{t.contracts.notes}</label>
                   <input value={form.notes} onChange={(e) => set({ notes: e.target.value })} className={inputCls} />
                 </div>

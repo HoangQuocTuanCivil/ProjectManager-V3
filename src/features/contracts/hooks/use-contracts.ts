@@ -71,6 +71,7 @@ export function useCreateContract() {
       subcontractor_name?: string;
       work_content?: string;
       person_in_charge?: string;
+      contract_scope?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profile } = await supabase.from("users").select("org_id").eq("id", user!.id).single();

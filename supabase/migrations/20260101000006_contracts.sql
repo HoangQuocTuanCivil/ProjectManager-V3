@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS contracts (
   subcontractor_name TEXT,
   work_content TEXT,
   person_in_charge TEXT,
+  contract_scope TEXT NOT NULL DEFAULT 'internal',
   created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -51,6 +52,7 @@ ALTER TABLE contracts ADD COLUMN IF NOT EXISTS vat_value NUMERIC(15,0) DEFAULT 0
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS subcontractor_name TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS work_content TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS person_in_charge TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_scope TEXT NOT NULL DEFAULT 'internal';
 
 -- ─── BẢNG PHỤ LỤC HỢP ĐỒNG ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS contract_addendums (

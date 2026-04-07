@@ -326,7 +326,7 @@ const en: Translations = {
     newContract: "+ New Contract",
     contractNo: "Contract No.",
     contractTitle: "Contract Title",
-    clientName: "Client",
+    clientName: "Service Type",
     bidPackage: "Bid Package",
     contractValue: "Value (excl. VAT)",
     vatValue: "Value (incl. VAT)",

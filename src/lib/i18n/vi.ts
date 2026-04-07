@@ -338,7 +338,7 @@ const vi = {
     newContract: "+ Tạo hợp đồng",
     contractNo: "Số hợp đồng",
     contractTitle: "Tên hợp đồng",
-    clientName: "Chủ đầu tư / Khách hàng",
+    clientName: "Loại hình dịch vụ",
     bidPackage: "Gói thầu",
     contractValue: "Giá trị HĐ (chưa VAT)",
     vatValue: "Giá trị HĐ (đã VAT)",
