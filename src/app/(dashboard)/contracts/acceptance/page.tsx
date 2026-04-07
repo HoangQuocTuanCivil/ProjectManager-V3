@@ -145,9 +145,29 @@ export default function AcceptancePage() {
                     <td className="px-4 py-2.5 font-mono text-green-500">{Number(m.paid_amount) > 0 ? formatVND(Number(m.paid_amount)) : "—"}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{m.paid_date ? formatDate(m.paid_date) : "—"}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_STYLE[m.status]}`}>
-                        {STATUS_LABEL[m.status]}
-                      </span>
+                      {canManage ? (
+                        <select
+                          value={m.status}
+                          onChange={(e) => {
+                            const newStatus = e.target.value;
+                            const updates: any = { id: m.id, status: newStatus };
+                            if (newStatus === "paid" && !m.paid_date) updates.paid_date = new Date().toISOString().split("T")[0];
+                            updateMilestone.mutate(updates, {
+                              onSuccess: () => toast.success(`Trạng thái → ${STATUS_LABEL[newStatus]}`),
+                              onError: (err) => toast.error(err.message),
+                            });
+                          }}
+                          className={`h-7 px-2 rounded border border-border bg-secondary text-[11px] font-medium focus:border-primary focus:outline-none cursor-pointer ${STATUS_STYLE[m.status]?.split(" ")[1] || ""}`}
+                        >
+                          {Object.entries(STATUS_LABEL).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_STYLE[m.status]}`}>
+                          {STATUS_LABEL[m.status]}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       {canManage && (
