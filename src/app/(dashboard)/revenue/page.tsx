@@ -157,12 +157,14 @@ function CreateFormModal({ onClose }: { onClose: () => void }) {
               <label className="text-sm text-muted-foreground font-medium">{t.revenue.selectProject}</label>
               <SearchSelect value={form.project_id || ""} onChange={(v) => setForm({ ...form, project_id: v || null })}
                 options={[{ value: "", label: "—" }, ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))]}
+                disabled={!!form.contract_id}
                 className="mt-1" />
             </div>
             <div>
               <label className="text-sm text-muted-foreground font-medium">{t.revenue.productService}</label>
               <SearchSelect value={form.product_service_id || ""} onChange={(v) => setForm({ ...form, product_service_id: v || null })}
                 options={[{ value: "", label: "—" }, ...productServices.map((ps) => ({ value: ps.id, label: `${ps.code} — ${ps.name}` }))]}
+                disabled={!!form.contract_id}
                 className="mt-1" />
             </div>
 
