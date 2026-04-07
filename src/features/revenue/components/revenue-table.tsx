@@ -33,7 +33,7 @@ export function RevenueTable({ filters, canManage }: Props) {
   const total = res?.count ?? 0;
   const totalPages = Math.ceil(total / perPage);
 
-  // HĐ đầu ra active/completed — hiện như dòng doanh thu tự động từ hợp đồng
+  // HĐ đầu ra active/completed — áp dụng tất cả filters tương ứng
   const { data: allContracts = [] } = useContracts();
   const contractRows = useMemo(() => {
     return (allContracts as any[])
@@ -41,10 +41,13 @@ export function RevenueTable({ filters, canManage }: Props) {
       .filter((c) => {
         if (filters.project_id && c.project_id !== filters.project_id) return false;
         if (filters.contract_id && c.id !== filters.contract_id) return false;
+        if (filters.bid_package && c.bid_package !== filters.bid_package) return false;
+        if (filters.product_service_id && c.product_service_id !== filters.product_service_id) return false;
+        if (filters.date_from && (c.signed_date || c.start_date) && (c.signed_date || c.start_date) < filters.date_from) return false;
+        if (filters.date_to && (c.signed_date || c.start_date) && (c.signed_date || c.start_date) > filters.date_to) return false;
         return true;
       })
       .map((c) => {
-        // Giá trị HĐ = contract_value gốc + tổng value_change từ phụ lục
         const addendumTotal = (c.addendums ?? []).reduce((s: number, a: any) => s + Number(a.value_change || 0), 0);
         return {
           id: `ct-${c.id}`,
@@ -58,9 +61,10 @@ export function RevenueTable({ filters, canManage }: Props) {
           amount: Number(c.contract_value) + addendumTotal,
           contract_scope: c.contract_scope || "internal",
           product_service_name: c.product_service?.name || null,
+          bid_package: c.bid_package,
         };
       });
-  }, [allContracts, filters.project_id, filters.contract_id]);
+  }, [allContracts, filters]);
 
   // Chỉ giữ entries nhập thủ công — doanh thu từ HĐ và nghiệm thu đã hiện qua contractRows
   const onlyManual = manualEntries.filter((e: any) => e.source === "manual");
