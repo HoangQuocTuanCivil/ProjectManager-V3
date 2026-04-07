@@ -115,12 +115,11 @@ export default function ContractsPage() {
 
 function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incoming: Contract[] }) {
   const stats = useMemo(() => {
-    const allContracts = [...outgoing, ...incoming];
+    // Tổng giá trị HĐ = chỉ HĐ đầu ra (doanh thu), không gồm đầu vào (chi phí)
+    const totalContractValue = outgoing.reduce((s, c) => s + Number(c.contract_value), 0);
 
-    // Tổng giá trị toàn bộ hợp đồng (đầu ra + đầu vào)
-    const totalContractValue = allContracts.reduce((s, c) => s + Number(c.contract_value), 0);
-
-    const allMilestones = allContracts.flatMap((c) => c.milestones || []);
+    // Nghiệm thu và thanh toán chỉ tính trên HĐ đầu ra
+    const allMilestones = outgoing.flatMap((c) => c.milestones || []);
 
     // Đã nghiệm thu = tổng giá trị các đợt đã nghiệm thu (invoiced hoặc paid)
     const acceptedValue = allMilestones
