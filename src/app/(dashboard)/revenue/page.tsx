@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuthStore } from "@/lib/stores";
 import { useI18n } from "@/lib/i18n";
-import { useCreateRevenueEntry, useRevenueEntries, useRevenueSummary } from "@/lib/hooks/use-revenue";
+import { useCreateRevenueEntry } from "@/lib/hooks/use-revenue";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { useContracts } from "@/lib/hooks/use-contracts";
 import { useProductServices } from "@/features/revenue/hooks/use-product-services";
@@ -30,11 +30,31 @@ export default function CompanyRevenuePage() {
   const [groupBy, setGroupBy] = useState<"month" | "quarter" | "year">("month");
   const [showForm, setShowForm] = useState(false);
 
-  const { data: entriesRes } = useRevenueEntries({ ...filters, per_page: 500 });
-  const { data: summary } = useRevenueSummary({ from: filters.date_from, to: filters.date_to, project_id: filters.project_id });
+  const { data: allContracts = [] } = useContracts();
+  const exportData = useMemo(() => {
+    const outgoing = (allContracts as any[]).filter((c) =>
+      c.contract_type === "outgoing" && ["active", "completed"].includes(c.status)
+      && (!filters.project_id || c.project_id === filters.project_id)
+    );
+    let internal = 0, external = 0;
+    const contracts = outgoing.map((c) => {
+      const val = Number(c.contract_value);
+      if (c.contract_scope === "external") external += val; else internal += val;
+      return {
+        contract_no: c.contract_no,
+        title: c.title,
+        project_code: c.project?.code || "",
+        signed_date: c.signed_date || c.start_date || "",
+        contract_value: val,
+        contract_scope: c.contract_scope || "internal",
+        product_service_name: c.product_service?.name || "",
+      };
+    });
+    return { contracts, totalRevenue: internal + external, internal, external };
+  }, [allContracts, filters.project_id]);
 
   const handleExportExcel = () => {
-    exportRevenueExcel({ entries: entriesRes?.data ?? [], summary });
+    exportRevenueExcel(exportData);
     toast.success(t.revenue.exportExcel);
   };
 
