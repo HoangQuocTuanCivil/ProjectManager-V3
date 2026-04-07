@@ -18,7 +18,7 @@ const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 w-[--radix-popover-trigger-width] rounded-md border border-border bg-popover text-popover-foreground shadow-md outline-none",
+        "z-50 min-w-[--radix-popover-trigger-width] max-w-[min(480px,90vw)] rounded-md border border-border bg-popover text-popover-foreground shadow-md outline-none",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",

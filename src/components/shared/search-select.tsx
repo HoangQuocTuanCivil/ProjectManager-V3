@@ -82,8 +82,8 @@ export function SearchSelect({
                   }}
                 >
                   <Check className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")} />
-                  <span className="truncate">{option.label}</span>
-                  {option.sublabel && <span className="ml-1 truncate text-muted-foreground">— {option.sublabel}</span>}
+                  <span>{option.label}</span>
+                  {option.sublabel && <span className="ml-1 text-muted-foreground">— {option.sublabel}</span>}
                 </CommandItem>
               ))}
             </CommandGroup>
