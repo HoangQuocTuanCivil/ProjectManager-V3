@@ -1,10 +1,10 @@
 -- ============================================================================
--- A2Z WORKHUB — HỢP ĐỒNG (Đầu ra & Đầu vào)
--- Enums, tables, indexes, RLS, storage
--- Idempotent: chạy an toàn trên cả DB mới lẫn DB đã có bảng contracts
+-- A2Z WORKHUB — HỢP ĐỒNG & GIAO KHOÁN
+-- Quản lý hợp đồng đầu ra/đầu vào, phụ lục, mốc thanh toán,
+-- và phân bổ ngân sách giao khoán cho trung tâm/phòng ban.
 -- ============================================================================
 
--- ─── ENUMS (tạo nếu chưa tồn tại) ──────────────────────────────────────────
+-- ─── ENUMS ──────────────────────────────────────────────────────────────────
 DO $$ BEGIN CREATE TYPE contract_type AS ENUM ('outgoing', 'incoming');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
@@ -14,8 +14,9 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE billing_milestone_status AS ENUM ('upcoming', 'invoiced', 'paid', 'overdue');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- ─── BẢNG CONTRACTS ─────────────────────────────────────────────────────────
--- Tạo bảng nếu chưa tồn tại (cài mới)
+-- ─── HỢP ĐỒNG ──────────────────────────────────────────────────────────────
+-- Lưu trữ HĐ đầu ra (outgoing) và HĐ đầu vào/chi phí (incoming).
+-- HĐ đầu vào được tạo tự động khi giao khoán ngân sách cho PB/TT.
 CREATE TABLE IF NOT EXISTS contracts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -46,7 +47,7 @@ CREATE TABLE IF NOT EXISTS contracts (
   UNIQUE(org_id, contract_no)
 );
 
--- Bổ sung cột cho bảng đã tồn tại từ schema cũ (upgrade)
+-- Đảm bảo các cột tồn tại trên DB đã có bảng contracts trước đó
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_type contract_type NOT NULL DEFAULT 'outgoing';
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS bid_package TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS vat_value NUMERIC(15,0) DEFAULT 0;
@@ -56,7 +57,8 @@ ALTER TABLE contracts ADD COLUMN IF NOT EXISTS person_in_charge TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_scope TEXT NOT NULL DEFAULT 'internal';
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS product_service_id UUID REFERENCES product_services(id) ON DELETE SET NULL;
 
--- ─── BẢNG PHỤ LỤC HỢP ĐỒNG ────────────────────────────────────────────────
+-- ─── PHỤ LỤC HỢP ĐỒNG ─────────────────────────────────────────────────────
+-- Điều chỉnh giá trị, gia hạn thời gian cho HĐ đã ký.
 CREATE TABLE IF NOT EXISTS contract_addendums (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   contract_id UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
@@ -72,7 +74,8 @@ CREATE TABLE IF NOT EXISTS contract_addendums (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ─── BẢNG MỐC THANH TOÁN ───────────────────────────────────────────────────
+-- ─── MỐC THANH TOÁN ────────────────────────────────────────────────────────
+-- Theo dõi tiến độ nghiệm thu và thanh toán theo từng mốc của HĐ.
 CREATE TABLE IF NOT EXISTS billing_milestones (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   contract_id UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
@@ -147,8 +150,9 @@ DO $$ BEGIN
   CREATE POLICY "contract_files_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'contract-files');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- ─── BỔ SUNG CỘT CHO dept_budget_allocations ────────────────────────────────
--- Bảng trên Cloud tạo từ schema cũ, thiếu nhiều cột đã thêm sau.
+-- ─── GIAO KHOÁN: đảm bảo dept_budget_allocations có đầy đủ cột ─────────────
+-- Liên kết giao khoán với hợp đồng gốc, trung tâm nhận, ngày hoàn thành,
+-- mã HĐ giao khoán, và file phiếu giao nhiệm vụ đính kèm.
 ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS contract_id UUID REFERENCES contracts(id) ON DELETE SET NULL;
 ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS center_id UUID REFERENCES centers(id) ON DELETE CASCADE;
 ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS delivery_progress NUMERIC(5,2) DEFAULT 0;
@@ -156,7 +160,7 @@ ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS delivery_date DATE;
 ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS allocation_code TEXT;
 ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS task_document_url TEXT;
 
--- Cho phép dept_id NULL (khi giao cho trung tâm thay vì phòng ban)
+-- dept_id cho phép NULL vì giao khoán có thể gán cho trung tâm thay vì phòng ban
 DO $$ BEGIN
   ALTER TABLE dept_budget_allocations ALTER COLUMN dept_id DROP NOT NULL;
 EXCEPTION WHEN others THEN NULL;
@@ -164,4 +168,4 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_dba_contract ON dept_budget_allocations(contract_id) WHERE contract_id IS NOT NULL;
 
-SELECT '✅ 006_contracts: Hợp đồng + Giao khoán — idempotent' AS status;
+SELECT '006_contracts: done' AS status;
