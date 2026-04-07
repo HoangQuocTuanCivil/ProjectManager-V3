@@ -66,9 +66,8 @@ export function RevenueTable({ filters, canManage }: Props) {
       });
   }, [allContracts, filters]);
 
-  // Chỉ giữ entries nhập thủ công — doanh thu từ HĐ và nghiệm thu đã hiện qua contractRows
-  const onlyManual = manualEntries.filter((e: any) => e.source === "manual");
-  const entries = page === 1 ? [...contractRows, ...onlyManual] : onlyManual;
+  // Bảng chỉ hiện dòng HĐ — giá trị đã bao gồm phụ lục, không cần entries riêng
+  const entries = contractRows;
 
   const confirmEntry = useConfirmRevenueEntry();
   const cancelEntry = useCancelRevenueEntry();
