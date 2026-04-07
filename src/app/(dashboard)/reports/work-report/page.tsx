@@ -311,28 +311,20 @@ export default function WorkReportPage() {
   const financial = useMemo(() => {
     const ids = new Set(projectSummary.map((x) => x.project?.id).filter(Boolean));
     const list = projectsFiltered.filter((p: any) => ids.has(p.id));
-    const activeContracts = (allContracts as any[]).filter((c) =>
-      ["active", "completed"].includes(c.status) && ids.has(c.project_id)
-    );
-    let totalBudget = 0, totalFund = 0;
-    for (const c of activeContracts) {
-      const val = Number(c.contract_value);
-      const dateRef = c.signed_date || c.start_date || "";
-      if (dateRef && dateRef < dateFrom) continue;
-      if (dateRef && dateRef > dateTo) continue;
-      if (c.contract_type === "outgoing") totalBudget += val;
-      else if (c.contract_type === "incoming") totalFund += val;
-    }
     const budgetByProject = new Map<string, number>();
     const fundByProject = new Map<string, number>();
-    for (const c of activeContracts) {
+    for (const c of (allContracts as any[])) {
+      if (!["active", "completed"].includes(c.status) || !ids.has(c.project_id)) continue;
       const val = Number(c.contract_value);
       const dateRef = c.signed_date || c.start_date || "";
-      if (dateRef && dateRef < dateFrom) continue;
-      if (dateRef && dateRef > dateTo) continue;
+      if (dateFrom && dateRef && dateRef < dateFrom) continue;
+      if (dateTo && dateRef && dateRef > dateTo) continue;
       if (c.contract_type === "outgoing") budgetByProject.set(c.project_id, (budgetByProject.get(c.project_id) || 0) + val);
       else if (c.contract_type === "incoming") fundByProject.set(c.project_id, (fundByProject.get(c.project_id) || 0) + val);
     }
+    let totalBudget = 0, totalFund = 0;
+    for (const v of budgetByProject.values()) totalBudget += v;
+    for (const v of fundByProject.values()) totalFund += v;
     return { totalBudget, totalFund, projectCount: list.length, budgetByProject, fundByProject };
   }, [projectSummary, projectsFiltered, allContracts, dateFrom, dateTo]);
 
@@ -923,7 +915,7 @@ export default function WorkReportPage() {
                 <div className={`bg-card border rounded-xl px-4 py-3 relative overflow-hidden cursor-pointer transition-all hover:shadow-md ${kpiDrill === "budget" ? "border-amber-500 ring-1 ring-amber-500/30" : "border-border"}`} onClick={() => toggleDrill("budget")}>
                   <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-amber-500" />
                   <div className="flex items-center gap-1.5 mb-1"><TrendingUp size={13} className="text-amber-500" /><p className="text-[10px] text-muted-foreground font-semibold uppercase">Ngân sách</p></div>
-                  <p className="text-lg font-bold font-mono">{money(financial.totalFund)}<span className="text-[11px] text-muted-foreground font-normal">/{money(financial.totalBudget)}</span></p>
+                  <p className="text-lg font-bold font-mono">{money(financial.totalBudget)}<span className="text-[11px] text-muted-foreground font-normal"> · Khoán: {money(financial.totalFund)}</span></p>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="flex-1 h-[4px] bg-secondary rounded-full overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${budgetUsedPct}%`, background: budgetUsedPct > 80 ? "#ef4444" : budgetUsedPct > 60 ? "#f59e0b" : "#10b981" }} />
