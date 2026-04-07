@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRevenueEntries, useDeleteRevenueEntry, useConfirmRevenueEntry, useCancelRevenueEntry } from "../hooks/use-revenue";
+import { useContracts } from "@/lib/hooks/use-contracts";
 import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
 import { EmptyState, Button } from "@/components/shared";
 import { toast } from "sonner";
-import { Check, X, Trash2, ChevronLeft, ChevronRight, Coins, Zap, AlertTriangle } from "lucide-react";
+import { Check, X, Trash2, ChevronLeft, ChevronRight, Coins, Zap, AlertTriangle, FileText } from "lucide-react";
 import type { RevenueEntryStatus } from "@/lib/types";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -28,9 +29,35 @@ export function RevenueTable({ filters, canManage }: Props) {
   const perPage = 20;
 
   const { data: res, isLoading } = useRevenueEntries({ ...filters, page, per_page: perPage, sort: sortCol } as any);
-  const entries = res?.data ?? [];
+  const manualEntries = res?.data ?? [];
   const total = res?.count ?? 0;
   const totalPages = Math.ceil(total / perPage);
+
+  // HĐ đầu ra active/completed — hiện như dòng doanh thu tự động từ hợp đồng
+  const { data: allContracts = [] } = useContracts();
+  const contractRows = useMemo(() => {
+    return (allContracts as any[])
+      .filter((c) => c.contract_type === "outgoing" && ["active", "completed"].includes(c.status))
+      .filter((c) => {
+        if (filters.project_id && c.project_id !== filters.project_id) return false;
+        if (filters.contract_id && c.id !== filters.contract_id) return false;
+        return true;
+      })
+      .map((c) => ({
+        id: `ct-${c.id}`,
+        isContract: true,
+        description: c.title,
+        contract_no: c.contract_no,
+        status: c.status,
+        source: "contract" as string,
+        project: c.project,
+        recognition_date: c.signed_date || c.start_date,
+        amount: Number(c.contract_value),
+      }));
+  }, [allContracts, filters.project_id, filters.contract_id]);
+
+  // Gộp: HĐ (doanh thu tự động) + entries nhập thủ công
+  const entries = page === 1 ? [...contractRows, ...manualEntries] : manualEntries;
 
   const confirmEntry = useConfirmRevenueEntry();
   const cancelEntry = useCancelRevenueEntry();
@@ -113,38 +140,49 @@ export function RevenueTable({ filters, canManage }: Props) {
           </tr>
         </thead>
         <tbody className="divide-y divide-border/30">
-          {entries.map((e) => (
-            <tr key={e.id} className="hover:bg-secondary/20 transition-colors">
-              <td className="px-4 py-2.5 font-medium max-w-[220px] truncate">{e.description}</td>
+          {entries.map((e: any) => (
+            <tr key={e.id} className={`hover:bg-secondary/20 transition-colors ${e.isContract ? "bg-blue-500/5" : ""}`}>
+              <td className="px-4 py-2.5 font-medium max-w-[220px] truncate">
+                {e.isContract && <FileText size={11} className="inline mr-1 text-primary" />}
+                {e.isContract ? `${e.contract_no} — ${e.description}` : e.description}
+              </td>
               <td className="px-4 py-2.5">
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_STYLE[e.status ?? "draft"]}`}>
-                  {statusLabel(e.status ?? "draft")}
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${e.isContract ? "bg-blue-500/10 text-blue-600" : STATUS_STYLE[e.status ?? "draft"]}`}>
+                  {e.isContract ? "Hợp đồng" : statusLabel(e.status ?? "draft")}
                 </span>
               </td>
               <td className="px-4 py-2.5">
-                <span className="text-muted-foreground">{sourceLabel(e.source ?? "manual")}</span>
-                {e.source !== "manual" && (
-                  <span className="ml-1 inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-accent/10 text-accent text-[9px] font-medium">
-                    <Zap size={8} aria-hidden="true" />{t.revenue.autoSource}
-                  </span>
+                {e.isContract ? (
+                  <span className="text-muted-foreground">Hợp đồng đầu ra</span>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">{sourceLabel(e.source ?? "manual")}</span>
+                    {e.source !== "manual" && (
+                      <span className="ml-1 inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-accent/10 text-accent text-[9px] font-medium">
+                        <Zap size={8} aria-hidden="true" />{t.revenue.autoSource}
+                      </span>
+                    )}
+                  </>
                 )}
               </td>
-              <td className="px-4 py-2.5 text-muted-foreground">{(e as any).project?.code || "—"}</td>
+              <td className="px-4 py-2.5 text-muted-foreground">{e.project?.code || "—"}</td>
               <td className="px-4 py-2.5 text-muted-foreground">{formatDate(e.recognition_date ?? null)}</td>
               <td className="px-4 py-2.5 text-right font-mono font-semibold">{formatVND(Number(e.amount))}</td>
               {canManage && (
                 <td className="px-4 py-2.5 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    {e.status === "draft" && (
-                      <>
-                        <button onClick={() => setPendingAction({ type: "confirm", id: e.id, desc: e.description })} className="p-1 rounded hover:bg-green-500/10 text-green-600" title={t.revenue.confirm}><Check size={13} /></button>
-                        <button onClick={() => setPendingAction({ type: "delete", id: e.id, desc: e.description })} className="p-1 rounded hover:bg-red-500/10 text-destructive" title={t.common.delete}><Trash2 size={13} /></button>
-                      </>
-                    )}
-                    {e.status === "confirmed" && (
-                      <button onClick={() => setPendingAction({ type: "cancel", id: e.id, desc: e.description })} className="p-1 rounded hover:bg-red-500/10 text-destructive" title={t.revenue.cancel}><X size={13} /></button>
-                    )}
-                  </div>
+                  {!e.isContract ? (
+                    <div className="flex items-center justify-end gap-1">
+                      {e.status === "draft" && (
+                        <>
+                          <button onClick={() => setPendingAction({ type: "confirm", id: e.id, desc: e.description })} className="p-1 rounded hover:bg-green-500/10 text-green-600" title={t.revenue.confirm}><Check size={13} /></button>
+                          <button onClick={() => setPendingAction({ type: "delete", id: e.id, desc: e.description })} className="p-1 rounded hover:bg-red-500/10 text-destructive" title={t.common.delete}><Trash2 size={13} /></button>
+                        </>
+                      )}
+                      {e.status === "confirmed" && (
+                        <button onClick={() => setPendingAction({ type: "cancel", id: e.id, desc: e.description })} className="p-1 rounded hover:bg-red-500/10 text-destructive" title={t.revenue.cancel}><X size={13} /></button>
+                      )}
+                    </div>
+                  ) : null}
                 </td>
               )}
             </tr>
