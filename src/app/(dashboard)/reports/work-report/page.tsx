@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
+import { useContracts } from "@/lib/hooks/use-contracts";
 import { useUsers } from "@/lib/hooks/use-users";
 import { useAllTeams, useCenters } from "@/lib/hooks/use-teams";
 import { useQuery } from "@tanstack/react-query";
@@ -75,6 +76,7 @@ const printCSS = `
 export default function WorkReportPage() {
   const { data: tasks = [] } = useTasks({});
   const { data: projects = [] } = useProjects();
+  const { data: allContracts = [] } = useContracts();
   const { data: users = [] } = useUsers();
   const { data: allTeams = [] } = useAllTeams();
   const { data: allCenters = [] } = useCenters();
@@ -309,10 +311,30 @@ export default function WorkReportPage() {
   const financial = useMemo(() => {
     const ids = new Set(projectSummary.map((x) => x.project?.id).filter(Boolean));
     const list = projectsFiltered.filter((p: any) => ids.has(p.id));
-    const totalBudget = list.reduce((s: number, p: any) => s + (p.budget || 0), 0);
-    const totalFund = list.reduce((s: number, p: any) => s + (p.allocation_fund || 0), 0);
-    return { totalBudget, totalFund, projectCount: list.length };
-  }, [projectSummary, projectsFiltered]);
+    const activeContracts = (allContracts as any[]).filter((c) =>
+      ["active", "completed"].includes(c.status) && ids.has(c.project_id)
+    );
+    let totalBudget = 0, totalFund = 0;
+    for (const c of activeContracts) {
+      const val = Number(c.contract_value);
+      const dateRef = c.signed_date || c.start_date || "";
+      if (dateRef && dateRef < dateFrom) continue;
+      if (dateRef && dateRef > dateTo) continue;
+      if (c.contract_type === "outgoing") totalBudget += val;
+      else if (c.contract_type === "incoming") totalFund += val;
+    }
+    const budgetByProject = new Map<string, number>();
+    const fundByProject = new Map<string, number>();
+    for (const c of activeContracts) {
+      const val = Number(c.contract_value);
+      const dateRef = c.signed_date || c.start_date || "";
+      if (dateRef && dateRef < dateFrom) continue;
+      if (dateRef && dateRef > dateTo) continue;
+      if (c.contract_type === "outgoing") budgetByProject.set(c.project_id, (budgetByProject.get(c.project_id) || 0) + val);
+      else if (c.contract_type === "incoming") fundByProject.set(c.project_id, (fundByProject.get(c.project_id) || 0) + val);
+    }
+    return { totalBudget, totalFund, projectCount: list.length, budgetByProject, fundByProject };
+  }, [projectSummary, projectsFiltered, allContracts, dateFrom, dateTo]);
 
   const upcomingProjects = useMemo(() => {
     const to = new Date(dateTo + "T23:59:59");
@@ -389,15 +411,16 @@ export default function WorkReportPage() {
   // Budget utilization per project (for stacked bar chart)
   const budgetChartData = useMemo(() => {
     return projectSummary.slice(0, 8).map((x) => {
-      const budget = x.project?.budget || 0;
-      const fund = x.project?.allocation_fund || 0;
+      const pid = x.project?.id || "";
+      const budget = financial.budgetByProject.get(pid) || 0;
+      const fund = financial.fundByProject.get(pid) || 0;
       return {
         name: x.project?.code || "—",
         "Ngân sách": budget / 1e6,
         "Đã khoán": fund / 1e6,
       };
     }).filter((d) => d["Ngân sách"] > 0 || d["Đã khoán"] > 0);
-  }, [projectSummary]);
+  }, [projectSummary, financial]);
 
   // Project health status
   const getProjectHealth = (x: typeof projectSummary[0]): { label: string; color: string } => {
@@ -615,8 +638,8 @@ export default function WorkReportPage() {
         "Tương lai": x.future.length,
         "Tiến độ TB": x.avgProgress + "%",
         "Nhân sự tham gia": x.memberCount,
-        "Ngân sách": x.project?.budget ?? 0,
-        "Quỹ khoán": x.project?.allocation_fund ?? 0,
+        "Ngân sách": financial.budgetByProject.get(x.project?.id || "") || 0,
+        "Quỹ khoán": financial.fundByProject.get(x.project?.id || "") || 0,
       }));
       const allocRows = projectSummary.flatMap((x) =>
         x.members.map((u: any) => ({
@@ -965,9 +988,9 @@ export default function WorkReportPage() {
                           <th className="text-center px-2 py-1.5 font-semibold text-muted-foreground w-[60px]">%</th>
                         </tr></thead>
                         <tbody>
-                          {projectSummary.filter((x) => (x.project?.budget || 0) > 0).map((x) => {
-                            const b = x.project?.budget || 0;
-                            const f = x.project?.allocation_fund || 0;
+                          {projectSummary.filter((x) => (financial.budgetByProject.get(x.project?.id || "") || 0) > 0).map((x) => {
+                            const b = financial.budgetByProject.get(x.project?.id || "") || 0;
+                            const f = financial.fundByProject.get(x.project?.id || "") || 0;
                             const pct = b > 0 ? Math.round(f / b * 100) : 0;
                             return (
                               <tr key={x.project?.id} className="border-b border-border/30 hover:bg-secondary/20">
@@ -1438,7 +1461,9 @@ export default function WorkReportPage() {
                   <tbody>
                     {projectSummary.map((x) => {
                       const health = getProjectHealth(x);
-                      const budgetPct = (x.project?.budget || 0) > 0 ? Math.round(((x.project?.allocation_fund || 0) / x.project.budget) * 100) : 0;
+                      const pBudget = financial.budgetByProject.get(x.project?.id || "") || 0;
+                      const pFund = financial.fundByProject.get(x.project?.id || "") || 0;
+                      const budgetPct = pBudget > 0 ? Math.round(pFund / pBudget * 100) : 0;
                       return (
                         <tr key={x.project?.id} className="border-b border-border/30 hover:bg-secondary/20 transition-colors">
                           <td className="px-2 py-1.5 border-r border-border/20">
@@ -1454,7 +1479,7 @@ export default function WorkReportPage() {
                             <p className="text-[9px] text-muted-foreground">{x.memberCount} people</p>
                           </td>
                           <td className="px-2 py-1.5 border-r border-border/20 text-right">
-                            <span className="font-mono text-[11px]">{money(x.project?.budget)}</span>
+                            <span className="font-mono text-[11px]">{money(pBudget)}</span>
                             <p className="text-[9px] text-muted-foreground">{budgetPct}% used</p>
                           </td>
                           <td className="px-2 py-1.5 text-center">
@@ -1494,8 +1519,8 @@ export default function WorkReportPage() {
                   )}
                 </div>
                 <div className="px-3 py-1.5 border-t border-border/50 flex items-center gap-3 text-[10px] text-muted-foreground">
-                  <span>🔴 Vượt NS: {projectSummary.filter((x) => (x.project?.allocation_fund || 0) > (x.project?.budget || 0) && (x.project?.budget || 0) > 0).length}</span>
-                  <span>🟡 Cảnh báo: {projectSummary.filter((x) => { const b = x.project?.budget || 0; const f = x.project?.allocation_fund || 0; return b > 0 && f / b > 0.8 && f <= b; }).length}</span>
+                  <span>🔴 Vượt NS: {projectSummary.filter((x) => { const b = financial.budgetByProject.get(x.project?.id || "") || 0; const f = financial.fundByProject.get(x.project?.id || "") || 0; return b > 0 && f > b; }).length}</span>
+                  <span>🟡 Cảnh báo: {projectSummary.filter((x) => { const b = financial.budgetByProject.get(x.project?.id || "") || 0; const f = financial.fundByProject.get(x.project?.id || "") || 0; return b > 0 && f / b > 0.8 && f <= b; }).length}</span>
                 </div>
               </div>
             </div>

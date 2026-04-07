@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjects, useDeleteProject } from "@/lib/hooks/use-projects";
+import { useContracts } from "@/lib/hooks/use-contracts";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useAuthStore } from "@/lib/stores";
@@ -30,6 +31,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const { t } = useI18n();
   const { data: projects = [], isLoading } = useProjects();
+  const { data: allContracts = [] } = useContracts();
   const { data: allTasks = [] } = useTasks({});
   const { user } = useAuthStore();
   const deleteProject = useDeleteProject();
@@ -76,8 +78,16 @@ export default function ProjectsPage() {
   });
 
   const activeCount = visibleProjects.filter((p) => p.status === "active").length;
-  const totalBudget = visibleProjects.reduce((s, p) => s + (p.budget || 0), 0);
-  const totalFund = visibleProjects.reduce((s, p) => s + (p.allocation_fund || 0), 0);
+  const activeContracts = (allContracts as any[]).filter((c) => ["active", "completed"].includes(c.status));
+  const projectBudgetMap = new Map<string, number>();
+  const projectFundMap = new Map<string, number>();
+  for (const c of activeContracts) {
+    const val = Number(c.contract_value);
+    if (c.contract_type === "outgoing") projectBudgetMap.set(c.project_id, (projectBudgetMap.get(c.project_id) || 0) + val);
+    else if (c.contract_type === "incoming") projectFundMap.set(c.project_id, (projectFundMap.get(c.project_id) || 0) + val);
+  }
+  const totalBudget = visibleProjects.reduce((s, p) => s + (projectBudgetMap.get(p.id) || 0), 0);
+  const totalFund = visibleProjects.reduce((s, p) => s + (projectFundMap.get(p.id) || 0), 0);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -161,6 +171,7 @@ export default function ProjectsPage() {
             <ProjectCard
               key={project.id}
               project={project}
+              contractBudget={projectBudgetMap.get(project.id) || 0}
               taskCount={allTasks.filter((t) => t.project_id === project.id).length}
               overdueCount={allTasks.filter((t) => t.project_id === project.id && t.status === "overdue").length}
               onClick={() => router.push(`/projects/${project.id}`)}
@@ -173,6 +184,8 @@ export default function ProjectsPage() {
         <ProjectListView
           projects={filtered}
           allTasks={allTasks}
+          projectBudgetMap={projectBudgetMap}
+          projectFundMap={projectFundMap}
           onClick={(id) => router.push(`/projects/${id}`)}
           canDelete={!!isAdminOrLeader}
           onDelete={(p) => setDeleteTarget(p)}
@@ -217,6 +230,7 @@ export default function ProjectsPage() {
 
 function ProjectCard({
   project,
+  contractBudget,
   taskCount,
   overdueCount,
   onClick,
@@ -224,6 +238,7 @@ function ProjectCard({
   onDelete,
 }: {
   project: Project;
+  contractBudget: number;
   taskCount: number;
   overdueCount: number;
   onClick: () => void;
@@ -338,9 +353,9 @@ function ProjectCard({
                 size="xs"
               />
             )}
-            {project.allocation_fund > 0 && (
-              <span className="font-mono text-[11px] text-amber-500 font-semibold">
-                {formatVND(project.allocation_fund)}
+            {contractBudget > 0 && (
+              <span className="font-mono text-[11px] text-primary font-semibold">
+                {formatVND(contractBudget)}
               </span>
             )}
           </div>
@@ -353,12 +368,16 @@ function ProjectCard({
 function ProjectListView({
   projects,
   allTasks,
+  projectBudgetMap,
+  projectFundMap,
   onClick,
   canDelete,
   onDelete,
 }: {
   projects: Project[];
   allTasks: any[];
+  projectBudgetMap: Map<string, number>;
+  projectFundMap: Map<string, number>;
   onClick: (id: string) => void;
   canDelete?: boolean;
   onDelete?: (p: Project) => void;
@@ -426,10 +445,10 @@ function ProjectListView({
                   {overdue > 0 && <span className="text-destructive text-[11px] ml-1">({overdue} {t.projects.lateLbl})</span>}
                 </td>
                 <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
-                  {p.budget ? formatVND(p.budget) : "—"}
+                  {(projectBudgetMap.get(p.id) || 0) > 0 ? formatVND(projectBudgetMap.get(p.id)!) : "—"}
                 </td>
                 <td className="px-4 py-3 font-mono text-sm text-amber-500 font-semibold">
-                  {p.allocation_fund ? formatVND(p.allocation_fund) : "—"}
+                  {(projectFundMap.get(p.id) || 0) > 0 ? formatVND(projectFundMap.get(p.id)!) : "—"}
                 </td>
                 <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
                   {formatDate(p.end_date)}
