@@ -2,6 +2,7 @@
 
 import { useProjects } from "@/lib/hooks/use-projects";
 import { useContracts } from "@/lib/hooks/use-contracts";
+import { useProductServices } from "../hooks/use-product-services";
 import { useI18n } from "@/lib/i18n";
 import { SearchSelect } from "@/components/shared/search-select";
 import { useQuery } from "@tanstack/react-query";
@@ -59,6 +60,8 @@ export function RevenueFilters({ value, onChange }: Props) {
   const { data: contracts = [] } = useContracts();
   const { data: depts = [] } = useDepts();
   const { data: centers = [] } = useCenters();
+  const { data: psRes } = useProductServices({ is_active: "true" });
+  const productServices = psRes?.data ?? [];
 
   // Danh sách gói thầu duy nhất từ các hợp đồng
   const bidPackages = useMemo(() => {
@@ -87,6 +90,11 @@ export function RevenueFilters({ value, onChange }: Props) {
         <SearchSelect value={value.contract_id || ""} onChange={(v) => set("contract_id", v)}
           options={[{ value: "", label: "Tất cả HĐ" }, ...contracts.map((c: any) => ({ value: c.id, label: `${c.contract_no} — ${c.title}` }))]}
           placeholder={t.revenue.selectContract} />
+      </div>
+      <div className="w-40">
+        <SearchSelect value={value.product_service_id || ""} onChange={(v) => set("product_service_id", v)}
+          options={[{ value: "", label: "Tất cả SP/DV" }, ...productServices.map((ps) => ({ value: ps.id, label: `${ps.code} — ${ps.name}` }))]}
+          placeholder="SP/DV" />
       </div>
       <div className="w-40">
         <SearchSelect value={value.center_id || ""} onChange={(v) => set("center_id", v)}

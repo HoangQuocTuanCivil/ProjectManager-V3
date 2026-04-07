@@ -132,71 +132,59 @@ function CreateFormModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
         </div>
 
-        {/* Nội dung form */}
-        <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Nội dung form — 3 cột theo thiết kế */}
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            {/* Hàng 1: Hợp đồng | Dự án | SP/DV */}
             <div>
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.dimension}</label>
-              <SearchSelect value={form.dimension} onChange={(v) => setForm({ ...form, dimension: v as RevenueDimension })}
-                options={[
-                  { value: "project", label: t.revenue.dimProject },
-                  { value: "contract", label: t.revenue.dimContract },
-                  { value: "period", label: t.revenue.dimPeriod },
-                  { value: "product_service", label: t.revenue.dimProductService },
-                ]} className="mt-1" />
+              <label className="text-sm text-muted-foreground font-medium">{t.revenue.selectContract}</label>
+              <SearchSelect value={form.contract_id || ""} onChange={(v) => setForm({ ...form, contract_id: v || null })}
+                options={[{ value: "", label: "—" }, ...contracts.map((c: any) => ({ value: c.id, label: `${c.contract_no} — ${c.title}` }))]}
+                className="mt-1" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.method}</label>
-              <SearchSelect value={form.method} onChange={(v) => setForm({ ...form, method: v as RecognitionMethod })}
-                options={[
-                  { value: "acceptance", label: t.revenue.methodAcceptance },
-                  { value: "completion_rate", label: t.revenue.methodCompletion },
-                  { value: "time_based", label: t.revenue.methodTime },
-                ]} className="mt-1" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.selectProject}</label>
+              <label className="text-sm text-muted-foreground font-medium">{t.revenue.selectProject}</label>
               <SearchSelect value={form.project_id || ""} onChange={(v) => setForm({ ...form, project_id: v || null })}
                 options={[{ value: "", label: "—" }, ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))]}
                 className="mt-1" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.selectContract}</label>
-              <SearchSelect value={form.contract_id || ""} onChange={(v) => setForm({ ...form, contract_id: v || null })}
-                options={[{ value: "", label: "—" }, ...contracts.map((c: any) => ({ value: c.id, label: c.contract_no }))]}
-                className="mt-1" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.productService}</label>
+              <label className="text-sm text-muted-foreground font-medium">{t.revenue.productService}</label>
               <SearchSelect value={form.product_service_id || ""} onChange={(v) => setForm({ ...form, product_service_id: v || null })}
                 options={[{ value: "", label: "—" }, ...productServices.map((ps) => ({ value: ps.id, label: `${ps.code} — ${ps.name}` }))]}
                 className="mt-1" />
             </div>
+
+            {/* Hàng 2: Số tiền | Ngày ghi nhận | Từ ngày */}
             <div>
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.recognitionDate} *</label>
-              <input type="date" value={form.recognition_date} onChange={(e) => setForm({ ...form, recognition_date: e.target.value })}
-                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.amount} *</label>
+              <label className="text-sm text-muted-foreground font-medium">{t.revenue.amount} *</label>
               <input type="number" min={0} value={form.amount || ""} onChange={(e) => setForm({ ...form, amount: +e.target.value })}
                 className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm font-mono focus:border-primary focus:outline-none" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.periodStart}</label>
-              <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })}
-                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
-            </div>
-            <div className="col-span-3">
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.description} *</label>
-              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+              <label className="text-sm text-muted-foreground font-medium">{t.revenue.recognitionDate} *</label>
+              <input type="date" value={form.recognition_date} onChange={(e) => setForm({ ...form, recognition_date: e.target.value })}
                 className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground font-medium">{t.revenue.notes}</label>
-              <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              <label className="text-sm text-muted-foreground font-medium">{t.revenue.periodStart}</label>
+              <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })}
                 className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
             </div>
+          </div>
+
+          {/* Hàng 3: Mô tả (toàn bộ chiều rộng) */}
+          <div>
+            <label className="text-sm text-muted-foreground font-medium">{t.revenue.description} *</label>
+            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+          </div>
+
+          {/* Hàng 4: Ghi chú (toàn bộ chiều rộng) */}
+          <div>
+            <label className="text-sm text-muted-foreground font-medium">{t.revenue.notes}</label>
+            <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
           </div>
         </div>
 
