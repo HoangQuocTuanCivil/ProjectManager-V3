@@ -76,10 +76,13 @@ export type Database = {
           id: string
           org_id: string
           project_id: string
+          contract_type: string
           contract_no: string
           title: string
           client_name: string | null
+          bid_package: string | null
           contract_value: number
+          vat_value: number
           signed_date: string | null
           start_date: string | null
           end_date: string | null
@@ -88,6 +91,9 @@ export type Database = {
           status: string
           file_url: string | null
           notes: string | null
+          subcontractor_name: string | null
+          work_content: string | null
+          person_in_charge: string | null
           created_by: string
           created_at: string | null
           updated_at: string | null
@@ -96,10 +102,13 @@ export type Database = {
           id?: string
           org_id: string
           project_id: string
+          contract_type?: string
           contract_no: string
           title: string
           client_name?: string | null
+          bid_package?: string | null
           contract_value?: number
+          vat_value?: number
           signed_date?: string | null
           start_date?: string | null
           end_date?: string | null
@@ -108,6 +117,9 @@ export type Database = {
           status?: string
           file_url?: string | null
           notes?: string | null
+          subcontractor_name?: string | null
+          work_content?: string | null
+          person_in_charge?: string | null
           created_by: string
           created_at?: string | null
           updated_at?: string | null
@@ -116,10 +128,13 @@ export type Database = {
           id?: string
           org_id?: string
           project_id?: string
+          contract_type?: string
           contract_no?: string
           title?: string
           client_name?: string | null
+          bid_package?: string | null
           contract_value?: number
+          vat_value?: number
           signed_date?: string | null
           start_date?: string | null
           end_date?: string | null
@@ -128,6 +143,9 @@ export type Database = {
           status?: string
           file_url?: string | null
           notes?: string | null
+          subcontractor_name?: string | null
+          work_content?: string | null
+          person_in_charge?: string | null
           created_by?: string
           created_at?: string | null
           updated_at?: string | null
