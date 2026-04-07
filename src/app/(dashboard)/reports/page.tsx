@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import { useProjects } from "@/lib/hooks/use-projects";
+import { useContracts } from "@/lib/hooks/use-contracts";
 import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
 import { useUsers } from "@/lib/hooks/use-users";
 import { StatCard, Section, ProgressBar, TrendIndicator, AlertCard, StatusBadge, PriorityBadge, UserAvatar } from "@/components/shared";
@@ -32,6 +33,7 @@ export default function ReportsPage() {
   const { t, locale } = useI18n();
   const { data: tasks = [] } = useTasks({});
   const { data: projects = [] } = useProjects();
+  const { data: allContracts = [] } = useContracts();
   const { data: periods = [] } = useAllocationPeriods();
   const { data: users = [] } = useUsers();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -96,8 +98,19 @@ export default function ReportsPage() {
     return { name: p.code, tasks: pTasks.length, completed, progress };
   });
 
-  const totalBudget = projects.reduce((s, p) => s + (p.budget || 0), 0);
-  const totalFund = projects.reduce((s, p) => s + (p.allocation_fund || 0), 0);
+  const contractsByProject = useMemo(() => {
+    const budgetMap = new Map<string, number>();
+    const fundMap = new Map<string, number>();
+    for (const c of (allContracts as any[])) {
+      if (!["active", "completed"].includes(c.status)) continue;
+      const val = Number(c.contract_value);
+      if (c.contract_type === "outgoing") budgetMap.set(c.project_id, (budgetMap.get(c.project_id) || 0) + val);
+      else if (c.contract_type === "incoming") fundMap.set(c.project_id, (fundMap.get(c.project_id) || 0) + val);
+    }
+    return { budgetMap, fundMap };
+  }, [allContracts]);
+  const totalBudget = projects.reduce((s, p) => s + (contractsByProject.budgetMap.get(p.id) || 0), 0);
+  const totalFund = projects.reduce((s, p) => s + (contractsByProject.fundMap.get(p.id) || 0), 0);
   const totalPaid = periods.filter((p) => p.status === "paid" || p.status === "approved").reduce((s, p) => s + p.total_fund, 0);
 
   //  Enhanced Metrics (use filteredTasks so date filter applies) 
@@ -182,8 +195,8 @@ export default function ReportsPage() {
         [t.reports.totalTasks]: pTasks.length,
         [t.reports.completedCol]: pTasks.filter((tk) => tk.status === "completed").length,
         [t.reports.progressCol]: progress,
-        [t.reports.budgetCol]: p.budget || 0,
-        [t.reports.fundCol]: p.allocation_fund || 0,
+        [t.reports.budgetCol]: contractsByProject.budgetMap.get(p.id) || 0,
+        [t.reports.fundCol]: contractsByProject.fundMap.get(p.id) || 0,
       };
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(projRows), "Projects");
@@ -659,7 +672,7 @@ export default function ReportsPage() {
                 {projects.filter((p: any) => p.status === "active").map((p: any) => (
                   <div key={p.id} className="flex items-center justify-between py-2 border-b border-border/30">
                     <div><span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded mr-2">{p.code}</span><span className="text-sm">{p.name}</span></div>
-                    <span className="text-sm font-mono text-muted-foreground">{formatVND(p.budget || 0)}</span>
+                    <span className="text-sm font-mono text-muted-foreground">{formatVND(contractsByProject.budgetMap.get(p.id) || 0)}</span>
                   </div>
                 ))}
               </div>
