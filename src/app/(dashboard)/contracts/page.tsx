@@ -607,7 +607,12 @@ function ContractCard({ contract: c, canManage, contractType }: {
   const statusColor = STATUS_COLORS[c.status] || "#94a3b8";
   const statusLabel = (t.contracts as any)[`status${c.status.charAt(0).toUpperCase() + c.status.slice(1)}`] || c.status;
 
-  const totalPaid = milestones.filter((m) => m.status === "paid").reduce((s, m) => s + Number(m.amount), 0);
+  // Lũy kế = tổng giá trị đã nghiệm thu (invoiced + paid)
+  const accumulated = milestones
+    .filter((m) => ["invoiced", "paid"].includes(m.status))
+    .reduce((s, m) => s + Number(m.amount), 0);
+  // Còn lại chưa thực hiện = giá trị HĐ − lũy kế
+  const remaining = currentValue - accumulated;
   const overdueCount = milestones.filter((m) =>
     m.status === "overdue" || (m.status === "upcoming" && m.due_date && new Date(m.due_date) < new Date())
   ).length;
@@ -655,31 +660,26 @@ function ContractCard({ contract: c, canManage, contractType }: {
           )}
         </div>
 
-        {/* Value */}
+        {/* Giá trị HĐ | Lũy kế | Còn lại */}
         <div className="flex-shrink-0 text-right space-y-0.5">
           <p className="text-sm font-bold font-mono">{formatVND(currentValue)}</p>
-          {isOutgoing && Number(c.vat_value) > 0 && (
-            <p className="text-[10px] text-muted-foreground font-mono">VAT: {formatVND(Number(c.vat_value))}</p>
+          {accumulated > 0 && (
+            <p className="text-[10px] font-mono text-emerald-500">Lũy kế: {formatVND(accumulated)}</p>
           )}
-          {addendumTotal !== 0 && (
-            <p className={`text-[10px] font-mono ${addendumTotal > 0 ? "text-primary" : "text-destructive"}`}>
-              {addendumTotal > 0 ? "+" : ""}{formatVND(addendumTotal)} ({addendums.length} PL)
+          {accumulated > 0 && (
+            <p className={`text-[10px] font-mono ${remaining >= 0 ? "text-amber-500" : "text-destructive"}`}>
+              Còn lại: {formatVND(remaining)}
             </p>
           )}
         </div>
 
-        {/* Dates */}
+        {/* Thời hạn */}
         <div className="flex-shrink-0 text-right w-28">
           <p className="text-[11px] text-muted-foreground">
             {c.signed_date ? formatDate(c.signed_date) : "—"} → {c.end_date ? formatDate(c.end_date) : "—"}
           </p>
-          {isOutgoing && overdueCount > 0 && (
+          {overdueCount > 0 && (
             <p className="text-[10px] text-destructive font-medium mt-0.5">{overdueCount} {t.contracts.overdueAlert}</p>
-          )}
-          {!isOutgoing && (
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {t.contracts.paidPercent}: {formatVND(totalPaid)}
-            </p>
           )}
         </div>
 
@@ -930,8 +930,11 @@ function BillingSection({ contractId, contractValue, milestones, canManage }: {
 
   const sorted = useMemo(() => [...milestones].sort((a, b) => a.sort_order - b.sort_order), [milestones]);
   const totalPct = sorted.reduce((s, m) => s + Number(m.percentage), 0);
-  const totalInvoiced = sorted.filter((m) => ["invoiced", "paid"].includes(m.status)).reduce((s, m) => s + Number(m.amount), 0);
-  const totalPaid = sorted.filter((m) => m.status === "paid").reduce((s, m) => s + Number(m.amount), 0);
+  // Lũy kế nghiệm thu
+  const totalAccepted = sorted.filter((m) => ["invoiced", "paid"].includes(m.status)).reduce((s, m) => s + Number(m.amount), 0);
+  // Tổng giá trị được thanh toán và đã thanh toán
+  const totalPayable = sorted.reduce((s, m) => s + Number((m as any).payable_amount || 0), 0);
+  const totalPaid = sorted.reduce((s, m) => s + Number((m as any).paid_amount || 0), 0);
 
   const handleCreate = async () => {
     if (!form.title || !form.percentage) { toast.error("Nhập tên mốc và tỷ lệ %"); return; }
@@ -967,9 +970,10 @@ function BillingSection({ contractId, contractValue, milestones, canManage }: {
 
       {sorted.length > 0 && (
         <div className="px-4 py-2 bg-secondary/20 flex items-center gap-4 text-[11px]">
-          <span className="text-muted-foreground">{t.contracts.totalBilled}: <span className="font-semibold text-foreground font-mono">{formatVND(totalInvoiced)}</span></span>
-          <span className="text-muted-foreground">{t.contracts.totalPaid}: <span className="font-semibold text-primary font-mono">{formatVND(totalPaid)}</span></span>
-          <span className="text-muted-foreground">{t.contracts.totalRemaining}: <span className="font-semibold text-foreground font-mono">{formatVND(contractValue - totalPaid)}</span></span>
+          <span className="text-muted-foreground">Lũy kế NT: <span className="font-semibold text-foreground font-mono">{formatVND(totalAccepted)}</span></span>
+          <span className="text-muted-foreground">Được TT: <span className="font-semibold text-amber-500 font-mono">{formatVND(totalPayable)}</span></span>
+          <span className="text-muted-foreground">Đã TT: <span className="font-semibold text-green-500 font-mono">{formatVND(totalPaid)}</span></span>
+          <span className="text-muted-foreground">Công nợ: <span className="font-semibold text-foreground font-mono">{formatVND(contractValue - totalPaid)}</span></span>
           <div className="flex-1" />
           <span className="text-muted-foreground">Tổng %: <span className={`font-semibold font-mono ${totalPct > 100 ? "text-destructive" : "text-foreground"}`}>{totalPct.toFixed(1)}%</span></span>
         </div>
@@ -1021,10 +1025,12 @@ function BillingSection({ contractId, contractValue, milestones, canManage }: {
             <tr className="border-t border-border/30 text-muted-foreground">
               <th className="text-left px-4 py-1.5 font-medium">{t.contracts.milestoneTitle}</th>
               <th className="text-right px-4 py-1.5 font-medium">%</th>
-              <th className="text-right px-4 py-1.5 font-medium">{t.contracts.amount}</th>
-              <th className="text-left px-4 py-1.5 font-medium">{t.contracts.dueDate}</th>
+              <th className="text-right px-4 py-1.5 font-medium">GT nghiệm thu</th>
+              <th className="text-right px-4 py-1.5 font-medium">Được TT</th>
+              <th className="text-right px-4 py-1.5 font-medium">Đã TT</th>
+              <th className="text-left px-4 py-1.5 font-medium">Ngày NT</th>
               <th className="text-left px-4 py-1.5 font-medium">{t.contracts.status}</th>
-              {canManage && <th className="text-right px-4 py-1.5 font-medium w-32" />}
+              {canManage && <th className="text-right px-4 py-1.5 font-medium w-16" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-border/20">
@@ -1037,6 +1043,8 @@ function BillingSection({ contractId, contractValue, milestones, canManage }: {
                   <td className="px-4 py-2">{m.title}</td>
                   <td className="px-4 py-2 text-right font-mono">{Number(m.percentage).toFixed(1)}%</td>
                   <td className="px-4 py-2 text-right font-mono font-semibold">{formatVND(Number(m.amount))}</td>
+                  <td className="px-4 py-2 text-right font-mono text-amber-500">{Number((m as any).payable_amount) > 0 ? formatVND(Number((m as any).payable_amount)) : "—"}</td>
+                  <td className="px-4 py-2 text-right font-mono text-green-500">{Number((m as any).paid_amount) > 0 ? formatVND(Number((m as any).paid_amount)) : "—"}</td>
                   <td className="px-4 py-2 text-muted-foreground">{formatDate(m.due_date)}</td>
                   <td className="px-4 py-2">
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium" style={{ background: `${color}20`, color }}>
@@ -1045,19 +1053,7 @@ function BillingSection({ contractId, contractValue, milestones, canManage }: {
                     </span>
                   </td>
                   {canManage && (
-                    <td className="px-4 py-2 text-right space-x-2">
-                      {(effectiveStatus === "upcoming" || effectiveStatus === "overdue") && (
-                        <button
-                          onClick={() => update.mutate({ id: m.id, status: "invoiced" })}
-                          className="text-[10px] text-primary hover:underline"
-                        >{t.contracts.markInvoiced}</button>
-                      )}
-                      {effectiveStatus === "invoiced" && (
-                        <button
-                          onClick={() => update.mutate({ id: m.id, status: "paid", paid_date: new Date().toISOString().split("T")[0] })}
-                          className="text-[10px] text-primary hover:underline"
-                        >{t.contracts.markPaid}</button>
-                      )}
+                    <td className="px-4 py-2 text-right">
                       <button
                         onClick={() => { if (confirm(t.contracts.confirmDeleteMilestone.replace("{name}", m.title))) remove.mutate(m.id); }}
                         className="text-[10px] text-destructive hover:underline"
