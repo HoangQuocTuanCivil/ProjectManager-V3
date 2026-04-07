@@ -18,14 +18,11 @@ import { toast } from "sonner";
 import { Download, Printer } from "lucide-react";
 import type { RevenueDimension, RecognitionMethod, RevenueSource } from "@/lib/types";
 
-type Tab = "overview" | "table";
-
 export default function CompanyRevenuePage() {
   const { t } = useI18n();
   const { user } = useAuthStore();
   const canManage = !!user && ["admin", "leader", "director"].includes(user.role);
 
-  const [tab, setTab] = useState<Tab>("overview");
   const [filters, setFilters] = useState<RevenueFilterValues>({});
   const [groupBy, setGroupBy] = useState<"month" | "quarter" | "year">("month");
   const [showForm, setShowForm] = useState(false);
@@ -62,13 +59,7 @@ export default function CompanyRevenuePage() {
     <div className="space-y-5 animate-fade-in print:space-y-3">
       <div className="flex items-center justify-between print:hidden">
         <p className="text-sm text-muted-foreground">{t.revenue.companySub}</p>
-        <div className="flex items-center gap-2" role="tablist" aria-label={t.revenue.totalRevenue}>
-          {(["overview", "table"] as const).map((v) => (
-            <button key={v} onClick={() => setTab(v)} role="tab" aria-selected={tab === v}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus-ring ${tab === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
-              {v === "overview" ? t.revenue.totalRevenue : t.revenue.reports}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
           <button onClick={handleExportExcel} className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors focus-ring" aria-label={t.revenue.exportExcel} title={t.revenue.exportExcel}><Download size={15} aria-hidden="true" /></button>
           <button onClick={exportRevenuePDF} className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors focus-ring" aria-label={t.revenue.exportPdf} title={t.revenue.exportPdf}><Printer size={15} aria-hidden="true" /></button>
           {canManage && (
@@ -81,20 +72,16 @@ export default function CompanyRevenuePage() {
 
       {showForm && canManage && <CreateFormModal onClose={() => setShowForm(false)} />}
 
-      {tab === "overview" && (
-        <>
-          <RevenueSummaryCards from={filters.date_from} to={filters.date_to} projectId={filters.project_id} />
-          <div className="flex items-center gap-2">
-            {(["month", "quarter", "year"] as const).map((g) => (
-              <button key={g} onClick={() => setGroupBy(g)}
-                className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${groupBy === g ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
-                {g === "month" ? t.revenue.byMonth : g === "quarter" ? t.revenue.byQuarter : t.revenue.byYear}
-              </button>
-            ))}
-          </div>
-          <RevenueCharts from={filters.date_from} to={filters.date_to} projectId={filters.project_id} groupBy={groupBy} />
-        </>
-      )}
+      <RevenueSummaryCards from={filters.date_from} to={filters.date_to} projectId={filters.project_id} />
+      <div className="flex items-center gap-2">
+        {(["month", "quarter", "year"] as const).map((g) => (
+          <button key={g} onClick={() => setGroupBy(g)}
+            className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${groupBy === g ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+            {g === "month" ? t.revenue.byMonth : g === "quarter" ? t.revenue.byQuarter : t.revenue.byYear}
+          </button>
+        ))}
+      </div>
+      <RevenueCharts from={filters.date_from} to={filters.date_to} projectId={filters.project_id} groupBy={groupBy} />
 
       <RevenueFilters value={filters} onChange={setFilters} />
       <RevenueTable filters={filters as Record<string, string | undefined>} canManage={canManage} />
