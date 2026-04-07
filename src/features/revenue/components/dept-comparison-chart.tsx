@@ -30,7 +30,7 @@ export function DeptComparisonChart({ from, to }: Props) {
         <BarChart data={data} layout="vertical" margin={{ left: 80 }}>
           <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
           <YAxis type="category" dataKey="dept_code" tick={{ fontSize: 11 }} width={70} />
-          <Tooltip formatter={(v: number) => formatVND(v)} />
+          <Tooltip formatter={(v: number) => [formatVND(v), ""]} />
           <Bar dataKey="total_allocated" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={24} />
         </BarChart>
       </ResponsiveContainer>

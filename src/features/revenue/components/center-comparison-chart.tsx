@@ -34,7 +34,7 @@ export function CenterComparisonChart({ from, to }: Props) {
         <BarChart data={data} layout="vertical" margin={{ left: 100 }}>
           <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
           <YAxis type="category" dataKey="center_name" tick={{ fontSize: 11 }} width={90} />
-          <Tooltip formatter={(v: number) => formatVND(v)} />
+          <Tooltip formatter={(v: number) => [formatVND(v), ""]} />
           <Bar dataKey="total_allocated" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={28} />
         </BarChart>
       </ResponsiveContainer>

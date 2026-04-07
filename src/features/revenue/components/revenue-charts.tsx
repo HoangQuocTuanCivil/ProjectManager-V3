@@ -62,7 +62,7 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
           <BarChart data={periodData}>
             <XAxis dataKey="period" tick={{ fontSize: 10 }} />
             <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
-            <Tooltip formatter={(v: number) => formatVND(v)} />
+            <Tooltip formatter={(v: number) => [formatVND(v), ""]} />
             <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -87,7 +87,7 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
           <LineChart data={trendData}>
             <XAxis dataKey="period" tick={{ fontSize: 10 }} />
             <YAxis tick={{ fontSize: 10 }} unit="%" />
-            <Tooltip formatter={(v: number) => `${v}%`} />
+            <Tooltip formatter={(v: number) => [`${v}%`, ""]} />
             <Line type="monotone" dataKey="growth" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} />
           </LineChart>
         </ResponsiveContainer>
@@ -100,7 +100,7 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
             <BarChart data={contractData.slice(0, 8)} layout="vertical">
               <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
               <YAxis type="category" dataKey="contract_no" tick={{ fontSize: 9 }} width={80} />
-              <Tooltip formatter={(v: number) => formatVND(v)} />
+              <Tooltip formatter={(v: number) => [formatVND(v), ""]} />
               <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>

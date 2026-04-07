@@ -81,7 +81,7 @@ export default function AllocationSummaryPage() {
                   <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
                   <Tooltip
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                    formatter={(value: number) => formatVND(value)}
+                    formatter={(value: number) => [formatVND(value), ""]}
                   />
                   <Bar dataKey="fund" name="Quỹ khoán" radius={[4, 4, 0, 0]}>
                     {periodChart.map((entry, idx) => (
@@ -107,7 +107,7 @@ export default function AllocationSummaryPage() {
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={70} />
                   <Tooltip
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                    formatter={(value: number) => formatVND(value)}
+                    formatter={(value: number) => [formatVND(value), ""]}
                   />
                   <Bar dataKey="amount" name="Tổng nhận" fill="#f59e0b" radius={[0, 4, 4, 0]} />
                 </BarChart>
