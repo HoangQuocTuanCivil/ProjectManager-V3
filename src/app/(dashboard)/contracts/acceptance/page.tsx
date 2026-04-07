@@ -72,7 +72,7 @@ export default function AcceptancePage() {
       {/* Thống kê */}
       <div className="grid grid-cols-5 gap-3">
         {[
-          { label: "Tổng đợt", value: String(stats.total), color: "" },
+          { label: filterContract || filterStatus ? "Số đợt (lọc)" : "Tổng đợt", value: String(stats.total), color: "" },
           { label: "Giá trị nghiệm thu", value: formatVND(stats.totalAmount), color: "text-blue-500" },
           { label: "Được thanh toán", value: formatVND(stats.totalPayable), color: "text-amber-500" },
           { label: "Đã thanh toán", value: formatVND(stats.totalPaid), color: "text-green-500" },
