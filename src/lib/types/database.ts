@@ -262,8 +262,14 @@ export type Database = {
           id: string
           org_id: string
           project_id: string
-          dept_id: string
+          contract_id: string | null
+          dept_id: string | null
+          center_id: string | null
           allocated_amount: number
+          delivery_progress: number
+          delivery_date: string | null
+          allocation_code: string | null
+          task_document_url: string | null
           note: string | null
           created_by: string
           created_at: string | null
@@ -273,8 +279,14 @@ export type Database = {
           id?: string
           org_id: string
           project_id: string
-          dept_id: string
+          contract_id?: string | null
+          dept_id?: string | null
+          center_id?: string | null
           allocated_amount?: number
+          delivery_progress?: number
+          delivery_date?: string | null
+          allocation_code?: string | null
+          task_document_url?: string | null
           note?: string | null
           created_by: string
           created_at?: string | null
@@ -284,8 +296,14 @@ export type Database = {
           id?: string
           org_id?: string
           project_id?: string
-          dept_id?: string
+          contract_id?: string | null
+          dept_id?: string | null
+          center_id?: string | null
           allocated_amount?: number
+          delivery_progress?: number
+          delivery_date?: string | null
+          allocation_code?: string | null
+          task_document_url?: string | null
           note?: string | null
           created_by?: string
           created_at?: string | null

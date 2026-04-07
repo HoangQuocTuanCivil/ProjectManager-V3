@@ -246,9 +246,36 @@ export function useUpsertDeptBudgetAllocation() {
         .select()
         .single();
       if (error) throw error;
+
+      // Tạo HĐ đầu vào (incoming) tự động — giao khoán = chi phí cho PB/TT
+      if (data && input.contract_id) {
+        const { data: srcContract } = await supabase
+          .from("contracts")
+          .select("contract_no, title, project_id")
+          .eq("id", input.contract_id)
+          .single();
+        const incomingNo = input.allocation_code || `GK-${srcContract?.contract_no || ""}`;
+        await supabase.from("contracts").insert({
+          org_id: profile.org_id,
+          project_id: input.project_id,
+          contract_type: "incoming",
+          contract_no: incomingNo,
+          title: `Giao khoán: ${srcContract?.title || ""}`,
+          contract_value: input.allocated_amount,
+          status: "active",
+          start_date: input.delivery_date || null,
+          notes: input.note || null,
+          created_by: user!.id,
+        } as any);
+      }
+
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() });
+      // Cập nhật danh sách HĐ để tab incoming hiện HĐ đầu vào mới
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+    },
   });
 }
 
