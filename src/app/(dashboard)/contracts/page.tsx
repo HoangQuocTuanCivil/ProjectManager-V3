@@ -358,13 +358,14 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
               </button>
             </div>
 
-            {/* Nội dung form */}
+            {/* Nội dung form — layout 4 cột theo thiết kế */}
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-4 gap-4">
+                {/* Hàng 1: Dự án, Số HĐ, Gói thầu, Loại hình DV */}
                 <div>
                   <label className={labelCls}>{t.contracts.selectProject} *</label>
                   {preselectedProject ? (
-                    <p className="mt-1 h-9 px-3 flex items-center rounded-lg border border-border bg-secondary/50 text-base">
+                    <p className="mt-1 h-9 px-3 flex items-center rounded-lg border border-border bg-secondary/50 text-base truncate">
                       {projects.find((p: any) => p.id === preselectedProject)?.code} — {projects.find((p: any) => p.id === preselectedProject)?.name}
                     </p>
                   ) : (
@@ -380,6 +381,30 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
                 <div>
                   <label className={labelCls}>{t.contracts.contractNo} *</label>
                   <input value={form.contract_no} onChange={(e) => set({ contract_no: e.target.value })} placeholder="HD-2026-001" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t.contracts.bidPackage}</label>
+                  <input value={form.bid_package} onChange={(e) => set({ bid_package: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t.contracts.clientName}</label>
+                  <SearchSelect
+                    value={form.product_service_id}
+                    onChange={(v) => set({ product_service_id: v })}
+                    options={productServices.map((ps: any) => ({
+                      value: ps.id,
+                      label: `${ps.code} — ${ps.name}`,
+                      sublabel: CAT_LABELS[ps.category] || ps.category,
+                    }))}
+                    placeholder="Chọn SP/DV..."
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Hàng 2: Tên HĐ (rộng 2 cột), Trạng thái, Phạm vi */}
+                <div className="col-span-2">
+                  <label className={labelCls}>{t.contracts.contractTitle} *</label>
+                  <input value={form.title} onChange={(e) => set({ title: e.target.value })} className={inputCls} />
                 </div>
                 <div>
                   <label className={labelCls}>{t.contracts.status}</label>
@@ -403,78 +428,45 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
                   />
                 </div>
 
-                <div className="col-span-2">
-                  <label className={labelCls}>{t.contracts.contractTitle} *</label>
-                  <input value={form.title} onChange={(e) => set({ title: e.target.value })} className={inputCls} />
-                </div>
-
-                <div>
-                  <label className={labelCls}>{t.contracts.clientName}</label>
-                  <SearchSelect
-                    value={form.product_service_id}
-                    onChange={(v) => set({ product_service_id: v })}
-                    options={productServices.map((ps: any) => ({
-                      value: ps.id,
-                      label: `${ps.code} — ${ps.name}`,
-                      sublabel: CAT_LABELS[ps.category] || ps.category,
-                    }))}
-                    placeholder="Chọn SP/DV..."
-                    className="mt-1"
-                  />
-                </div>
-
-                {!isOutgoing && (
-                  <div>
-                    <label className={labelCls}>{t.contracts.subcontractorName} *</label>
-                    <input value={form.subcontractor_name} onChange={(e) => set({ subcontractor_name: e.target.value })} className={inputCls} />
-                  </div>
-                )}
-
-                <div>
-                  <label className={labelCls}>{t.contracts.bidPackage}</label>
-                  <input value={form.bid_package} onChange={(e) => set({ bid_package: e.target.value })} className={inputCls} />
-                </div>
-
+                {/* Hàng 3: Giá trị chưa VAT, đã VAT, bảo lãnh, ngày ký */}
                 <div>
                   <label className={labelCls}>{isOutgoing ? t.contracts.contractValue : t.contracts.subcontractValue} *</label>
                   <input type="number" min={0} value={form.contract_value || ""} onChange={(e) => set({ contract_value: +e.target.value })} className={`${inputCls} font-mono`} />
                 </div>
-
-                {isOutgoing && (
-                  <div>
-                    <label className={labelCls}>{t.contracts.vatValue}</label>
-                    <input type="number" min={0} value={form.vat_value || ""} onChange={(e) => set({ vat_value: +e.target.value })} className={`${inputCls} font-mono`} />
-                  </div>
-                )}
-
+                <div>
+                  <label className={labelCls}>{t.contracts.vatValue}</label>
+                  <input type="number" min={0} value={form.vat_value || ""} onChange={(e) => set({ vat_value: +e.target.value })} className={`${inputCls} font-mono`} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t.contracts.guaranteeValue}</label>
+                  <input type="number" min={0} value={form.guarantee_value || ""} onChange={(e) => set({ guarantee_value: +e.target.value })} className={`${inputCls} font-mono`} />
+                </div>
                 <div>
                   <label className={labelCls}>{t.contracts.signedDate}</label>
                   <input type="date" value={form.signed_date} onChange={(e) => set({ signed_date: e.target.value })} className={inputCls} />
                 </div>
 
-                {isOutgoing && (
-                  <>
-                    <div>
-                      <label className={labelCls}>{t.contracts.startDate}</label>
-                      <input type="date" value={form.start_date} onChange={(e) => set({ start_date: e.target.value })} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t.contracts.endDate}</label>
-                      <input type="date" value={form.end_date} onChange={(e) => set({ end_date: e.target.value })} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t.contracts.guaranteeValue}</label>
-                      <input type="number" min={0} value={form.guarantee_value || ""} onChange={(e) => set({ guarantee_value: +e.target.value })} className={`${inputCls} font-mono`} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>{t.contracts.guaranteeExpiry}</label>
-                      <input type="date" value={form.guarantee_expiry} onChange={(e) => set({ guarantee_expiry: e.target.value })} className={inputCls} />
-                    </div>
-                  </>
-                )}
+                {/* Hàng 4: Ngày bắt đầu, ngày hết hạn, hết hạn bảo lãnh */}
+                <div>
+                  <label className={labelCls}>{t.contracts.startDate}</label>
+                  <input type="date" value={form.start_date} onChange={(e) => set({ start_date: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t.contracts.endDate}</label>
+                  <input type="date" value={form.end_date} onChange={(e) => set({ end_date: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t.contracts.guaranteeExpiry}</label>
+                  <input type="date" value={form.guarantee_expiry} onChange={(e) => set({ guarantee_expiry: e.target.value })} className={inputCls} />
+                </div>
 
+                {/* Hàng 5 (HĐ đầu vào): Nhà thầu phụ, Nội dung, Phụ trách */}
                 {!isOutgoing && (
                   <>
+                    <div>
+                      <label className={labelCls}>{t.contracts.subcontractorName} *</label>
+                      <input value={form.subcontractor_name} onChange={(e) => set({ subcontractor_name: e.target.value })} className={inputCls} />
+                    </div>
                     <div>
                       <label className={labelCls}>{t.contracts.workContent}</label>
                       <input value={form.work_content} onChange={(e) => set({ work_content: e.target.value })} className={inputCls} />
@@ -483,13 +475,10 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
                       <label className={labelCls}>{t.contracts.personInCharge}</label>
                       <input value={form.person_in_charge} onChange={(e) => set({ person_in_charge: e.target.value })} className={inputCls} />
                     </div>
-                    <div>
-                      <label className={labelCls}>{t.contracts.endDate}</label>
-                      <input type="date" value={form.end_date} onChange={(e) => set({ end_date: e.target.value })} className={inputCls} />
-                    </div>
                   </>
                 )}
 
+                {/* Ghi chú — toàn bộ chiều rộng */}
                 <div className="col-span-4">
                   <label className={labelCls}>{t.contracts.notes}</label>
                   <input value={form.notes} onChange={(e) => set({ notes: e.target.value })} className={inputCls} />
