@@ -150,6 +150,9 @@ DO $$ BEGIN
   CREATE POLICY "contract_files_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'contract-files');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+-- ─── PHỤ LỤC: đảm bảo contract_addendums có cột addendum_value ──────────────
+ALTER TABLE contract_addendums ADD COLUMN IF NOT EXISTS addendum_value NUMERIC(15,0) NOT NULL DEFAULT 0;
+
 -- ─── GIAO KHOÁN: đảm bảo dept_budget_allocations có đầy đủ cột ─────────────
 -- Liên kết giao khoán với hợp đồng gốc, trung tâm nhận, ngày hoàn thành,
 -- mã HĐ giao khoán, và file phiếu giao nhiệm vụ đính kèm.

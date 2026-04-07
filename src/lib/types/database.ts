@@ -168,6 +168,7 @@ export type Database = {
           contract_id: string
           addendum_no: string
           title: string
+          addendum_value: number
           value_change: number
           new_end_date: string | null
           description: string | null
@@ -181,6 +182,7 @@ export type Database = {
           contract_id: string
           addendum_no: string
           title: string
+          addendum_value?: number
           value_change?: number
           new_end_date?: string | null
           description?: string | null
@@ -194,6 +196,7 @@ export type Database = {
           contract_id?: string
           addendum_no?: string
           title?: string
+          addendum_value?: number
           value_change?: number
           new_end_date?: string | null
           description?: string | null

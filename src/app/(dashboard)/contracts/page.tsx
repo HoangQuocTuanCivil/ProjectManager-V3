@@ -820,44 +820,54 @@ function AddendumSection({ contractId, addendums, canManage }: {
       <div className="px-4 py-2 flex items-center justify-between bg-secondary/10">
         <h4 className="text-xs font-bold">{t.contracts.addendums} ({addendums.length})</h4>
         {canManage && (
-          <button onClick={() => setShowForm(!showForm)} className="text-[11px] text-primary font-medium hover:underline">
-            {showForm ? t.common.cancel : t.contracts.newAddendum}
+          <button onClick={() => setShowForm(true)} className="text-[11px] text-primary font-medium hover:underline">
+            {t.contracts.newAddendum}
           </button>
         )}
       </div>
 
+      {/* Modal tạo phụ lục */}
       {showForm && (
-        <div className="px-4 py-3 bg-primary/5 border-t border-border/30 space-y-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-[11px] text-muted-foreground">{t.contracts.addendumNo}</label>
-              <input value={form.addendum_no} onChange={(e) => setForm({ ...form, addendum_no: e.target.value })} placeholder="PL-01" className="mt-0.5 w-full h-8 px-2 rounded border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setShowForm(false)}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h3 className="text-base font-bold text-primary">{t.contracts.newAddendum}</h3>
+              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
             </div>
-            <div>
-              <label className="text-[11px] text-muted-foreground">{t.contracts.addendumTitle}</label>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-0.5 w-full h-8 px-2 rounded border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
+            <div className="p-6 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.contracts.addendumNo} *</label>
+                  <input value={form.addendum_no} onChange={(e) => setForm({ ...form, addendum_no: e.target.value })} placeholder="PL-01" className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.contracts.addendumTitle} *</label>
+                  <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.contracts.addendumValue}</label>
+                  <input type="number" min={0} value={form.addendum_value || ""} onChange={(e) => setForm({ ...form, addendum_value: +e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.contracts.newEndDate}</label>
+                  <input type="date" value={form.new_end_date} onChange={(e) => setForm({ ...form, new_end_date: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.contracts.signedDate}</label>
+                  <input type="date" value={form.signed_date} onChange={(e) => setForm({ ...form, signed_date: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground font-medium">{t.contracts.description}</label>
+                <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+              </div>
             </div>
-            <div>
-              <label className="text-[11px] text-muted-foreground">{t.contracts.addendumValue}</label>
-              <input type="number" min={0} value={form.addendum_value || ""} onChange={(e) => setForm({ ...form, addendum_value: +e.target.value })} className="mt-0.5 w-full h-8 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
-            </div>
-            <div>
-              <label className="text-[11px] text-muted-foreground">{t.contracts.newEndDate}</label>
-              <input type="date" value={form.new_end_date} onChange={(e) => setForm({ ...form, new_end_date: e.target.value })} className="mt-0.5 w-full h-8 px-2 rounded border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
-            </div>
-            <div>
-              <label className="text-[11px] text-muted-foreground">{t.contracts.signedDate}</label>
-              <input type="date" value={form.signed_date} onChange={(e) => setForm({ ...form, signed_date: e.target.value })} className="mt-0.5 w-full h-8 px-2 rounded border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
-            </div>
-            <div className="flex items-end">
-              <Button size="sm" variant="primary" onClick={handleCreate} disabled={create.isPending}>
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
+              <Button onClick={() => setShowForm(false)}>{t.common.cancel}</Button>
+              <Button variant="primary" onClick={handleCreate} disabled={create.isPending}>
                 {create.isPending ? t.contracts.creatingAddendum : t.contracts.createAddendum}
               </Button>
             </div>
-          </div>
-          <div>
-            <label className="text-[11px] text-muted-foreground">{t.contracts.description}</label>
-            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mt-0.5 w-full h-8 px-2 rounded border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
           </div>
         </div>
       )}
