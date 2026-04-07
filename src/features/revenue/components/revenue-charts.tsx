@@ -133,21 +133,24 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
         </div>
       )}
 
-      {/* Theo lĩnh vực sản phẩm */}
-      {psData.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-4" role="img" aria-label={t.revenue.byProductService}>
-          <p className="text-xs font-medium text-muted-foreground mb-3">{t.revenue.byProductService}</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={psData} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
-                {psData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={(v: number) => formatVND(v)} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      {/* Theo lĩnh vực sản phẩm — hiển thị % */}
+      {psData.length > 0 && (() => {
+        const psTotal = psData.reduce((s, d) => s + d.total, 0);
+        return (
+          <div className="bg-card border border-border rounded-xl p-4" role="img" aria-label={t.revenue.byProductService}>
+            <p className="text-xs font-medium text-muted-foreground mb-3">{t.revenue.byProductService}</p>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={psData} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                  {psData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(v: number) => [`${psTotal > 0 ? ((v / psTotal) * 100).toFixed(1) : 0}%`, ""]} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
     </div>
   );
 }
