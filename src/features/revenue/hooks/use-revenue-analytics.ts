@@ -69,6 +69,22 @@ export function useRevenueByCenter(filters?: { from?: string; to?: string }) {
   });
 }
 
+export type CenterRevenueItem = {
+  center_id: string;
+  center_name: string;
+  center_code: string;
+  total_revenue: number;
+  project_count: number;
+  by_product_service: Array<{ ps_id: string; ps_name: string; ps_code: string; amount: number }>;
+};
+
+export function useCenterRevenue(filters?: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: [...analyticsKeys.all, "center-revenue", filters] as const,
+    queryFn: () => apiFetch<CenterRevenueItem[]>(buildUrl("/api/revenue/center-revenue", filters as Record<string, string | undefined>)),
+  });
+}
+
 export function useRevenueByPeriod(filters?: { group_by?: string; from?: string; to?: string; project_id?: string }) {
   return useQuery({
     queryKey: analyticsKeys.period(filters as Record<string, string | undefined>),
