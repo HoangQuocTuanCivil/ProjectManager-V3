@@ -46,6 +46,9 @@ export async function GET(req: NextRequest) {
   if (status && status !== "all") {
     if (!VALID_STATUS.includes(status)) return errorResponse("status không hợp lệ", 400);
     query = query.eq("status", status as any);
+  } else {
+    // Mặc định ẩn bút toán đã huỷ và bút toán đảo (offset)
+    query = query.neq("status", "cancelled").is("original_entry_id", null);
   }
   if (dimension && dimension !== "all") {
     if (!VALID_DIMENSION.includes(dimension)) return errorResponse("dimension không hợp lệ", 400);
