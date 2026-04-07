@@ -1,9 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useRevenueSummary, useRevenueForecast } from "../hooks/use-revenue-analytics";
+import { useRevenueEntries } from "@/lib/hooks/use-revenue";
 import { useI18n } from "@/lib/i18n";
 import { formatVND } from "@/lib/utils/format";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface Props {
   from?: string;
@@ -15,22 +16,37 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
   const { t } = useI18n();
   const { data: summary, isLoading } = useRevenueSummary({ from, to, project_id: projectId });
   const { data: forecast } = useRevenueForecast({ project_id: projectId });
+  const { data: entriesRes } = useRevenueEntries({ date_from: from, date_to: to, project_id: projectId, per_page: 500 });
 
   const confirmed = summary?.total ?? 0;
   const projected = forecast?.projected_from_milestones ?? 0;
   const recognizedPct = projected > 0 ? Math.round((confirmed / projected) * 100) : null;
 
+  // Tổng hợp DT theo phạm vi HĐ (trong/ngoài hệ thống)
+  const scopeTotals = useMemo(() => {
+    const entries = entriesRes?.data ?? [];
+    let internal = 0;
+    let external = 0;
+    for (const e of entries as any[]) {
+      const scope = e.contract?.contract_scope || "internal";
+      const amount = Number(e.amount);
+      if (scope === "external") external += amount;
+      else internal += amount;
+    }
+    return { internal, external };
+  }, [entriesRes]);
+
   const cards = [
     { label: t.revenue.totalRevenue, value: confirmed, color: "text-primary" },
     {
-      label: t.revenue.growthRate,
-      value: summary?.growthRate,
-      render: (v: number | null | undefined) => {
-        if (v === null || v === undefined) return <span className="text-muted-foreground">—</span>;
-        const Icon = v > 0 ? TrendingUp : v < 0 ? TrendingDown : Minus;
-        const color = v > 0 ? "text-green-500" : v < 0 ? "text-destructive" : "text-muted-foreground";
-        return <span className={`flex items-center gap-1 ${color}`} aria-label={`${v > 0 ? "+" : ""}${v}%`}><Icon size={14} aria-hidden="true" />{v > 0 ? "+" : ""}{v}%</span>;
-      },
+      label: "DT trong / ngoài HT",
+      value: null,
+      render: () => (
+        <div className="space-y-0.5">
+          <p className="text-sm font-bold font-mono text-blue-500">Trong: {formatVND(scopeTotals.internal)}</p>
+          <p className="text-sm font-bold font-mono text-amber-500">Ngoài: {formatVND(scopeTotals.external)}</p>
+        </div>
+      ),
     },
     {
       label: t.revenue.recognizedVsForecast,
@@ -60,7 +76,7 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
           {isLoading ? (
             <div className="h-7 w-24 bg-secondary rounded animate-pulse" />
           ) : "render" in c && c.render ? (
-            <div className="text-lg font-bold font-mono">{c.render(c.value as number | null)}</div>
+            <div>{c.render()}</div>
           ) : (
             <p className={`text-lg font-bold font-mono ${c.color}`}>{formatVND(c.value as number)}</p>
           )}

@@ -4,7 +4,7 @@ import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, require
 const REVENUE_SELECT = `
   *,
   project:projects(id, code, name),
-  contract:contracts(id, contract_no, title),
+  contract:contracts(id, contract_no, title, contract_scope),
   department:departments(id, name, code),
   creator:users!revenue_entries_created_by_fkey(id, full_name),
   product_service:product_services(id, code, name, category),
