@@ -220,18 +220,18 @@ export function useDeptBudgetAllocations(projectId?: string) {
 export function useUpsertDeptBudgetAllocation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { project_id: string; contract_id?: string; dept_id?: string; center_id?: string; allocated_amount: number; delivery_progress?: number; note?: string }) => {
+    mutationFn: async (input: { project_id: string; contract_id?: string; dept_id?: string; center_id?: string; allocated_amount: number; delivery_progress?: number; delivery_date?: string; note?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profile } = await supabase.from("users").select("org_id").eq("id", user!.id).single();
       if (!profile) throw new Error("Không tìm thấy profile");
 
-      // Insert — unique index (project+dept hoặc project+center) ngăn trùng
       const row: Record<string, any> = {
         org_id: profile.org_id,
         project_id: input.project_id,
         contract_id: input.contract_id || null,
         allocated_amount: input.allocated_amount,
         delivery_progress: input.delivery_progress ?? 0,
+        delivery_date: input.delivery_date || null,
         note: input.note || null,
         created_by: user!.id,
       };
