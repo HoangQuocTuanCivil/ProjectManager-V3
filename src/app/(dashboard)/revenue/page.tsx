@@ -97,6 +97,7 @@ function CreateFormModal({ onClose }: { onClose: () => void }) {
     period_start: "", period_end: "", notes: "",
     recognition_date: new Date().toISOString().split("T")[0],
     product_service_id: "" as string | null,
+    contract_scope: "internal" as string,
   });
 
   const handleCreate = async () => {
@@ -134,8 +135,8 @@ function CreateFormModal({ onClose }: { onClose: () => void }) {
 
         {/* Nội dung form — 3 cột theo thiết kế */}
         <div className="p-6 space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            {/* Hàng 1: Hợp đồng | Dự án | SP/DV */}
+          <div className="grid grid-cols-4 gap-4">
+            {/* Hàng 1: Hợp đồng | Dự án | SP/DV | Loại hình */}
             <div>
               <label className="text-sm text-muted-foreground font-medium">{t.revenue.selectContract}</label>
               <SearchSelect value={form.contract_id || ""} onChange={(v) => {
@@ -145,6 +146,7 @@ function CreateFormModal({ onClose }: { onClose: () => void }) {
                   contract_id: v || null,
                   project_id: ct?.project_id || form.project_id,
                   product_service_id: ct?.product_service_id || form.product_service_id,
+                  contract_scope: ct?.contract_scope || form.contract_scope,
                 });
               }}
                 options={[
@@ -164,6 +166,17 @@ function CreateFormModal({ onClose }: { onClose: () => void }) {
               <label className="text-sm text-muted-foreground font-medium">{t.revenue.productService}</label>
               <SearchSelect value={form.product_service_id || ""} onChange={(v) => setForm({ ...form, product_service_id: v || null })}
                 options={[{ value: "", label: "—" }, ...productServices.map((ps) => ({ value: ps.id, label: `${ps.code} — ${ps.name}` }))]}
+                disabled={!!form.contract_id}
+                className="mt-1" />
+            </div>
+
+            <div>
+              <label className="text-sm text-muted-foreground font-medium">Loại hình</label>
+              <SearchSelect value={form.contract_scope} onChange={(v) => setForm({ ...form, contract_scope: v })}
+                options={[
+                  { value: "internal", label: "Trong hệ thống" },
+                  { value: "external", label: "Ngoài hệ thống" },
+                ]}
                 disabled={!!form.contract_id}
                 className="mt-1" />
             </div>
