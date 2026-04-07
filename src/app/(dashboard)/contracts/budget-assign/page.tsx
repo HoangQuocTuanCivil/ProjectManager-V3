@@ -94,7 +94,7 @@ export default function BudgetAssignPage() {
   const [assignTarget, setAssignTarget] = useState<AssignTarget>("center");
   const [form, setForm] = useState({
     contract_id: "", dept_id: "", center_id: "",
-    allocated_amount: 0, delivery_date: "",
+    allocated_amount: 0,
     start_date: "", end_date: "",
     allocation_code: "", note: "",
   });
@@ -138,7 +138,6 @@ export default function BudgetAssignPage() {
         dept_id: assignTarget === "dept" ? form.dept_id : "",
         center_id: assignTarget === "center" ? form.center_id : undefined,
         allocated_amount: form.allocated_amount,
-        delivery_date: form.delivery_date || undefined,
         start_date: form.start_date || undefined,
         end_date: form.end_date || undefined,
         allocation_code: form.allocation_code || undefined,
@@ -146,7 +145,7 @@ export default function BudgetAssignPage() {
         note: form.note || undefined,
       });
       toast.success("Giao khoán thành công!");
-      setForm({ ...form, dept_id: "", center_id: "", allocated_amount: 0, delivery_date: "", start_date: "", end_date: "", allocation_code: "", note: "" });
+      setForm({ ...form, dept_id: "", center_id: "", allocated_amount: 0, start_date: "", end_date: "", allocation_code: "", note: "" });
       setTaskDocFile(null);
     } catch (e: any) {
       toast.error(e.message || "Lỗi giao khoán");
@@ -309,16 +308,11 @@ export default function BudgetAssignPage() {
                   </div>
                 </div>
 
-                {/* Hàng 3: Số tiền + Tiến độ giao */}
-                <div>
+                {/* Hàng 3: Số tiền + Ngày bắt đầu + Ngày kết thúc */}
+                <div className="col-span-2">
                   <label className="text-sm text-muted-foreground font-medium">{t.kpi.allocatedAmount}</label>
                   <input type="number" min={0} value={form.allocated_amount || ""} onChange={(e) => setForm({ ...form, allocated_amount: +e.target.value })}
                     placeholder="500000000" className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground font-medium">Tiến độ giao</label>
-                  <input type="date" value={form.delivery_date} onChange={(e) => setForm({ ...form, delivery_date: e.target.value })}
-                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
                 </div>
 
                 {/* Hàng 4: Ngày bắt đầu + Ngày kết thúc */}
