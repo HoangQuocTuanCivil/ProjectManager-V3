@@ -43,23 +43,28 @@ export function RevenueTable({ filters, canManage }: Props) {
         if (filters.contract_id && c.id !== filters.contract_id) return false;
         return true;
       })
-      .map((c) => ({
-        id: `ct-${c.id}`,
-        isContract: true,
-        description: c.title,
-        contract_no: c.contract_no,
-        status: c.status,
-        source: "contract" as string,
-        project: c.project,
-        recognition_date: c.signed_date || c.start_date,
-        amount: Number(c.contract_value),
-        contract_scope: c.contract_scope || "internal",
-        product_service_name: c.product_service?.name || null,
-      }));
+      .map((c) => {
+        // Giá trị HĐ = contract_value gốc + tổng value_change từ phụ lục
+        const addendumTotal = (c.addendums ?? []).reduce((s: number, a: any) => s + Number(a.value_change || 0), 0);
+        return {
+          id: `ct-${c.id}`,
+          isContract: true,
+          description: c.title,
+          contract_no: c.contract_no,
+          status: c.status,
+          source: "contract" as string,
+          project: c.project,
+          recognition_date: c.signed_date || c.start_date,
+          amount: Number(c.contract_value) + addendumTotal,
+          contract_scope: c.contract_scope || "internal",
+          product_service_name: c.product_service?.name || null,
+        };
+      });
   }, [allContracts, filters.project_id, filters.contract_id]);
 
-  // Gộp: HĐ (doanh thu tự động) + entries nhập thủ công
-  const entries = page === 1 ? [...contractRows, ...manualEntries] : manualEntries;
+  // Chỉ giữ entries nhập thủ công — doanh thu từ HĐ và nghiệm thu đã hiện qua contractRows
+  const onlyManual = manualEntries.filter((e: any) => e.source === "manual");
+  const entries = page === 1 ? [...contractRows, ...onlyManual] : onlyManual;
 
   const confirmEntry = useConfirmRevenueEntry();
   const cancelEntry = useCancelRevenueEntry();

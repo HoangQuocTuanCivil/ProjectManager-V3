@@ -31,6 +31,13 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
       && (!projectId || c.project_id === projectId)
     ), [allContracts, projectId]);
 
+  // Giá trị HĐ bao gồm phụ lục
+  const ctValue = (c: any) => {
+    const base = Number(c.contract_value);
+    const addendum = (c.addendums ?? []).reduce((s: number, a: any) => s + Number(a.value_change || 0), 0);
+    return base + addendum;
+  };
+
   // Doanh thu theo kỳ — nhóm theo tháng/quý/năm ký HĐ
   const periodData = useMemo(() => {
     const map = new Map<string, number>();
@@ -43,7 +50,7 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
         const m = parseInt(date.slice(5, 7));
         key = `${date.slice(0, 4)}-Q${Math.ceil(m / 3)}`;
       } else key = date.slice(0, 7);
-      map.set(key, (map.get(key) || 0) + Number(c.contract_value));
+      map.set(key, (map.get(key) || 0) + ctValue(c));
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([period, amount]) => ({ period, amount }));
   }, [contracts, groupBy]);
@@ -53,14 +60,14 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
     const map: Record<string, number> = {};
     for (const c of contracts) {
       const scope = c.contract_scope || "internal";
-      map[scope] = (map[scope] || 0) + Number(c.contract_value);
+      map[scope] = (map[scope] || 0) + ctValue(c);
     }
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [contracts]);
 
   // Theo hợp đồng
   const contractData = useMemo(() =>
-    contracts.map((c) => ({ contract_no: c.contract_no, total: Number(c.contract_value) }))
+    contracts.map((c) => ({ contract_no: c.contract_no, total: ctValue(c) }))
       .sort((a, b) => b.total - a.total).slice(0, 8),
     [contracts]);
 
@@ -68,10 +75,8 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
   const psData = useMemo(() => {
     const map = new Map<string, number>();
     for (const c of contracts) {
-      const ps = c.product_service_id;
-      const name = (c as any).product_service?.name || (ps ? "Khác" : "Chưa phân loại");
-      if (!ps && !Number(c.contract_value)) continue;
-      map.set(name, (map.get(name) || 0) + Number(c.contract_value));
+      const name = (c as any).product_service?.name || "Chưa phân loại";
+      map.set(name, (map.get(name) || 0) + ctValue(c));
     }
     return Array.from(map.entries()).map(([name, total]) => ({ name, total }));
   }, [contracts]);
