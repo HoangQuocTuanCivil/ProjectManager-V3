@@ -31,12 +31,8 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
       && (!projectId || c.project_id === projectId)
     ), [allContracts, projectId]);
 
-  // Giá trị HĐ bao gồm phụ lục
-  const ctValue = (c: any) => {
-    const base = Number(c.contract_value);
-    const addendum = (c.addendums ?? []).reduce((s: number, a: any) => s + Number(a.value_change || 0), 0);
-    return base + addendum;
-  };
+  // contract_value đã được cập nhật khi tạo phụ lục
+  const ctValue = (c: any) => Number(c.contract_value);
 
   // Doanh thu theo kỳ — nhóm theo tháng/quý/năm ký HĐ
   const periodData = useMemo(() => {

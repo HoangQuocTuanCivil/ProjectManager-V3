@@ -47,23 +47,20 @@ export function RevenueTable({ filters, canManage }: Props) {
         if (filters.date_to && (c.signed_date || c.start_date) && (c.signed_date || c.start_date) > filters.date_to) return false;
         return true;
       })
-      .map((c) => {
-        const addendumTotal = (c.addendums ?? []).reduce((s: number, a: any) => s + Number(a.value_change || 0), 0);
-        return {
-          id: `ct-${c.id}`,
-          isContract: true,
-          description: c.title,
-          contract_no: c.contract_no,
-          status: c.status,
-          source: "contract" as string,
-          project: c.project,
-          recognition_date: c.signed_date || c.start_date,
-          amount: Number(c.contract_value) + addendumTotal,
-          contract_scope: c.contract_scope || "internal",
-          product_service_name: c.product_service?.name || null,
-          bid_package: c.bid_package,
-        };
-      });
+      .map((c) => ({
+        id: `ct-${c.id}`,
+        isContract: true,
+        description: c.title,
+        contract_no: c.contract_no,
+        status: c.status,
+        source: "contract" as string,
+        project: c.project,
+        recognition_date: c.signed_date || c.start_date,
+        amount: Number(c.contract_value),
+        contract_scope: c.contract_scope || "internal",
+        product_service_name: c.product_service?.name || null,
+        bid_package: c.bid_package,
+      }));
   }, [allContracts, filters]);
 
   // Bảng chỉ hiện dòng HĐ — giá trị đã bao gồm phụ lục, không cần entries riêng

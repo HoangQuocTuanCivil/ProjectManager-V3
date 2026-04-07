@@ -165,6 +165,14 @@ export function useCreateAddendum() {
         .single();
       if (error) throw error;
 
+      // Cập nhật contract_value = giá trị phụ lục mới nhất
+      const updateData: Record<string, any> = {
+        contract_value: input.addendum_value,
+        updated_at: new Date().toISOString(),
+      };
+      if (input.new_end_date) updateData.end_date = input.new_end_date;
+      await supabase.from("contracts").update(updateData).eq("id", input.contract_id);
+
       return data;
     },
     onSuccess: () => {

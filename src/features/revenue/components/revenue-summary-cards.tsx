@@ -27,15 +27,8 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
       && (!projectId || c.project_id === projectId)
     );
 
-    // Giá trị HĐ bao gồm phụ lục (addendum value_change)
-    const contractValue = (c: any) => {
-      const base = Number(c.contract_value);
-      const addendum = (c.addendums ?? []).reduce((s: number, a: any) => s + Number(a.value_change || 0), 0);
-      return base + addendum;
-    };
-
-    // Tổng doanh thu = giá trị HĐ đầu ra (gồm phụ lục) + entries thủ công
-    const contractTotal = outgoingContracts.reduce((s, c) => s + contractValue(c), 0);
+    // Tổng doanh thu = giá trị HĐ đầu ra (contract_value đã bao gồm phụ lục)
+    const contractTotal = outgoingContracts.reduce((s, c) => s + Number(c.contract_value), 0);
     const manualTotal = entries.filter((e: any) => e.status === "confirmed" && e.source === "manual")
       .reduce((s, e: any) => s + Number(e.amount), 0);
     const totalRevenue = contractTotal + manualTotal;
@@ -44,7 +37,7 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
     let internal = 0;
     let external = 0;
     for (const c of outgoingContracts) {
-      const val = contractValue(c);
+      const val = Number(c.contract_value);
       if (c.contract_scope === "external") external += val;
       else internal += val;
     }
