@@ -20,6 +20,7 @@ export interface Department {
   head_user_id: string | null;
   sort_order: number;
   is_active: boolean;
+  is_executive: boolean;
   // Joined
   head?: User;
   center?: Center;

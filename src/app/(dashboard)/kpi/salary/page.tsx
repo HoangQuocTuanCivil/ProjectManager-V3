@@ -86,6 +86,7 @@ function SalaryInputSection({ month, setMonth, deptId, setDeptId, canManage }: {
   const { data: existing } = useSalaryRecords({ month, dept_id: deptId || undefined });
   const createBatch = useCreateSalaryBatch();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [showModal, setShowModal] = useState(false);
 
   // Map existing salary by user_id cho pre-fill
   const existingMap = new Map((existing?.data ?? []).map((r: any) => [r.user_id, r]));
@@ -111,7 +112,7 @@ function SalaryInputSection({ month, setMonth, deptId, setDeptId, canManage }: {
     toast.success("Đã tải mẫu Excel");
   };
 
-  // Import Excel: đọc file và điền vào form
+  // Import Excel: đọc file và điền vào bảng nhập lương
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -138,7 +139,7 @@ function SalaryInputSection({ month, setMonth, deptId, setDeptId, canManage }: {
     e.target.value = "";
   };
 
-  // Sync rows khi users hoặc existing thay đổi
+  // Danh sách NV kèm lương hiện tại và lương mới nhập
   const effectiveRows = users.map((u) => ({
     user_id: u.id,
     full_name: u.full_name,
@@ -161,12 +162,15 @@ function SalaryInputSection({ month, setMonth, deptId, setDeptId, canManage }: {
     try {
       await createBatch.mutateAsync(records);
       toast.success(`Lưu lương ${records.length} NV thành công!`);
+      setShowModal(false);
     } catch (e: any) { toast.error(e.message); }
   };
 
+  const selectedDept = depts.find((d) => d.id === deptId);
+
   return (
     <div className="space-y-4">
-      {/* Filters */}
+      {/* Bộ lọc tháng + phòng ban + nút mở popup nhập lương */}
       <div className="flex items-center gap-3">
         <div>
           <label className="text-xs text-muted-foreground font-medium">Tháng</label>
@@ -180,34 +184,23 @@ function SalaryInputSection({ month, setMonth, deptId, setDeptId, canManage }: {
             className="mt-1" />
         </div>
         {canManage && deptId && (
-          <div className="self-end flex items-center gap-2">
-            <button onClick={handleDownloadTemplate}
-              className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors"
-              title="Tải mẫu Excel">
-              <Download size={13} /> Tải mẫu
-            </button>
-            <button onClick={() => fileRef.current?.click()}
-              className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors"
-              title="Import từ Excel">
-              <Upload size={13} /> Import
-            </button>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
-            <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>
-              {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
+          <div className="self-end">
+            <Button variant="primary" onClick={() => setShowModal(true)}>
+              Nhập lương
             </Button>
           </div>
         )}
       </div>
 
-      {/* Table */}
+      {/* Bảng xem lương hiện tại (chỉ đọc) */}
       {!deptId ? (
-        <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chọn phòng ban" subtitle="Chọn 1 PB để nhập lương hàng loạt" />
+        <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chọn phòng ban" subtitle="Chọn 1 PB để xem và nhập lương" />
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border text-muted-foreground">
-                {["Nhân viên", "Lương hiện tại", "Đã khấu trừ", "Thực nhận", "Lương mới"].map(h => (
+                {["Nhân viên", "Lương cơ bản", "Đã khấu trừ", "Thực nhận"].map(h => (
                   <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
                 ))}
               </tr>
@@ -219,20 +212,81 @@ function SalaryInputSection({ month, setMonth, deptId, setDeptId, canManage }: {
                   <td className="px-4 py-2.5 font-mono">{formatVND(r.current)}</td>
                   <td className="px-4 py-2.5 font-mono text-red-400">{r.deduction > 0 ? `-${formatVND(r.deduction)}` : "—"}</td>
                   <td className="px-4 py-2.5 font-mono text-green-500">{formatVND(r.net)}</td>
-                  <td className="px-4 py-2.5">
-                    {canManage ? (
-                      <input type="number" min={0} value={r.input || ""}
-                        onChange={(e) => setRows({ ...rows, [r.user_id]: +e.target.value })}
-                        className="w-32 h-7 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
-                    ) : <span className="font-mono">{formatVND(r.input)}</span>}
-                  </td>
                 </tr>
               ))}
               {effectiveRows.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Không có nhân viên trong phòng ban này</td></tr>
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Không có nhân viên trong phòng ban này</td></tr>
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal nhập lương — popup chỉnh sửa + import Excel */}
+      {showModal && deptId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setShowModal(false)}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Tiêu đề + công cụ Excel */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h3 className="text-base font-bold text-primary">Nhập lương tháng {month.slice(0, 7)}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{selectedDept?.code} — {selectedDept?.name}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={handleDownloadTemplate}
+                  className="h-8 px-2.5 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors"
+                  title="Tải mẫu Excel">
+                  <Download size={13} /> Tải mẫu
+                </button>
+                <button onClick={() => fileRef.current?.click()}
+                  className="h-8 px-2.5 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors"
+                  title="Import từ Excel">
+                  <Upload size={13} /> Import Excel
+                </button>
+                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
+                <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
+              </div>
+            </div>
+
+            {/* Bảng nhập lương có thể cuộn */}
+            <div className="overflow-y-auto flex-1">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-card z-10">
+                  <tr className="border-b border-border text-muted-foreground">
+                    {["Nhân viên", "Lương hiện tại", "Đã khấu trừ", "Thực nhận", "Lương mới"].map(h => (
+                      <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {effectiveRows.map((r) => (
+                    <tr key={r.user_id} className="hover:bg-secondary/20 transition-colors">
+                      <td className="px-4 py-2.5 font-medium">{r.full_name}</td>
+                      <td className="px-4 py-2.5 font-mono">{formatVND(r.current)}</td>
+                      <td className="px-4 py-2.5 font-mono text-red-400">{r.deduction > 0 ? `-${formatVND(r.deduction)}` : "—"}</td>
+                      <td className="px-4 py-2.5 font-mono text-green-500">{formatVND(r.net)}</td>
+                      <td className="px-4 py-2.5">
+                        <input type="number" min={0} value={r.input || ""}
+                          onChange={(e) => setRows({ ...rows, [r.user_id]: +e.target.value })}
+                          className="w-32 h-7 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
+                      </td>
+                    </tr>
+                  ))}
+                  {effectiveRows.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Không có nhân viên trong phòng ban này</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
+              <Button onClick={() => setShowModal(false)}>Hủy</Button>
+              <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>
+                {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -128,63 +128,75 @@ export default function InternalRevenuePage() {
         </div>
         <div className="flex-1" />
         {canManage && (
-          <Button variant="primary" onClick={() => setShowForm(!showForm)}>
-            {showForm ? t.common.cancel : t.revenue.newInternal}
+          <Button variant="primary" onClick={() => setShowForm(true)}>
+            {t.revenue.newInternal}
           </Button>
         )}
       </div>
 
-      {/* Create form */}
+      {/* Modal ghi nhận doanh thu nội bộ */}
       {showForm && canManage && (
-        <div className="bg-card border-2 border-primary/30 rounded-xl p-5 space-y-4 animate-slide-in-bottom">
-          <h3 className="text-base font-bold text-primary">{t.revenue.newInternal}</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.revenue.selectDept} *</label>
-              <SearchSelect value={form.dept_id} onChange={(v) => setForm({ ...form, dept_id: v })}
-                options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
-                placeholder={t.revenue.selectDept} className="mt-1" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setShowForm(false)}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Tiêu đề */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card rounded-t-2xl z-10">
+              <h3 className="text-base font-bold text-primary">{t.revenue.newInternal}</h3>
+              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.revenue.selectProject}</label>
-              <SearchSelect value={form.project_id || ""} onChange={(v) => setForm({ ...form, project_id: v || null })}
-                options={[{ value: "", label: "—" }, ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))]}
-                className="mt-1" />
+
+            {/* Nội dung form */}
+            <div className="p-6">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.revenue.selectDept} *</label>
+                  <SearchSelect value={form.dept_id} onChange={(v) => setForm({ ...form, dept_id: v })}
+                    options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
+                    placeholder={t.revenue.selectDept} className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.revenue.selectProject}</label>
+                  <SearchSelect value={form.project_id || ""} onChange={(v) => setForm({ ...form, project_id: v || null })}
+                    options={[{ value: "", label: "—" }, ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))]}
+                    className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.revenue.productName} *</label>
+                  <input value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} placeholder="Bản vẽ TKCS cầu..." className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.revenue.unitPrice} *</label>
+                  <input type="number" min={0} value={form.unit_price || ""} onChange={(e) => setForm({ ...form, unit_price: +e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.revenue.quantity} *</label>
+                  <input type="number" min={0} step={0.01} value={form.quantity || ""} onChange={(e) => setForm({ ...form, quantity: +e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.revenue.totalAmount}</label>
+                  <p className="mt-1 h-9 flex items-center px-3 rounded-lg bg-secondary/50 text-base font-mono font-bold text-primary">{formatVND(Math.round(form.unit_price * form.quantity))}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.revenue.periodStart}</label>
+                  <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.revenue.periodEnd}</label>
+                  <input type="date" value={form.period_end} onChange={(e) => setForm({ ...form, period_end: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.revenue.notes}</label>
+                  <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.revenue.productName} *</label>
-              <input value={form.product_name} onChange={(e) => setForm({ ...form, product_name: e.target.value })} placeholder="Bản vẽ TKCS cầu..." className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-border sticky bottom-0 bg-card rounded-b-2xl">
+              <Button onClick={() => setShowForm(false)}>{t.common.cancel}</Button>
+              <Button variant="primary" onClick={handleCreate} disabled={create.isPending}>
+                {create.isPending ? t.revenue.creating : t.revenue.create}
+              </Button>
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.revenue.unitPrice} *</label>
-              <input type="number" min={0} value={form.unit_price || ""} onChange={(e) => setForm({ ...form, unit_price: +e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.revenue.quantity} *</label>
-              <input type="number" min={0} step={0.01} value={form.quantity || ""} onChange={(e) => setForm({ ...form, quantity: +e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.revenue.totalAmount}</label>
-              <p className="mt-1 h-9 flex items-center px-3 rounded-lg bg-secondary/50 text-base font-mono font-bold text-primary">{formatVND(Math.round(form.unit_price * form.quantity))}</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.revenue.periodStart}</label>
-              <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.revenue.periodEnd}</label>
-              <input type="date" value={form.period_end} onChange={(e) => setForm({ ...form, period_end: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.revenue.notes}</label>
-              <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button onClick={() => setShowForm(false)}>{t.common.cancel}</Button>
-            <Button variant="primary" onClick={handleCreate} disabled={create.isPending}>
-              {create.isPending ? t.revenue.creating : t.revenue.create}
-            </Button>
           </div>
         </div>
       )}

@@ -169,140 +169,164 @@ export default function BudgetAssignPage() {
           />
         </div>
         {canManage && (
-          <Button variant="primary" onClick={() => setShowForm(!showForm)}>
-            {showForm ? t.common.cancel : `+ ${t.kpi.budgetAssignTab}`}
+          <Button variant="primary" onClick={() => setShowForm(true)}>
+            {`+ ${t.kpi.budgetAssignTab}`}
           </Button>
         )}
       </div>
 
-      {/* Form */}
+      {/* Modal giao khoán — cửa sổ nổi trên nền mờ */}
       {showForm && canManage && (
-        <div className="bg-card border-2 border-primary/30 rounded-xl p-5 space-y-4 animate-slide-in-bottom">
-          <h3 className="text-base font-bold text-primary">{t.kpi.budgetAssignTitle}</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Project */}
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.kpi.project}</label>
-              <SearchSelect
-                value={form.project_id}
-                onChange={(val) => setForm({ ...form, project_id: val, contract_id: "", dept_id: "", allocated_amount: 0 })}
-                options={projects.map((p: any) => ({
-                  value: p.id,
-                  label: `${p.code} — ${p.name} (${formatVND(projectContractFund.get(p.id) || 0)})`,
-                }))}
-                placeholder={t.kpi.selectProject}
-                className="mt-1"
-              />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.6)" }}
+          onClick={() => setShowForm(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-2xl w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Tiêu đề modal */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card rounded-t-2xl z-10">
+              <h3 className="text-base font-bold text-primary">{t.kpi.budgetAssignTitle}</h3>
+              <button
+                onClick={() => setShowForm(false)}
+                className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring"
+                aria-label="Đóng"
+              >
+                &times;
+              </button>
             </div>
 
-            {/* Hợp đồng đầu ra */}
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">Hợp đồng</label>
-              <SearchSelect
-                value={form.contract_id}
-                onChange={(val) => setForm({ ...form, contract_id: val })}
-                options={[
-                  { value: "", label: "— Theo dự án (không chọn HĐ) —" },
-                  ...projectContracts.map((c: any) => ({
-                    value: c.id,
-                    label: `${c.contract_no} — ${c.title} (${formatVND(Number(c.contract_value))})`,
-                  })),
-                ]}
-                placeholder="Chọn hợp đồng"
-                className="mt-1"
-              />
-            </div>
+            {/* Nội dung form */}
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Chọn dự án */}
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.kpi.project}</label>
+                  <SearchSelect
+                    value={form.project_id}
+                    onChange={(val) => setForm({ ...form, project_id: val, contract_id: "", dept_id: "", allocated_amount: 0 })}
+                    options={projects.map((p: any) => ({
+                      value: p.id,
+                      label: `${p.code} — ${p.name} (${formatVND(projectContractFund.get(p.id) || 0)})`,
+                    }))}
+                    placeholder={t.kpi.selectProject}
+                    className="mt-1"
+                  />
+                </div>
 
-            {/* Giao cho: Trung tâm hoặc Phòng ban */}
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">Giao cho</label>
-              <div className="flex items-center gap-1 mt-1 mb-2">
-                {(["center", "dept"] as const).map((t) => (
-                  <button key={t} onClick={() => { setAssignTarget(t); setForm({ ...form, dept_id: "", center_id: "" }); }}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${assignTarget === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
-                    {t === "center" ? "Trung tâm" : "Phòng ban"}
-                  </button>
-                ))}
+                {/* Chọn hợp đồng đầu ra */}
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">Hợp đồng</label>
+                  <SearchSelect
+                    value={form.contract_id}
+                    onChange={(val) => setForm({ ...form, contract_id: val })}
+                    options={[
+                      { value: "", label: "— Theo dự án (không chọn HĐ) —" },
+                      ...projectContracts.map((c: any) => ({
+                        value: c.id,
+                        label: `${c.contract_no} — ${c.title} (${formatVND(Number(c.contract_value))})`,
+                      })),
+                    ]}
+                    placeholder="Chọn hợp đồng"
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Giao cho: chọn trung tâm hoặc phòng ban */}
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">Giao cho</label>
+                  <div className="flex items-center gap-1 mt-1 mb-2">
+                    {(["center", "dept"] as const).map((t) => (
+                      <button key={t} onClick={() => { setAssignTarget(t); setForm({ ...form, dept_id: "", center_id: "" }); }}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${assignTarget === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
+                        {t === "center" ? "Trung tâm" : "Phòng ban"}
+                      </button>
+                    ))}
+                  </div>
+                  {assignTarget === "dept" ? (
+                    <SearchSelect
+                      value={form.dept_id}
+                      onChange={(val) => setForm({ ...form, dept_id: val })}
+                      options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
+                      placeholder="Chọn phòng ban"
+                    />
+                  ) : (
+                    <SearchSelect
+                      value={form.center_id}
+                      onChange={(val) => setForm({ ...form, center_id: val })}
+                      options={(centers ?? []).map((c) => ({ value: c.id, label: `${c.code || ""} — ${c.name}` }))}
+                      placeholder="Chọn trung tâm"
+                    />
+                  )}
+                </div>
+
+                {/* Số tiền giao khoán */}
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.kpi.allocatedAmount}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.allocated_amount || ""}
+                    onChange={(e) => setForm({ ...form, allocated_amount: +e.target.value })}
+                    placeholder="500000000"
+                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                {/* Tiến độ bàn giao */}
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.kpi.deliveryProgress}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={form.delivery_progress || ""}
+                    onChange={(e) => setForm({ ...form, delivery_progress: +e.target.value })}
+                    placeholder="0"
+                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                {/* Ghi chú */}
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">{t.kpi.note}</label>
+                  <input
+                    value={form.note}
+                    onChange={(e) => setForm({ ...form, note: e.target.value })}
+                    placeholder={t.kpi.notePlaceholder}
+                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none"
+                  />
+                </div>
               </div>
-              {assignTarget === "dept" ? (
-                <SearchSelect
-                  value={form.dept_id}
-                  onChange={(val) => setForm({ ...form, dept_id: val })}
-                  options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
-                  placeholder="Chọn phòng ban"
-                />
-              ) : (
-                <SearchSelect
-                  value={form.center_id}
-                  onChange={(val) => setForm({ ...form, center_id: val })}
-                  options={(centers ?? []).map((c) => ({ value: c.id, label: `${c.code || ""} — ${c.name}` }))}
-                  placeholder="Chọn trung tâm"
-                />
+
+              {/* Thanh tổng hợp ngân sách — hiện khi đã chọn dự án */}
+              {selectedProject && (
+                <div className="bg-secondary/50 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{t.kpi.allocationFund}: <span className="font-semibold text-foreground">{formatVND(fund)}</span></span>
+                    <span className="text-muted-foreground">{t.kpi.totalAssigned}: <span className="font-semibold text-foreground">{formatVND(totalAssigned)}</span></span>
+                    <span className="text-muted-foreground">{t.kpi.remaining}: <span className={`font-semibold ${fund - totalAssigned < 0 ? "text-destructive" : "text-primary"}`}>{formatVND(fund - totalAssigned)}</span></span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${fund > 0 && totalAssigned > fund ? "bg-destructive" : "bg-primary"}`}
+                      style={{ width: `${Math.min((totalAssigned / (fund || 1)) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
 
-            {/* Amount */}
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.kpi.allocatedAmount}</label>
-              <input
-                type="number"
-                min={0}
-                value={form.allocated_amount || ""}
-                onChange={(e) => setForm({ ...form, allocated_amount: +e.target.value })}
-                placeholder="500000000"
-                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none"
-              />
+            {/* Footer cố định ở đáy modal */}
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-border sticky bottom-0 bg-card rounded-b-2xl">
+              <Button onClick={() => setShowForm(false)}>{t.common.cancel}</Button>
+              <Button variant="primary" onClick={handleSubmit} disabled={upsert.isPending}>
+                {upsert.isPending ? t.kpi.assigning : t.kpi.assignBudget}
+              </Button>
             </div>
-
-            {/* Delivery Progress */}
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.kpi.deliveryProgress}</label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step={0.1}
-                value={form.delivery_progress || ""}
-                onChange={(e) => setForm({ ...form, delivery_progress: +e.target.value })}
-                placeholder="0"
-                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none"
-              />
-            </div>
-
-            {/* Note */}
-            <div>
-              <label className="text-sm text-muted-foreground font-medium">{t.kpi.note}</label>
-              <input
-                value={form.note}
-                onChange={(e) => setForm({ ...form, note: e.target.value })}
-                placeholder={t.kpi.notePlaceholder}
-                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Budget summary bar */}
-          {selectedProject && (
-            <div className="bg-secondary/50 rounded-lg p-3 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{t.kpi.allocationFund}: <span className="font-semibold text-foreground">{formatVND(fund)}</span></span>
-                <span className="text-muted-foreground">{t.kpi.totalAssigned}: <span className="font-semibold text-foreground">{formatVND(totalAssigned)}</span></span>
-                <span className="text-muted-foreground">{t.kpi.remaining}: <span className={`font-semibold ${fund - totalAssigned < 0 ? "text-destructive" : "text-primary"}`}>{formatVND(fund - totalAssigned)}</span></span>
-              </div>
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${fund > 0 && totalAssigned > fund ? "bg-destructive" : "bg-primary"}`}
-                  style={{ width: `${Math.min((totalAssigned / (fund || 1)) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button onClick={() => setShowForm(false)}>{t.common.cancel}</Button>
-            <Button variant="primary" onClick={handleSubmit} disabled={upsert.isPending}>
-              {upsert.isPending ? t.kpi.assigning : t.kpi.assignBudget}
-            </Button>
           </div>
         </div>
       )}

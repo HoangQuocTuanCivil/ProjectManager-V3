@@ -52,14 +52,14 @@ export default function CompanyRevenuePage() {
           <button onClick={handleExportExcel} className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors focus-ring" aria-label={t.revenue.exportExcel} title={t.revenue.exportExcel}><Download size={15} aria-hidden="true" /></button>
           <button onClick={exportRevenuePDF} className="p-1.5 rounded-lg border border-border hover:bg-secondary transition-colors focus-ring" aria-label={t.revenue.exportPdf} title={t.revenue.exportPdf}><Printer size={15} aria-hidden="true" /></button>
           {canManage && (
-            <Button variant="primary" onClick={() => setShowForm(!showForm)}>
-              {showForm ? t.common.cancel : t.revenue.newEntry}
+            <Button variant="primary" onClick={() => setShowForm(true)}>
+              {t.revenue.newEntry}
             </Button>
           )}
         </div>
       </div>
 
-      {showForm && canManage && <CreateForm onClose={() => setShowForm(false)} />}
+      {showForm && canManage && <CreateFormModal onClose={() => setShowForm(false)} />}
 
       {tab === "overview" && (
         <>
@@ -82,7 +82,7 @@ export default function CompanyRevenuePage() {
   );
 }
 
-function CreateForm({ onClose }: { onClose: () => void }) {
+function CreateFormModal({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
   const create = useCreateRevenueEntry();
   const { data: projects = [] } = useProjects();
@@ -124,77 +124,89 @@ function CreateForm({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="bg-card border-2 border-primary/30 rounded-xl p-5 space-y-4 animate-slide-in-bottom">
-      <h3 className="text-base font-bold text-primary">{t.revenue.newEntry}</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.dimension}</label>
-          <SearchSelect value={form.dimension} onChange={(v) => setForm({ ...form, dimension: v as RevenueDimension })}
-            options={[
-              { value: "project", label: t.revenue.dimProject },
-              { value: "contract", label: t.revenue.dimContract },
-              { value: "period", label: t.revenue.dimPeriod },
-              { value: "product_service", label: t.revenue.dimProductService },
-            ]} className="mt-1" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        {/* Tiêu đề */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card rounded-t-2xl z-10">
+          <h3 className="text-base font-bold text-primary">{t.revenue.newEntry}</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.method}</label>
-          <SearchSelect value={form.method} onChange={(v) => setForm({ ...form, method: v as RecognitionMethod })}
-            options={[
-              { value: "acceptance", label: t.revenue.methodAcceptance },
-              { value: "completion_rate", label: t.revenue.methodCompletion },
-              { value: "time_based", label: t.revenue.methodTime },
-            ]} className="mt-1" />
+
+        {/* Nội dung form */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.dimension}</label>
+              <SearchSelect value={form.dimension} onChange={(v) => setForm({ ...form, dimension: v as RevenueDimension })}
+                options={[
+                  { value: "project", label: t.revenue.dimProject },
+                  { value: "contract", label: t.revenue.dimContract },
+                  { value: "period", label: t.revenue.dimPeriod },
+                  { value: "product_service", label: t.revenue.dimProductService },
+                ]} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.method}</label>
+              <SearchSelect value={form.method} onChange={(v) => setForm({ ...form, method: v as RecognitionMethod })}
+                options={[
+                  { value: "acceptance", label: t.revenue.methodAcceptance },
+                  { value: "completion_rate", label: t.revenue.methodCompletion },
+                  { value: "time_based", label: t.revenue.methodTime },
+                ]} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.selectProject}</label>
+              <SearchSelect value={form.project_id || ""} onChange={(v) => setForm({ ...form, project_id: v || null })}
+                options={[{ value: "", label: "—" }, ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))]}
+                className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.selectContract}</label>
+              <SearchSelect value={form.contract_id || ""} onChange={(v) => setForm({ ...form, contract_id: v || null })}
+                options={[{ value: "", label: "—" }, ...contracts.map((c: any) => ({ value: c.id, label: c.contract_no }))]}
+                className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.productService}</label>
+              <SearchSelect value={form.product_service_id || ""} onChange={(v) => setForm({ ...form, product_service_id: v || null })}
+                options={[{ value: "", label: "—" }, ...productServices.map((ps) => ({ value: ps.id, label: `${ps.code} — ${ps.name}` }))]}
+                className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.recognitionDate} *</label>
+              <input type="date" value={form.recognition_date} onChange={(e) => setForm({ ...form, recognition_date: e.target.value })}
+                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.amount} *</label>
+              <input type="number" min={0} value={form.amount || ""} onChange={(e) => setForm({ ...form, amount: +e.target.value })}
+                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm font-mono focus:border-primary focus:outline-none" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.periodStart}</label>
+              <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })}
+                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+            </div>
+            <div className="col-span-3">
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.description} *</label>
+              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground font-medium">{t.revenue.notes}</label>
+              <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.selectProject}</label>
-          <SearchSelect value={form.project_id || ""} onChange={(v) => setForm({ ...form, project_id: v || null })}
-            options={[{ value: "", label: "—" }, ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))]}
-            className="mt-1" />
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border sticky bottom-0 bg-card rounded-b-2xl">
+          <Button onClick={onClose}>{t.common.cancel}</Button>
+          <Button variant="primary" onClick={handleCreate} disabled={create.isPending}>
+            {create.isPending ? t.revenue.creating : t.revenue.create}
+          </Button>
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.selectContract}</label>
-          <SearchSelect value={form.contract_id || ""} onChange={(v) => setForm({ ...form, contract_id: v || null })}
-            options={[{ value: "", label: "—" }, ...contracts.map((c: any) => ({ value: c.id, label: c.contract_no }))]}
-            className="mt-1" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.productService}</label>
-          <SearchSelect value={form.product_service_id || ""} onChange={(v) => setForm({ ...form, product_service_id: v || null })}
-            options={[{ value: "", label: "—" }, ...productServices.map((ps) => ({ value: ps.id, label: `${ps.code} — ${ps.name}` }))]}
-            className="mt-1" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.recognitionDate} *</label>
-          <input type="date" value={form.recognition_date} onChange={(e) => setForm({ ...form, recognition_date: e.target.value })}
-            className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.amount} *</label>
-          <input type="number" min={0} value={form.amount || ""} onChange={(e) => setForm({ ...form, amount: +e.target.value })}
-            className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm font-mono focus:border-primary focus:outline-none" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.periodStart}</label>
-          <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })}
-            className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
-        </div>
-        <div className="col-span-3">
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.description} *</label>
-          <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">{t.revenue.notes}</label>
-          <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
-        </div>
-      </div>
-      <div className="flex justify-end gap-2 pt-2">
-        <Button onClick={onClose}>{t.common.cancel}</Button>
-        <Button variant="primary" onClick={handleCreate} disabled={create.isPending}>
-          {create.isPending ? t.revenue.creating : t.revenue.create}
-        </Button>
       </div>
     </div>
   );

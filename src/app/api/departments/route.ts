@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (roleErr) return errorResponse(roleErr, 403);
 
   const body = await req.json();
-  const { name, code, description, head_user_id, center_id } = body;
+  const { name, code, description, head_user_id, center_id, is_executive } = body;
 
   if (!name || !code) {
     return errorResponse("Tên và mã phòng ban là bắt buộc", 400);
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       description: description || null,
       head_user_id: head_user_id || null,
       center_id: center_id || null,
+      is_executive: is_executive ?? false,
     })
     .select()
     .single();

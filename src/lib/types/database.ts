@@ -938,6 +938,7 @@ export type Database = {
           head_user_id: string | null
           id: string
           is_active: boolean | null
+          is_executive: boolean | null
           name: string
           org_id: string
           sort_order: number | null
@@ -951,6 +952,7 @@ export type Database = {
           head_user_id?: string | null
           id?: string
           is_active?: boolean | null
+          is_executive?: boolean | null
           name: string
           org_id: string
           sort_order?: number | null
@@ -964,6 +966,7 @@ export type Database = {
           head_user_id?: string | null
           id?: string
           is_active?: boolean | null
+          is_executive?: boolean | null
           name?: string
           org_id?: string
           sort_order?: number | null

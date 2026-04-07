@@ -77,7 +77,7 @@ export default function DepartmentsSettingsPage() {
   const { selected, toggle, toggleAll, clear, isAllSelected, isPartial } = useMultiSelect(departments as any[]);
   const [showCreate, setShowCreate] = useState(false);
   const [editDept, setEditDept] = useState<any>(null);
-  const [createForm, setCreateForm] = useState({ name: "", code: "", description: "", head_user_id: "", center_id: "" });
+  const [createForm, setCreateForm] = useState({ name: "", code: "", description: "", head_user_id: "", center_id: "", is_executive: false });
 
   const createMutation = useMutation({
     mutationFn: async (form: typeof createForm) => {
@@ -94,7 +94,7 @@ export default function DepartmentsSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["departments"] });
       toast.success("Tạo phòng ban thành công!");
       setShowCreate(false);
-      setCreateForm({ name: "", code: "", description: "", head_user_id: "", center_id: "" });
+      setCreateForm({ name: "", code: "", description: "", head_user_id: "", center_id: "", is_executive: false });
     },
     onError: (e: any) => toast.error(e.message || "Lỗi tạo phòng ban"),
   });
@@ -198,6 +198,10 @@ export default function DepartmentsSettingsPage() {
                   ))}
                 </select>
               </div>
+              <div className="flex items-center gap-2 pt-1">
+                <Toggle checked={createForm.is_executive} onChange={(v) => setCreateForm({ ...createForm, is_executive: v })} />
+                <label className={labelClass}>Ban điều hành <span className="text-muted-foreground/70">(xem toàn bộ trung tâm)</span></label>
+              </div>
             </div>
             <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
               <Button onClick={() => setShowCreate(false)}>Hủy</Button>
@@ -274,7 +278,10 @@ export default function DepartmentsSettingsPage() {
                         className="rounded border-border" />
                     </td>
                     <td className="px-4 py-3 font-mono text-sm text-primary font-bold">{dept.code}</td>
-                    <td className="px-4 py-3 text-base font-semibold">{dept.name}</td>
+                    <td className="px-4 py-3 text-base font-semibold">
+                      {dept.name}
+                      {dept.is_executive && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-600">BDH</span>}
+                    </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {(() => {
                         const c = centers.find((cc: any) => cc.id === dept.center_id);
@@ -334,6 +341,7 @@ function EditDeptModal({ dept, users, onClose, onSave, isPending, centers }: {
     head_user_id: dept.head_user_id || "",
     center_id: dept.center_id || "",
     is_active: dept.is_active,
+    is_executive: dept.is_executive ?? false,
   });
 
   const inputClass = "mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none";
@@ -388,6 +396,10 @@ function EditDeptModal({ dept, users, onClose, onSave, isPending, centers }: {
                 <option key={c.id} value={c.id}>{c.code ? `${c.code} — ${c.name}` : c.name}</option>
               ))}
             </select>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <Toggle checked={form.is_executive} onChange={(v) => setForm({ ...form, is_executive: v })} />
+            <label className={labelClass}>Ban điều hành <span className="text-muted-foreground/70">(xem toàn bộ trung tâm)</span></label>
           </div>
         </div>
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
