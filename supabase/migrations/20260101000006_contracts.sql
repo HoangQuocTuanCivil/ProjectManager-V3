@@ -147,4 +147,21 @@ DO $$ BEGIN
   CREATE POLICY "contract_files_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'contract-files');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-SELECT '✅ 006_contracts: Hợp đồng đầu ra & đầu vào — idempotent' AS status;
+-- ─── BỔ SUNG CỘT CHO dept_budget_allocations ────────────────────────────────
+-- Bảng trên Cloud tạo từ schema cũ, thiếu nhiều cột đã thêm sau.
+ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS contract_id UUID REFERENCES contracts(id) ON DELETE SET NULL;
+ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS center_id UUID REFERENCES centers(id) ON DELETE CASCADE;
+ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS delivery_progress NUMERIC(5,2) DEFAULT 0;
+ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS delivery_date DATE;
+ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS allocation_code TEXT;
+ALTER TABLE dept_budget_allocations ADD COLUMN IF NOT EXISTS task_document_url TEXT;
+
+-- Cho phép dept_id NULL (khi giao cho trung tâm thay vì phòng ban)
+DO $$ BEGIN
+  ALTER TABLE dept_budget_allocations ALTER COLUMN dept_id DROP NOT NULL;
+EXCEPTION WHEN others THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_dba_contract ON dept_budget_allocations(contract_id) WHERE contract_id IS NOT NULL;
+
+SELECT '✅ 006_contracts: Hợp đồng + Giao khoán — idempotent' AS status;
