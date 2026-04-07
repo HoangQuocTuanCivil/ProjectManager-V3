@@ -526,6 +526,8 @@ CREATE TABLE dept_budget_allocations (
   delivery_progress NUMERIC(5,2) DEFAULT 0
     CONSTRAINT chk_delivery_progress CHECK (delivery_progress BETWEEN 0 AND 100),
   delivery_date DATE,
+  allocation_code TEXT,
+  task_document_url TEXT,
   note TEXT,
   created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),

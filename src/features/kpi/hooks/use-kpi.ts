@@ -206,7 +206,7 @@ export function useDeptBudgetAllocations(projectId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("dept_budget_allocations")
-        .select("*, project:projects(id, code, name, budget, allocation_fund), contract:contracts(id, contract_no, title), department:departments(id, name, code), center:centers(id, name, code), creator:users!created_by(id, full_name)")
+        .select("*, project:projects(id, code, name, budget, allocation_fund), contract:contracts(id, contract_no, title, contract_value), department:departments(id, name, code), center:centers(id, name, code), creator:users!created_by(id, full_name)")
         .order("created_at", { ascending: false });
       if (projectId) query = query.eq("project_id", projectId);
       const { data, error } = await query;
@@ -220,7 +220,7 @@ export function useDeptBudgetAllocations(projectId?: string) {
 export function useUpsertDeptBudgetAllocation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { project_id: string; contract_id?: string; dept_id?: string; center_id?: string; allocated_amount: number; delivery_progress?: number; delivery_date?: string; note?: string }) => {
+    mutationFn: async (input: { project_id: string; contract_id?: string; dept_id?: string; center_id?: string; allocated_amount: number; delivery_progress?: number; delivery_date?: string; allocation_code?: string; task_document_url?: string; note?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profile } = await supabase.from("users").select("org_id").eq("id", user!.id).single();
       if (!profile) throw new Error("Không tìm thấy profile");
@@ -232,6 +232,8 @@ export function useUpsertDeptBudgetAllocation() {
         allocated_amount: input.allocated_amount,
         delivery_progress: input.delivery_progress ?? 0,
         delivery_date: input.delivery_date || null,
+        allocation_code: input.allocation_code || null,
+        task_document_url: input.task_document_url || null,
         note: input.note || null,
         created_by: user!.id,
       };

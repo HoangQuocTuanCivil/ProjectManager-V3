@@ -52,15 +52,20 @@ export interface DeptBudgetAllocation {
   project_id: string;
   contract_id: string | null;
   dept_id: string;
+  center_id: string | null;
   allocated_amount: number;
   delivery_progress: number;
+  delivery_date: string | null;
+  allocation_code: string | null;
+  task_document_url: string | null;
   note: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
   project?: Pick<Project, 'id' | 'code' | 'name' | 'budget' | 'allocation_fund'>;
-  contract?: { id: string; contract_no: string; title: string };
+  contract?: { id: string; contract_no: string; title: string; contract_value: number };
   department?: Pick<Department, 'id' | 'name' | 'code'>;
+  center?: { id: string; name: string; code: string };
   creator?: Pick<User, 'id' | 'full_name'>;
 }
 
