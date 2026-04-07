@@ -1044,7 +1044,7 @@ function BillingSection({ contractId, contractValue, milestones, canManage }: {
               return (
                 <tr key={m.id} className={`hover:bg-secondary/20 ${isOverdue ? "bg-destructive/5" : ""}`}>
                   <td className="px-4 py-2">{m.title}</td>
-                  <td className="px-4 py-2 text-right font-mono">{Number(m.percentage).toFixed(1)}%</td>
+                  <td className="px-4 py-2 text-right font-mono">{contractValue > 0 ? ((Number(m.amount) / contractValue) * 100).toFixed(1) : 0}%</td>
                   <td className="px-4 py-2 text-right font-mono font-semibold">{formatVND(Number(m.amount))}</td>
                   <td className="px-4 py-2 text-right font-mono text-amber-500">{Number((m as any).payable_amount) > 0 ? formatVND(Number((m as any).payable_amount)) : "—"}</td>
                   <td className="px-4 py-2 text-right font-mono text-green-500">{Number((m as any).paid_amount) > 0 ? formatVND(Number((m as any).paid_amount)) : "—"}</td>
