@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useRevenueEntries, useDeleteRevenueEntry, useConfirmRevenueEntry, useCancelRevenueEntry } from "../hooks/use-revenue";
 import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
-import { EmptyState } from "@/components/shared";
+import { EmptyState, Button } from "@/components/shared";
 import { toast } from "sonner";
-import { Check, X, Trash2, ChevronLeft, ChevronRight, Coins, Zap } from "lucide-react";
+import { Check, X, Trash2, ChevronLeft, ChevronRight, Coins, Zap, AlertTriangle } from "lucide-react";
 import type { RevenueEntryStatus } from "@/lib/types";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -36,6 +36,9 @@ export function RevenueTable({ filters, canManage }: Props) {
   const cancelEntry = useCancelRevenueEntry();
   const deleteEntry = useDeleteRevenueEntry();
 
+  // Modal xác nhận trước khi xóa/huỷ — thay thế browser confirm()
+  const [pendingAction, setPendingAction] = useState<{ type: "delete" | "cancel" | "confirm"; id: string; desc: string } | null>(null);
+
   const statusLabel = (s: string) => {
     const map: Record<string, string> = {
       draft: t.revenue.statusDraft,
@@ -60,22 +63,15 @@ export function RevenueTable({ filters, canManage }: Props) {
     setPage(1);
   };
 
-  const handleConfirm = async (id: string) => {
-    if (!confirm(t.revenue.confirmEntry)) return;
-    try { await confirmEntry.mutateAsync(id); toast.success(t.revenue.statusConfirmed); }
-    catch (e: any) { toast.error(e.message); }
-  };
-
-  const handleCancel = async (id: string) => {
-    if (!confirm(t.revenue.cancelEntry)) return;
-    try { await cancelEntry.mutateAsync(id); toast.success(t.revenue.statusCancelled); }
-    catch (e: any) { toast.error(e.message); }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm(t.revenue.confirmDelete)) return;
-    try { await deleteEntry.mutateAsync(id); toast.success(t.common.delete); }
-    catch (e: any) { toast.error(e.message); }
+  const executeAction = async () => {
+    if (!pendingAction) return;
+    const { type, id } = pendingAction;
+    try {
+      if (type === "delete") { await deleteEntry.mutateAsync(id); toast.success("Đã xóa bút toán"); }
+      if (type === "cancel") { await cancelEntry.mutateAsync(id); toast.success("Đã huỷ bút toán"); }
+      if (type === "confirm") { await confirmEntry.mutateAsync(id); toast.success(t.revenue.statusConfirmed); }
+    } catch (e: any) { toast.error(e.message); }
+    setPendingAction(null);
   };
 
   if (isLoading) {
@@ -141,12 +137,12 @@ export function RevenueTable({ filters, canManage }: Props) {
                   <div className="flex items-center justify-end gap-1">
                     {e.status === "draft" && (
                       <>
-                        <button onClick={() => handleConfirm(e.id)} className="p-1 rounded hover:bg-green-500/10 text-green-600" title={t.revenue.confirm}><Check size={13} /></button>
-                        <button onClick={() => handleDelete(e.id)} className="p-1 rounded hover:bg-red-500/10 text-destructive" title={t.common.delete}><Trash2 size={13} /></button>
+                        <button onClick={() => setPendingAction({ type: "confirm", id: e.id, desc: e.description })} className="p-1 rounded hover:bg-green-500/10 text-green-600" title={t.revenue.confirm}><Check size={13} /></button>
+                        <button onClick={() => setPendingAction({ type: "delete", id: e.id, desc: e.description })} className="p-1 rounded hover:bg-red-500/10 text-destructive" title={t.common.delete}><Trash2 size={13} /></button>
                       </>
                     )}
                     {e.status === "confirmed" && (
-                      <button onClick={() => handleCancel(e.id)} className="p-1 rounded hover:bg-red-500/10 text-destructive" title={t.revenue.cancel}><X size={13} /></button>
+                      <button onClick={() => setPendingAction({ type: "cancel", id: e.id, desc: e.description })} className="p-1 rounded hover:bg-red-500/10 text-destructive" title={t.revenue.cancel}><X size={13} /></button>
                     )}
                   </div>
                 </td>
@@ -163,6 +159,40 @@ export function RevenueTable({ filters, canManage }: Props) {
             <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="p-1 rounded hover:bg-secondary disabled:opacity-30"><ChevronLeft size={14} /></button>
             <span>{page} / {totalPages}</span>
             <button disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="p-1 rounded hover:bg-secondary disabled:opacity-30"><ChevronRight size={14} /></button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận xóa/huỷ doanh thu */}
+      {pendingAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setPendingAction(null)}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 text-center space-y-4">
+              <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center ${pendingAction.type === "confirm" ? "bg-green-500/10" : "bg-destructive/10"}`}>
+                <AlertTriangle size={24} className={pendingAction.type === "confirm" ? "text-green-500" : "text-destructive"} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold">
+                  {pendingAction.type === "delete" ? "Xóa bút toán" : pendingAction.type === "cancel" ? "Huỷ bút toán" : "Xác nhận bút toán"}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {pendingAction.type === "delete" && "Bút toán nháp sẽ bị xóa vĩnh viễn."}
+                  {pendingAction.type === "cancel" && "Bút toán đã xác nhận sẽ bị huỷ và tạo bút toán đảo."}
+                  {pendingAction.type === "confirm" && "Bút toán sẽ được xác nhận và ghi nhận doanh thu."}
+                </p>
+                <p className="text-sm font-medium mt-2 truncate">"{pendingAction.desc}"</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
+              <Button onClick={() => setPendingAction(null)}>Hủy</Button>
+              <Button
+                variant={pendingAction.type === "confirm" ? "primary" : "destructive"}
+                onClick={executeAction}
+                disabled={deleteEntry.isPending || cancelEntry.isPending || confirmEntry.isPending}
+              >
+                {pendingAction.type === "delete" ? "Xóa" : pendingAction.type === "cancel" ? "Huỷ bút toán" : "Xác nhận"}
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -51,7 +51,6 @@ export const NAV_ITEMS: NavItemConfig[] = [
     children: [
       { href: "/revenue", tKey: "companyRevenue" },
       { href: "/revenue/allocation", tKey: "deptAllocation" },
-      { href: "/revenue/internal", tKey: "internalRevenue" },
     ],
   },
   { href: "/revenue/costs", icon: <Receipt {...ICON_PROPS} />, tKey: "costs" },
