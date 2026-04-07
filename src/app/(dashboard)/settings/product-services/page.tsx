@@ -71,7 +71,7 @@ export default function ProductServicesPage() {
       if (dialogMode === "create") {
         await create.mutateAsync({ code: form.code, name: form.name, category: form.category, unit_price: form.unit_price, description: form.description || null, is_active: true });
       } else if (editId) {
-        await update.mutateAsync({ id: editId, name: form.name, category: form.category, unit_price: form.unit_price, description: form.description || null });
+        await update.mutateAsync({ id: editId, code: form.code, name: form.name, category: form.category, unit_price: form.unit_price, description: form.description || null });
       }
       toast.success(dialogMode === "create" ? "Đã tạo SP/DV" : "Đã cập nhật");
       closeDialog();
@@ -153,8 +153,8 @@ export default function ProductServicesPage() {
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-muted-foreground font-medium">{t.revenue.psCode} *</label>
-                <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} disabled={dialogMode === "edit"}
-                  className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none disabled:opacity-50" />
+                <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })}
+                  className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground font-medium">{t.revenue.psName} *</label>
