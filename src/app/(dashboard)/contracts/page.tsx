@@ -657,17 +657,13 @@ function ContractCard({ contract: c, canManage, contractType }: {
           )}
         </div>
 
-        {/* Giá trị HĐ | Lũy kế | Còn lại */}
+        {/* Giá trị HĐ | Lũy kế | Còn lại — luôn hiện đầy đủ */}
         <div className="flex-shrink-0 text-right space-y-0.5">
           <p className="text-sm font-bold font-mono">{formatVND(currentValue)}</p>
-          {accumulated > 0 && (
-            <p className="text-[10px] font-mono text-emerald-500">Lũy kế: {formatVND(accumulated)}</p>
-          )}
-          {accumulated > 0 && (
-            <p className={`text-[10px] font-mono ${remaining >= 0 ? "text-amber-500" : "text-destructive"}`}>
-              Còn lại: {formatVND(remaining)}
-            </p>
-          )}
+          <p className="text-[10px] font-mono text-emerald-500">Lũy kế: {formatVND(accumulated)}</p>
+          <p className={`text-[10px] font-mono ${remaining >= 0 ? "text-amber-500" : "text-destructive"}`}>
+            Còn lại: {formatVND(remaining)}
+          </p>
         </div>
 
         {/* Thời hạn */}
