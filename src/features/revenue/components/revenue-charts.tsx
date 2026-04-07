@@ -6,12 +6,18 @@ import { useI18n } from "@/lib/i18n";
 import { formatVND } from "@/lib/utils/format";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, LabelList,
 } from "recharts";
 
 const COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4"];
 const SCOPE_COLORS: Record<string, string> = { internal: "#3b82f6", external: "#f59e0b" };
 const SCOPE_LABELS: Record<string, string> = { internal: "Trong hệ thống", external: "Ngoài hệ thống" };
+
+function shortVND(v: number): string {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1).replace(/\.0$/, "")}T`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(0)}Tr`;
+  return `${(v / 1e3).toFixed(0)}K`;
+}
 
 interface Props {
   from?: string;
@@ -58,7 +64,11 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
       const scope = c.contract_scope || "internal";
       map[scope] = (map[scope] || 0) + ctValue(c);
     }
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    return Object.entries(map).map(([key, value]) => ({
+      name: SCOPE_LABELS[key] || key,
+      value,
+      _scope: key,
+    }));
   }, [contracts]);
 
   // Theo hợp đồng
@@ -95,7 +105,9 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
             <XAxis dataKey="period" tick={{ fontSize: 10 }} />
             <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
             <Tooltip formatter={(v: number) => [formatVND(v), ""]} />
-            <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+              <LabelList dataKey="amount" position="top" fontSize={10} formatter={(v: number) => shortVND(v)} />
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -105,11 +117,12 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
         <p className="text-xs font-medium text-muted-foreground mb-3">Theo loại hình</p>
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
-            <Pie data={scopeData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
-              {scopeData.map((d, i) => <Cell key={i} fill={SCOPE_COLORS[d.name] || COLORS[i % COLORS.length]} />)}
+            <Pie data={scopeData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}
+              label={({ value }: { value: number }) => shortVND(value)}>
+              {scopeData.map((d, i) => <Cell key={i} fill={SCOPE_COLORS[d._scope] || COLORS[i % COLORS.length]} />)}
             </Pie>
             <Tooltip formatter={(v: number) => formatVND(v)} />
-            <Legend formatter={(v: string) => SCOPE_LABELS[v] || v} wrapperStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
           </PieChart>
         </ResponsiveContainer>
       </div>
@@ -123,7 +136,9 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
               <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
               <YAxis type="category" dataKey="contract_no" tick={{ fontSize: 9 }} width={80} />
               <Tooltip formatter={(v: number) => [formatVND(v), ""]} />
-              <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]}>
+                <LabelList dataKey="total" position="right" fontSize={10} formatter={(v: number) => shortVND(v)} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -137,7 +152,8 @@ export function RevenueCharts({ from, to, projectId, groupBy = "month" }: Props)
             <p className="text-xs font-medium text-muted-foreground mb-3">{t.revenue.byProductService}</p>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={psData} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                <Pie data={psData} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}
+                  label={({ value }: { value: number }) => shortVND(value)}>
                   {psData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v: number) => [`${psTotal > 0 ? ((v / psTotal) * 100).toFixed(1) : 0}%`, ""]} />
