@@ -214,6 +214,8 @@ export type Database = {
           title: string
           percentage: number
           amount: number
+          payable_amount: number
+          paid_amount: number
           due_date: string | null
           status: string
           paid_date: string | null
@@ -229,6 +231,8 @@ export type Database = {
           title: string
           percentage?: number
           amount?: number
+          payable_amount?: number
+          paid_amount?: number
           due_date?: string | null
           status?: string
           paid_date?: string | null
@@ -244,6 +248,8 @@ export type Database = {
           title?: string
           percentage?: number
           amount?: number
+          payable_amount?: number
+          paid_amount?: number
           due_date?: string | null
           status?: string
           paid_date?: string | null

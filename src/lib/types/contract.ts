@@ -59,6 +59,8 @@ export interface BillingMilestone {
   title: string;
   percentage: number;
   amount: number;
+  payable_amount: number;
+  paid_amount: number;
   due_date: string | null;
   status: BillingMilestoneStatus;
   paid_date: string | null;

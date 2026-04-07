@@ -168,4 +168,10 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_dba_contract ON dept_budget_allocations(contract_id) WHERE contract_id IS NOT NULL;
 
+-- ─── NGHIỆM THU: giá trị được thanh toán và giá trị thực thanh toán ────────
+-- payable_amount: số tiền được duyệt thanh toán sau nghiệm thu (có thể < giá trị NT)
+-- paid_amount: số tiền đã thực trả cho đợt nghiệm thu này
+ALTER TABLE billing_milestones ADD COLUMN IF NOT EXISTS payable_amount NUMERIC(15,0) DEFAULT 0;
+ALTER TABLE billing_milestones ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(15,0) DEFAULT 0;
+
 SELECT '006_contracts: done' AS status;
