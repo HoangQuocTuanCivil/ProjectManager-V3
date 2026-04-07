@@ -122,7 +122,7 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
 
     const allMilestones = allContracts.flatMap((c) => c.milestones || []);
 
-    // Đã nghiệm thu = mốc đã xuất hoá đơn hoặc đã thanh toán (công việc đã được nghiệm thu)
+    // Đã nghiệm thu = tổng giá trị các đợt đã nghiệm thu (invoiced hoặc paid)
     const acceptedValue = allMilestones
       .filter((m) => m.status === "invoiced" || m.status === "paid")
       .reduce((s, m) => s + Number(m.amount), 0);
@@ -130,15 +130,13 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
     // Chưa thực hiện = tổng giá trị HĐ − giá trị đã nghiệm thu
     const pendingValue = totalContractValue - acceptedValue;
 
-    // Được thanh toán = tổng giá trị các mốc đã xuất hoá đơn + đã thanh toán
+    // Được thanh toán = tổng payable_amount từ tab Nghiệm thu
     const payableValue = allMilestones
-      .filter((m) => m.status === "invoiced" || m.status === "paid")
-      .reduce((s, m) => s + Number(m.amount), 0);
+      .reduce((s, m) => s + Number((m as any).payable_amount || 0), 0);
 
-    // Đã thanh toán = chỉ các mốc có status "paid"
+    // Đã thanh toán = tổng paid_amount từ tab Nghiệm thu
     const paidValue = allMilestones
-      .filter((m) => m.status === "paid")
-      .reduce((s, m) => s + Number(m.amount), 0);
+      .reduce((s, m) => s + Number((m as any).paid_amount || 0), 0);
 
     // Phần trăm tiến độ nghiệm thu và thanh toán
     const acceptedPct = totalContractValue > 0 ? Math.round((acceptedValue / totalContractValue) * 100) : 0;
