@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS contracts (
   work_content TEXT,
   person_in_charge TEXT,
   contract_scope TEXT NOT NULL DEFAULT 'internal',
+  product_service_id UUID REFERENCES product_services(id) ON DELETE SET NULL,
   created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -53,6 +54,7 @@ ALTER TABLE contracts ADD COLUMN IF NOT EXISTS subcontractor_name TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS work_content TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS person_in_charge TEXT;
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_scope TEXT NOT NULL DEFAULT 'internal';
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS product_service_id UUID REFERENCES product_services(id) ON DELETE SET NULL;
 
 -- ─── BẢNG PHỤ LỤC HỢP ĐỒNG ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS contract_addendums (

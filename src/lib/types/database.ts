@@ -95,6 +95,7 @@ export type Database = {
           work_content: string | null
           person_in_charge: string | null
           contract_scope: string
+          product_service_id: string | null
           created_by: string
           created_at: string | null
           updated_at: string | null
@@ -122,6 +123,7 @@ export type Database = {
           work_content?: string | null
           person_in_charge?: string | null
           contract_scope?: string
+          product_service_id?: string | null
           created_by: string
           created_at?: string | null
           updated_at?: string | null
@@ -149,6 +151,7 @@ export type Database = {
           work_content?: string | null
           person_in_charge?: string | null
           contract_scope?: string
+          product_service_id?: string | null
           created_by?: string
           created_at?: string | null
           updated_at?: string | null

@@ -25,6 +25,7 @@ export interface Contract {
   work_content: string | null;
   person_in_charge: string | null;
   contract_scope: string;
+  product_service_id: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;

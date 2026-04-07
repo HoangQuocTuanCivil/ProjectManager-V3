@@ -8,6 +8,7 @@ import {
   useCreateBillingMilestone, useUpdateBillingMilestone, useDeleteBillingMilestone,
 } from "@/lib/hooks/use-contracts";
 import { useAuthStore } from "@/lib/stores";
+import { useProductServices } from "@/features/revenue/hooks/use-product-services";
 import { Button, EmptyState } from "@/components/shared";
 import { FileText, TrendingUp, TrendingDown, Clock, CreditCard, ChevronRight } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
@@ -248,11 +249,17 @@ function TabButton({ active, onClick, label, count }: { active: boolean; onClick
    Create Contract Button + Form
    ═══════════════════════════════════════════════════════════════════ */
 
+const CAT_LABELS: Record<string, string> = {
+  design: "Thiết kế", consulting: "Tư vấn", survey: "Khảo sát", supervision: "Giám sát", other: "Khác",
+};
+
 function CreateContractButton({ activeTab, projects, filterProjectId }: { activeTab: ActiveTab; projects: any[]; filterProjectId: string }) {
   const { t } = useI18n();
   const [showForm, setShowForm] = useState(false);
   const createContract = useCreateContract();
   const isOutgoing = activeTab === "outgoing";
+  const { data: psRes } = useProductServices({ is_active: "true" });
+  const productServices = psRes?.data ?? [];
 
   const preselectedProject = filterProjectId !== "all" ? filterProjectId : "";
 
@@ -261,7 +268,7 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
     contract_value: 0, vat_value: 0, signed_date: "", start_date: "", end_date: "",
     guarantee_value: 0, guarantee_expiry: "", status: "draft" as string, notes: "",
     subcontractor_name: "", work_content: "", person_in_charge: "",
-    contract_scope: "internal" as string,
+    contract_scope: "internal" as string, product_service_id: "",
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -291,6 +298,7 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
         work_content: form.work_content || undefined,
         person_in_charge: form.person_in_charge || undefined,
         contract_scope: form.contract_scope,
+        product_service_id: form.product_service_id || undefined,
       });
       toast.success("Tạo hợp đồng thành công!");
       setShowForm(false);
@@ -403,16 +411,14 @@ function CreateContractButton({ activeTab, projects, filterProjectId }: { active
                 <div>
                   <label className={labelCls}>{t.contracts.clientName}</label>
                   <SearchSelect
-                    value={form.client_name}
-                    onChange={(v) => set({ client_name: v })}
-                    options={[
-                      { value: "design", label: "Thiết kế" },
-                      { value: "consulting", label: "Tư vấn" },
-                      { value: "survey", label: "Khảo sát" },
-                      { value: "supervision", label: "Giám sát" },
-                      { value: "other", label: "Khác" },
-                    ]}
-                    placeholder="Chọn loại hình..."
+                    value={form.product_service_id}
+                    onChange={(v) => set({ product_service_id: v })}
+                    options={productServices.map((ps: any) => ({
+                      value: ps.id,
+                      label: `${ps.code} — ${ps.name}`,
+                      sublabel: CAT_LABELS[ps.category] || ps.category,
+                    }))}
+                    placeholder="Chọn SP/DV..."
                     className="mt-1"
                   />
                 </div>
