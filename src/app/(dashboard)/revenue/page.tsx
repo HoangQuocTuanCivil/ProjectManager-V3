@@ -138,8 +138,19 @@ function CreateFormModal({ onClose }: { onClose: () => void }) {
             {/* Hàng 1: Hợp đồng | Dự án | SP/DV */}
             <div>
               <label className="text-sm text-muted-foreground font-medium">{t.revenue.selectContract}</label>
-              <SearchSelect value={form.contract_id || ""} onChange={(v) => setForm({ ...form, contract_id: v || null })}
-                options={[{ value: "", label: "—" }, ...contracts.map((c: any) => ({ value: c.id, label: `${c.contract_no} — ${c.title}` }))]}
+              <SearchSelect value={form.contract_id || ""} onChange={(v) => {
+                const ct = contracts.find((c: any) => c.id === v) as any;
+                setForm({
+                  ...form,
+                  contract_id: v || null,
+                  project_id: ct?.project_id || form.project_id,
+                  product_service_id: ct?.product_service_id || form.product_service_id,
+                });
+              }}
+                options={[
+                  { value: "", label: "— Nhập thủ công —" },
+                  ...contracts.map((c: any) => ({ value: c.id, label: `${c.contract_no} — ${c.title}` })),
+                ]}
                 className="mt-1" />
             </div>
             <div>
