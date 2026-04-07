@@ -67,9 +67,9 @@ export function RevenueTable({ filters, canManage }: Props) {
     if (!pendingAction) return;
     const { type, id } = pendingAction;
     try {
-      if (type === "delete") { await deleteEntry.mutateAsync(id); toast.success("Đã xóa bút toán"); }
-      if (type === "cancel") { await cancelEntry.mutateAsync(id); toast.success("Đã huỷ bút toán"); }
-      if (type === "confirm") { await confirmEntry.mutateAsync(id); toast.success(t.revenue.statusConfirmed); }
+      if (type === "delete") { await deleteEntry.mutateAsync(id); toast.success("Đã xóa doanh thu"); }
+      if (type === "cancel") { await cancelEntry.mutateAsync(id); toast.success("Đã xóa doanh thu"); }
+      if (type === "confirm") { await confirmEntry.mutateAsync(id); toast.success("Đã xác nhận doanh thu"); }
     } catch (e: any) { toast.error(e.message); }
     setPendingAction(null);
   };
@@ -173,12 +173,12 @@ export function RevenueTable({ filters, canManage }: Props) {
               </div>
               <div>
                 <h3 className="text-base font-bold">
-                  {pendingAction.type === "delete" ? "Xóa bút toán" : pendingAction.type === "cancel" ? "Huỷ bút toán" : "Xác nhận bút toán"}
+                  {pendingAction.type === "delete" ? "Xóa doanh thu" : pendingAction.type === "cancel" ? "Xóa doanh thu" : "Xác nhận doanh thu"}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {pendingAction.type === "delete" && "Bút toán nháp sẽ bị xóa vĩnh viễn."}
-                  {pendingAction.type === "cancel" && "Bút toán đã xác nhận sẽ bị huỷ và tạo bút toán đảo."}
-                  {pendingAction.type === "confirm" && "Bút toán sẽ được xác nhận và ghi nhận doanh thu."}
+                  {pendingAction.type === "delete" && "Doanh thu này sẽ bị xóa vĩnh viễn."}
+                  {pendingAction.type === "cancel" && "Doanh thu đã xác nhận sẽ bị xóa khỏi danh sách."}
+                  {pendingAction.type === "confirm" && "Doanh thu sẽ được xác nhận và ghi nhận chính thức."}
                 </p>
                 <p className="text-sm font-medium mt-2 truncate">"{pendingAction.desc}"</p>
               </div>
@@ -190,7 +190,7 @@ export function RevenueTable({ filters, canManage }: Props) {
                 onClick={executeAction}
                 disabled={deleteEntry.isPending || cancelEntry.isPending || confirmEntry.isPending}
               >
-                {pendingAction.type === "delete" ? "Xóa" : pendingAction.type === "cancel" ? "Huỷ bút toán" : "Xác nhận"}
+                {pendingAction.type === "confirm" ? "Xác nhận" : "Xóa doanh thu"}
               </Button>
             </div>
           </div>
