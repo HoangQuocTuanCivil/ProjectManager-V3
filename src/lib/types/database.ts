@@ -24,6 +24,14 @@ export type Database = {
           { foreignKeyName: "revenue_entries_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "users"; referencedColumns: ["id"] },
         ]
       }
+      product_service_categories: {
+        Row: { id: string; org_id: string; slug: string; name: string; color: string | null; sort_order: number; is_active: boolean; created_at: string; updated_at: string }
+        Insert: { id?: string; org_id: string; slug: string; name: string; color?: string | null; sort_order?: number; is_active?: boolean; created_at?: string; updated_at?: string }
+        Update: { id?: string; org_id?: string; slug?: string; name?: string; color?: string | null; sort_order?: number; is_active?: boolean; created_at?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "product_service_categories_org_id_fkey"; columns: ["org_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+        ]
+      }
       product_services: {
         Row: { id: string; org_id: string; code: string; name: string; category: string; unit_price: number; description: string | null; is_active: boolean; created_at: string; updated_at: string }
         Insert: { id?: string; org_id: string; code: string; name: string; category?: string; unit_price?: number; description?: string | null; is_active?: boolean; created_at?: string; updated_at?: string }

@@ -22,5 +22,5 @@ export type RevenueSource = 'billing_milestone' | 'acceptance' | 'manual';
 export type InternalRevenueStatus = 'pending' | 'approved' | 'recorded';
 export type CostCategory = 'cogs' | 'selling' | 'admin' | 'financial';
 export type RevenueEntryStatus = 'draft' | 'confirmed' | 'adjusted' | 'cancelled';
-export type ProductServiceCategory = 'design' | 'consulting' | 'survey' | 'supervision' | 'other';
+export type ProductServiceCategory = string;
 export type SettingsTab = 'accounts' | 'roles' | 'depts' | 'teams' | 'workflows' | 'kpi' | 'templates' | 'notifications' | 'security';

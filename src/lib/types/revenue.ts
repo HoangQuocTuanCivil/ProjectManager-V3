@@ -83,6 +83,18 @@ export interface CostEntry {
   creator?: Pick<User, 'id' | 'full_name'>;
 }
 
+export interface PSCategory {
+  id: string;
+  org_id: string;
+  slug: string;
+  name: string;
+  color: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ProductService {
   id: string;
   org_id: string;

@@ -11,7 +11,38 @@ CREATE TYPE revenue_entry_status AS ENUM ('draft', 'confirmed', 'adjusted', 'can
 CREATE TYPE internal_revenue_status AS ENUM ('pending', 'approved', 'recorded');
 -- Phân loại chi phí theo chuẩn kế toán Việt Nam
 CREATE TYPE cost_category AS ENUM ('cogs', 'selling', 'admin', 'financial');
-CREATE TYPE product_service_category AS ENUM ('design', 'consulting', 'survey', 'supervision', 'other');
+-- ─── PHÂN LOẠI SẢN PHẨM / DỊCH VỤ ────────────────────────────────────────
+
+CREATE TABLE product_service_categories (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  slug        TEXT NOT NULL,
+  name        TEXT NOT NULL,
+  color       TEXT DEFAULT 'bg-gray-500/10 text-gray-600',
+  sort_order  INT NOT NULL DEFAULT 0,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(org_id, slug)
+);
+
+CREATE INDEX idx_psc_org ON product_service_categories (org_id, is_active, sort_order);
+
+CREATE TRIGGER trg_psc_ts
+  BEFORE UPDATE ON product_service_categories
+  FOR EACH ROW EXECUTE FUNCTION fn_update_timestamp();
+
+INSERT INTO product_service_categories (org_id, slug, name, color, sort_order)
+SELECT o.id, v.slug, v.name, v.color, v.sort_order
+FROM organizations o,
+(VALUES
+  ('design',      'Thiết kế',  'bg-blue-500/10 text-blue-600',     1),
+  ('consulting',  'Tư vấn',    'bg-purple-500/10 text-purple-600', 2),
+  ('survey',      'Khảo sát',  'bg-amber-500/10 text-amber-600',   3),
+  ('supervision', 'Giám sát',  'bg-green-500/10 text-green-600',   4),
+  ('other',       'Khác',      'bg-gray-500/10 text-gray-600',     5)
+) AS v(slug, name, color, sort_order)
+ON CONFLICT DO NOTHING;
 
 -- ─── SẢN PHẨM / DỊCH VỤ (master data) ─────────────────────────────────────
 
@@ -20,7 +51,7 @@ CREATE TABLE product_services (
   org_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   code        TEXT NOT NULL,
   name        TEXT NOT NULL,
-  category    product_service_category NOT NULL DEFAULT 'other',
+  category    TEXT NOT NULL DEFAULT 'other',
   unit_price  NUMERIC(15,0) NOT NULL DEFAULT 0,
   description TEXT,
   is_active   BOOLEAN NOT NULL DEFAULT TRUE,
