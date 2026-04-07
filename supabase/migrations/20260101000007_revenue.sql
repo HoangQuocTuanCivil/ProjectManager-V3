@@ -245,7 +245,7 @@ CREATE POLICY dra_m ON dept_revenue_allocations FOR ALL
 
 INSERT INTO product_services (org_id, code, name, category, unit_price, description)
 SELECT
-  o.id, v.code, v.name, v.category::product_service_category, v.price, v.description
+  o.id, v.code, v.name, v.category, v.price, v.description
 FROM (SELECT id FROM organizations LIMIT 1) o,
 (VALUES
   ('TK-KTRUC', 'Thiết kế Kiến trúc',  'design',      0, 'Thiết kế kiến trúc công trình'),
