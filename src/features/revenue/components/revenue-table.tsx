@@ -53,6 +53,7 @@ export function RevenueTable({ filters, canManage }: Props) {
         project: c.project,
         recognition_date: c.signed_date || c.start_date,
         amount: Number(c.contract_value),
+        contract_scope: c.contract_scope || "internal",
       }));
   }, [allContracts, filters.project_id, filters.contract_id]);
 
@@ -136,6 +137,7 @@ export function RevenueTable({ filters, canManage }: Props) {
             <th className="text-left px-4 py-2.5 font-medium">{t.revenue.selectProject}</th>
             <SortHeader col="recognition_date">{t.revenue.recognitionDate}</SortHeader>
             <SortHeader col="amount">{t.revenue.amount}</SortHeader>
+            <th className="text-left px-4 py-2.5 font-medium">Loại hình</th>
             {canManage && <th className="text-right px-4 py-2.5 font-medium w-24" />}
           </tr>
         </thead>
@@ -168,6 +170,9 @@ export function RevenueTable({ filters, canManage }: Props) {
               <td className="px-4 py-2.5 text-muted-foreground">{e.project?.code || "—"}</td>
               <td className="px-4 py-2.5 text-muted-foreground">{formatDate(e.recognition_date ?? null)}</td>
               <td className="px-4 py-2.5 text-right font-mono font-semibold">{formatVND(Number(e.amount))}</td>
+              <td className="px-4 py-2.5 text-muted-foreground">
+                {(e.isContract ? e.contract_scope : e.contract?.contract_scope) === "external" ? "Ngoài hệ thống" : "Trong hệ thống"}
+              </td>
               {canManage && (
                 <td className="px-4 py-2.5 text-right">
                   {!e.isContract ? (

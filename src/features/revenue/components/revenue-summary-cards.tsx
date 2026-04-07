@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRevenueSummary, useRevenueForecast } from "../hooks/use-revenue-analytics";
 import { useRevenueEntries } from "@/lib/hooks/use-revenue";
+import { useContracts } from "@/lib/hooks/use-contracts";
 import { useI18n } from "@/lib/i18n";
 import { formatVND } from "@/lib/utils/format";
 
@@ -14,37 +14,56 @@ interface Props {
 
 export function RevenueSummaryCards({ from, to, projectId }: Props) {
   const { t } = useI18n();
-  const { data: summary, isLoading } = useRevenueSummary({ from, to, project_id: projectId });
-  const { data: forecast } = useRevenueForecast({ project_id: projectId });
-  const { data: entriesRes } = useRevenueEntries({ date_from: from, date_to: to, project_id: projectId, per_page: 500 });
+  const { data: entriesRes, isLoading: loadingEntries } = useRevenueEntries({ date_from: from, date_to: to, project_id: projectId, per_page: 500 });
+  const { data: allContracts = [], isLoading: loadingContracts } = useContracts();
+  const isLoading = loadingEntries || loadingContracts;
 
-  const confirmed = summary?.total ?? 0;
-  const projected = forecast?.projected_from_milestones ?? 0;
-  const recognizedPct = projected > 0 ? Math.round((confirmed / projected) * 100) : null;
-
-  // Tổng hợp DT theo phạm vi HĐ (trong/ngoài hệ thống)
-  const scopeTotals = useMemo(() => {
+  const stats = useMemo(() => {
     const entries = entriesRes?.data ?? [];
+
+    // HĐ đầu ra active/completed — giá trị hợp đồng
+    const outgoingContracts = (allContracts as any[]).filter((c) =>
+      c.contract_type === "outgoing" && ["active", "completed"].includes(c.status)
+      && (!projectId || c.project_id === projectId)
+    );
+
+    // Tổng doanh thu = giá trị HĐ đầu ra + entries nhập thủ công (confirmed)
+    const contractTotal = outgoingContracts.reduce((s, c) => s + Number(c.contract_value), 0);
+    const manualTotal = entries.filter((e: any) => e.status === "confirmed").reduce((s, e: any) => s + Number(e.amount), 0);
+    const totalRevenue = contractTotal + manualTotal;
+
+    // DT trong/ngoài hệ thống — tính từ contract_scope của HĐ đầu ra
     let internal = 0;
     let external = 0;
-    for (const e of entries as any[]) {
-      const scope = e.contract?.contract_scope || "internal";
-      const amount = Number(e.amount);
-      if (scope === "external") external += amount;
-      else internal += amount;
+    for (const c of outgoingContracts) {
+      const val = Number(c.contract_value);
+      if (c.contract_scope === "external") external += val;
+      else internal += val;
     }
-    return { internal, external };
-  }, [entriesRes]);
+    // Entries thủ công tính vào "trong HT" (không gắn HĐ)
+    for (const e of entries as any[]) {
+      if (e.status !== "confirmed") continue;
+      const scope = e.contract?.contract_scope || "internal";
+      const amt = Number(e.amount);
+      if (scope === "external") external += amt;
+      else internal += amt;
+    }
+
+    // Nháp = entries chưa xác nhận
+    const draftTotal = entries.filter((e: any) => e.status === "draft").reduce((s, e: any) => s + Number(e.amount), 0);
+
+    return { totalRevenue, internal, external, draftTotal, contractCount: outgoingContracts.length };
+  }, [entriesRes, allContracts, projectId]);
 
   const cards = [
-    { label: t.revenue.totalRevenue, value: confirmed, color: "text-primary" },
+    { label: t.revenue.totalRevenue, value: stats.totalRevenue, color: "text-primary", sub: `${stats.contractCount} hợp đồng` },
     {
       label: "DT trong / ngoài HT",
       value: null,
       render: () => (
         <div className="space-y-0.5">
-          <p className="text-sm font-bold font-mono text-blue-500">Trong: {formatVND(scopeTotals.internal)}</p>
-          <p className="text-sm font-bold font-mono text-amber-500">Ngoài: {formatVND(scopeTotals.external)}</p>
+          <p className="text-sm font-bold font-mono text-blue-500">Trong: {formatVND(stats.internal)}</p>
+          <p className="text-sm font-bold font-mono text-amber-500">Ngoài: {formatVND(stats.external)}</p>
         </div>
       ),
     },
@@ -53,23 +72,15 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
       value: null,
       render: () => (
         <div>
-          <p className="text-lg font-bold font-mono text-green-500">{formatVND(confirmed)}</p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${Math.min(recognizedPct ?? 0, 100)}%` }} />
-            </div>
-            <span className="text-[10px] text-muted-foreground font-mono">{recognizedPct ?? 0}%</span>
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{t.revenue.forecast}: {formatVND(projected)}</p>
+          <p className="text-lg font-bold font-mono text-green-500">{formatVND(stats.totalRevenue)}</p>
         </div>
       ),
     },
-    { label: t.revenue.statusDraft, value: summary?.draft ?? 0, color: "text-yellow-500" },
-    { label: t.revenue.forecast, value: projected, color: "text-accent" },
+    { label: t.revenue.statusDraft, value: stats.draftTotal, color: "text-yellow-500" },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" role="list" aria-label={t.revenue.totalRevenue}>
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" role="list" aria-label={t.revenue.totalRevenue}>
       {cards.map((c, i) => (
         <div key={i} className="bg-card border border-border rounded-xl p-3" role="listitem">
           <p className="text-[11px] text-muted-foreground mb-1">{c.label}</p>
@@ -78,7 +89,10 @@ export function RevenueSummaryCards({ from, to, projectId }: Props) {
           ) : "render" in c && c.render ? (
             <div>{c.render()}</div>
           ) : (
-            <p className={`text-lg font-bold font-mono ${c.color}`}>{formatVND(c.value as number)}</p>
+            <>
+              <p className={`text-lg font-bold font-mono ${c.color}`}>{formatVND(c.value as number)}</p>
+              {"sub" in c && c.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{c.sub}</p>}
+            </>
           )}
         </div>
       ))}
