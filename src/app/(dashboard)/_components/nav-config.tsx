@@ -42,7 +42,6 @@ export const NAV_ITEMS: NavItemConfig[] = [
       { href: "/contracts", tKey: "contracts" },
       { href: "/contracts/budget-assign", tKey: "budgetAssignTab" },
       { href: "/contracts/acceptance", tKey: "contractAcceptance" },
-      { href: "/contracts/reports", tKey: "contractReports" },
     ],
   },
   {
