@@ -114,107 +114,126 @@ export default function ContractsPage() {
    ═══════════════════════════════════════════════════════════════════ */
 
 function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incoming: Contract[] }) {
-  const { t } = useI18n();
-
   const stats = useMemo(() => {
-    const totalOut = outgoing.reduce((s, c) => s + Number(c.contract_value), 0);
-    const totalIn = incoming.reduce((s, c) => s + Number(c.contract_value), 0);
-
-    const now = new Date();
-    const in30 = new Date(now.getTime() + 30 * 86400000);
     const allContracts = [...outgoing, ...incoming];
-    const expiring = allContracts.filter(
-      (c) => c.end_date && c.status === "active" && new Date(c.end_date) <= in30 && new Date(c.end_date) >= now
-    );
 
-    const allMilestones = outgoing.flatMap((c) => c.milestones || []);
-    const totalMilestoneValue = allMilestones.reduce((s, m) => s + Number(m.amount), 0);
+    // Tổng giá trị toàn bộ hợp đồng (đầu ra + đầu vào)
+    const totalContractValue = allContracts.reduce((s, c) => s + Number(c.contract_value), 0);
+
+    const allMilestones = allContracts.flatMap((c) => c.milestones || []);
+
+    // Đã nghiệm thu = mốc đã xuất hoá đơn hoặc đã thanh toán (công việc đã được nghiệm thu)
+    const acceptedValue = allMilestones
+      .filter((m) => m.status === "invoiced" || m.status === "paid")
+      .reduce((s, m) => s + Number(m.amount), 0);
+
+    // Chưa thực hiện = tổng giá trị HĐ − giá trị đã nghiệm thu
+    const pendingValue = totalContractValue - acceptedValue;
+
+    // Được thanh toán = tổng giá trị các mốc đã xuất hoá đơn + đã thanh toán
+    const payableValue = allMilestones
+      .filter((m) => m.status === "invoiced" || m.status === "paid")
+      .reduce((s, m) => s + Number(m.amount), 0);
+
+    // Đã thanh toán = chỉ các mốc có status "paid"
     const paidValue = allMilestones
       .filter((m) => m.status === "paid")
       .reduce((s, m) => s + Number(m.amount), 0);
-    const paidPct = totalMilestoneValue > 0 ? Math.round((paidValue / totalMilestoneValue) * 100) : 0;
 
-    const monthlyRevenue: Record<string, number> = {};
-    allMilestones
-      .filter((m) => m.due_date && ["upcoming", "invoiced"].includes(m.status))
-      .forEach((m) => {
-        const key = m.due_date!.slice(0, 7);
-        monthlyRevenue[key] = (monthlyRevenue[key] || 0) + Number(m.amount);
-      });
-    const sortedMonths = Object.entries(monthlyRevenue).sort(([a], [b]) => a.localeCompare(b)).slice(0, 6);
-    const maxMonth = Math.max(...sortedMonths.map(([, v]) => v), 1);
+    // Phần trăm tiến độ nghiệm thu và thanh toán
+    const acceptedPct = totalContractValue > 0 ? Math.round((acceptedValue / totalContractValue) * 100) : 0;
+    const paidPct = payableValue > 0 ? Math.round((paidValue / payableValue) * 100) : 0;
 
-    return { totalOut, totalIn, expiring, paidValue, paidPct, totalMilestoneValue, sortedMonths, maxMonth };
+    return { totalContractValue, acceptedValue, pendingValue, payableValue, paidValue, acceptedPct, paidPct };
   }, [outgoing, incoming]);
 
+  const cards: { label: string; value: number; color: string; icon: React.ReactNode; sub?: string }[] = [
+    {
+      label: "Tổng giá trị HĐ",
+      value: stats.totalContractValue,
+      color: "text-primary",
+      icon: <FileText size={16} className="text-primary" />,
+      sub: `${outgoing.length + incoming.length} hợp đồng`,
+    },
+    {
+      label: "Đã nghiệm thu",
+      value: stats.acceptedValue,
+      color: "text-emerald-500",
+      icon: <TrendingUp size={16} className="text-emerald-500" />,
+      sub: `${stats.acceptedPct}% giá trị HĐ`,
+    },
+    {
+      label: "Chưa thực hiện",
+      value: stats.pendingValue,
+      color: "text-amber-500",
+      icon: <Clock size={16} className="text-amber-500" />,
+      sub: `${100 - stats.acceptedPct}% giá trị HĐ`,
+    },
+    {
+      label: "Được thanh toán",
+      value: stats.payableValue,
+      color: "text-blue-500",
+      icon: <CreditCard size={16} className="text-blue-500" />,
+      sub: "Đã nghiệm thu & xuất HĐ",
+    },
+    {
+      label: "Đã thanh toán",
+      value: stats.paidValue,
+      color: "text-green-600",
+      icon: <TrendingUp size={16} className="text-green-600" />,
+      sub: stats.payableValue > 0 ? `${stats.paidPct}% giá trị được TT` : "—",
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-4 gap-4">
-      {/* Tổng giá trị HĐ */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <TrendingUp size={16} className="text-primary" />
+    <div className="space-y-4">
+      {/* 5 thẻ tổng quan giá trị */}
+      <div className="grid grid-cols-5 gap-3">
+        {cards.map((c, i) => (
+          <div key={i} className="bg-card border border-border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center">{c.icon}</div>
+              <span className="text-[11px] font-medium text-muted-foreground">{c.label}</span>
+            </div>
+            <p className={`text-base font-bold font-mono ${c.color}`}>{formatVND(c.value)}</p>
+            {c.sub && <p className="mt-1 text-[10px] text-muted-foreground">{c.sub}</p>}
           </div>
-          <span className="text-xs font-medium text-muted-foreground">{t.contracts.totalOutgoing}</span>
-        </div>
-        <p className="text-lg font-bold font-mono">{formatVND(stats.totalOut)}</p>
-        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-          <TrendingDown size={12} />
-          <span>{t.contracts.totalIncoming}: <span className="font-mono font-semibold text-foreground">{formatVND(stats.totalIn)}</span></span>
-        </div>
+        ))}
       </div>
 
-      {/* HĐ sắp hết hạn */}
+      {/* Thanh tiến độ nghiệm thu + thanh toán */}
       <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-            <Clock size={16} className="text-amber-500" />
+        <div className="grid grid-cols-2 gap-6">
+          {/* Tiến độ nghiệm thu */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Tiến độ nghiệm thu</span>
+              <span className="text-xs font-bold text-emerald-500">{stats.acceptedPct}%</span>
+            </div>
+            <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${stats.acceptedPct}%` }} />
+            </div>
+            <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
+              <span>Đã NT: <span className="font-mono text-foreground">{formatVND(stats.acceptedValue)}</span></span>
+              <span>Còn lại: <span className="font-mono text-foreground">{formatVND(stats.pendingValue)}</span></span>
+            </div>
           </div>
-          <span className="text-xs font-medium text-muted-foreground">{t.contracts.expiringContracts}</span>
-        </div>
-        <p className="text-lg font-bold">{stats.expiring.length} <span className="text-sm font-normal text-muted-foreground">{t.contracts.count}</span></p>
-        <p className="mt-2 text-xs text-muted-foreground">{t.contracts.expiringInDays}</p>
-      </div>
 
-      {/* Trạng thái thanh toán */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-            <CreditCard size={16} className="text-emerald-500" />
+          {/* Tiến độ thanh toán */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Tiến độ thanh toán</span>
+              <span className="text-xs font-bold text-blue-500">{stats.paidPct}%</span>
+            </div>
+            <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${stats.paidPct}%` }} />
+            </div>
+            <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
+              <span>Đã TT: <span className="font-mono text-foreground">{formatVND(stats.paidValue)}</span></span>
+              <span>Chưa TT: <span className="font-mono text-foreground">{formatVND(stats.payableValue - stats.paidValue)}</span></span>
+            </div>
           </div>
-          <span className="text-xs font-medium text-muted-foreground">{t.contracts.paymentStatus}</span>
         </div>
-        <p className="text-lg font-bold">{stats.paidPct}%</p>
-        <div className="mt-2 w-full h-2 rounded-full bg-secondary overflow-hidden">
-          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${stats.paidPct}%` }} />
-        </div>
-        <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
-          <span>{t.contracts.paidPercent}: {formatVND(stats.paidValue)}</span>
-          <span>{t.contracts.remainingAmount}: {formatVND(stats.totalMilestoneValue - stats.paidValue)}</span>
-        </div>
-      </div>
-
-      {/* Biểu đồ doanh thu dự kiến */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-medium text-muted-foreground">{t.contracts.projectedRevenue}</span>
-        </div>
-        {stats.sortedMonths.length > 0 ? (
-          <div className="flex items-end gap-1 h-16">
-            {stats.sortedMonths.map(([month, value]) => (
-              <div key={month} className="flex-1 flex flex-col items-center gap-1">
-                <div
-                  className="w-full bg-primary/70 rounded-t"
-                  style={{ height: `${Math.max((value / stats.maxMonth) * 100, 8)}%` }}
-                  title={`${month}: ${formatVND(value)}`}
-                />
-                <span className="text-[9px] text-muted-foreground">{month.slice(5)}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground mt-4">{t.common.noData}</p>
-        )}
       </div>
     </div>
   );
