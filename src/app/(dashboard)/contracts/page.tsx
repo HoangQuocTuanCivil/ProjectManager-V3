@@ -142,7 +142,7 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
     const paidPct = payableValue > 0 ? Math.round((paidValue / payableValue) * 100) : 0;
 
     return { totalContractValue, acceptedValue, pendingValue, payableValue, paidValue, acceptedPct, paidPct };
-  }, [outgoing, incoming]);
+  }, [outgoing]);
 
   const cards: { label: string; value: number; color: string; icon: React.ReactNode; sub?: string }[] = [
     {
@@ -150,7 +150,7 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
       value: stats.totalContractValue,
       color: "text-primary",
       icon: <FileText size={16} className="text-primary" />,
-      sub: `${outgoing.length + incoming.length} hợp đồng`,
+      sub: `${outgoing.length} hợp đồng đầu ra`,
     },
     {
       label: "Đã nghiệm thu",
