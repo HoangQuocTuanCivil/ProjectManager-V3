@@ -83,19 +83,11 @@ export default function ProjectDetailLayout({ children }: { children: React.Reac
               <p className="text-base text-muted-foreground mt-1 line-clamp-2">{project.description}</p>
             )}
           </div>
-          <div className="text-right ml-4 flex-shrink-0">
-            <p className="font-mono text-lg font-bold text-amber-500">{formatVND(project.allocation_fund)}</p>
-            <p className="text-[11px] text-muted-foreground">Quỹ khoán</p>
-          </div>
         </div>
 
         {/* Meta row */}
         <div className="flex items-center gap-6 mt-3 text-sm text-muted-foreground">
-          {project.client && <span>KH: <span className="text-foreground font-medium">{project.client}</span></span>}
-          {project.contract_no && <span>HĐ: <span className="font-mono text-foreground">{project.contract_no}</span></span>}
-          {project.location && <span>📍 {project.location}</span>}
           <span>{formatDate(project.start_date)} → {formatDate(project.end_date)}</span>
-          {project.budget > 0 && <span>Ngân sách: <span className="font-mono text-foreground">{formatVND(project.budget)}</span></span>}
         </div>
 
         {/* Progress */}

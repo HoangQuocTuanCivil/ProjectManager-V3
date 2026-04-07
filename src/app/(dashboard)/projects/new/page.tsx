@@ -44,12 +44,7 @@ export default function NewProjectPage() {
     code: "",
     name: "",
     description: "",
-    client: "",
-    location: "",
-    contract_no: "",
     manager_id: "",
-    budget: 0,
-    allocation_fund: 0,
     start_date: new Date().toISOString().slice(0, 10),
     end_date: "",
     status: "planning" as const,
@@ -151,48 +146,11 @@ export default function NewProjectPage() {
             </div>
           </div>
 
-          {/* Client Info */}
-          <div>
-            <h3 className="text-base font-bold mb-3 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">2</span>
-              Thông tin khách hàng & Hợp đồng
-            </h3>
-            <div className="grid grid-cols-2 gap-4 pl-8">
-              <div>
-                <label className="text-sm text-muted-foreground font-medium">Khách hàng</label>
-                <input
-                  value={form.client}
-                  onChange={(e) => update("client", e.target.value)}
-                  placeholder="Tên chủ đầu tư"
-                  className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground font-medium">Số hợp đồng</label>
-                <input
-                  value={form.contract_no}
-                  onChange={(e) => update("contract_no", e.target.value)}
-                  placeholder="VD: HĐ-2026/03"
-                  className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-sm text-muted-foreground font-medium">Địa điểm</label>
-                <input
-                  value={form.location}
-                  onChange={(e) => update("location", e.target.value)}
-                  placeholder="VD: Quốc lộ 1A, Ninh Thuận"
-                  className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Management */}
           <div>
             <h3 className="text-base font-bold mb-3 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">3</span>
-              Quản lý & Tài chính
+              <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">2</span>
+              Quản lý & Thời gian
             </h3>
             <div className="grid grid-cols-2 gap-4 pl-8">
               <div>
@@ -211,27 +169,6 @@ export default function NewProjectPage() {
                   className="mt-1"
                 />
               </div>
-              <div>
-                <label className="text-sm text-muted-foreground font-medium">Ngân sách (VNĐ)</label>
-                <input
-                  type="number"
-                  value={form.budget || ""}
-                  onChange={(e) => update("budget", +e.target.value)}
-                  placeholder="0"
-                  className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground font-medium">Quỹ khoán (VNĐ)</label>
-                <input
-                  type="number"
-                  value={form.allocation_fund || ""}
-                  onChange={(e) => update("allocation_fund", +e.target.value)}
-                  placeholder="0"
-                  className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base font-mono focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div />
               <div>
                 <label className="text-sm text-muted-foreground font-medium">Ngày bắt đầu</label>
                 <input
@@ -256,7 +193,7 @@ export default function NewProjectPage() {
           {/* Department Assignment */}
           <div>
             <h3 className="text-base font-bold mb-3 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">4</span>
+              <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">3</span>
               Giao cho phòng ban
             </h3>
             <div className="pl-8">

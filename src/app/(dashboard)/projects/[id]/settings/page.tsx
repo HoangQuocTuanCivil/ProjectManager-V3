@@ -22,11 +22,6 @@ export default function ProjectSettingsPage() {
       name: project.name,
       code: project.code,
       description: project.description || "",
-      client: project.client || "",
-      contract_no: project.contract_no || "",
-      location: project.location || "",
-      budget: project.budget || 0,
-      allocation_fund: project.allocation_fund || 0,
       start_date: project.start_date || "",
       end_date: project.end_date || "",
       status: project.status,
@@ -51,11 +46,6 @@ export default function ProjectSettingsPage() {
       { label: "Mã dự án", value: project.code },
       { label: "Tên dự án", value: project.name },
       { label: "Trạng thái", value: project.status },
-      { label: "Khách hàng", value: project.client || "—" },
-      { label: "Hợp đồng", value: project.contract_no || "—" },
-      { label: "Địa điểm", value: project.location || "—" },
-      { label: "Ngân sách", value: project.budget ? formatVND(project.budget) : "—" },
-      { label: "Quỹ khoán", value: project.allocation_fund ? formatVND(project.allocation_fund) : "—" },
       { label: "Ngày bắt đầu", value: formatDate(project.start_date) },
       { label: "Ngày kết thúc", value: formatDate(project.end_date) },
       { label: "Ngày tạo", value: formatDate(project.created_at) },
@@ -107,30 +97,6 @@ export default function ProjectSettingsPage() {
               placeholder="Chọn trạng thái"
               className="mt-1"
             />
-          </div>
-          <div>
-            <label className="text-sm text-muted-foreground font-medium">Khách hàng</label>
-            <input value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} className={inputClass} />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm text-muted-foreground font-medium">Hợp đồng</label>
-            <input value={form.contract_no} onChange={(e) => setForm({ ...form, contract_no: e.target.value })} className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm text-muted-foreground font-medium">Địa điểm</label>
-            <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className={inputClass} />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm text-muted-foreground font-medium">Ngân sách (VNĐ)</label>
-            <input type="number" value={form.budget} onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })} className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm text-muted-foreground font-medium">Quỹ khoán (VNĐ)</label>
-            <input type="number" value={form.allocation_fund} onChange={(e) => setForm({ ...form, allocation_fund: Number(e.target.value) })} className={inputClass} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
