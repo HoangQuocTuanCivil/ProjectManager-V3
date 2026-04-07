@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const { data: allocations, error: allocErr } = await supabase
     .from("dept_budget_allocations")
-    .select("project_id, contract_id, center_id, allocated_amount, delivery_date, center:centers(id, name, code)")
+    .select("project_id, contract_id, center_id, allocated_amount, delivery_date, start_date, end_date, created_at, center:centers(id, name, code)")
     .not("center_id", "is", null);
 
   if (allocErr) return errorResponse(allocErr.message, 500);
@@ -27,8 +27,10 @@ export async function GET(req: NextRequest) {
 
   const validAllocations = (allocations ?? []).filter((a) => {
     if (!a.center_id) return false;
-    if (from && a.delivery_date && a.delivery_date < from) return false;
-    if (to && a.delivery_date && a.delivery_date > to) return false;
+    const startRef = (a as any).start_date || a.delivery_date || (a.created_at ? a.created_at.slice(0, 10) : null);
+    const endRef = (a as any).end_date || a.delivery_date || (a.created_at ? a.created_at.slice(0, 10) : null);
+    if (from && endRef && endRef < from) return false;
+    if (to && startRef && startRef > to) return false;
     return true;
   });
 

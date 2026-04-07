@@ -95,6 +95,7 @@ export default function BudgetAssignPage() {
   const [form, setForm] = useState({
     contract_id: "", dept_id: "", center_id: "",
     allocated_amount: 0, delivery_date: "",
+    start_date: "", end_date: "",
     allocation_code: "", note: "",
   });
   const [taskDocFile, setTaskDocFile] = useState<File | null>(null);
@@ -138,12 +139,14 @@ export default function BudgetAssignPage() {
         center_id: assignTarget === "center" ? form.center_id : undefined,
         allocated_amount: form.allocated_amount,
         delivery_date: form.delivery_date || undefined,
+        start_date: form.start_date || undefined,
+        end_date: form.end_date || undefined,
         allocation_code: form.allocation_code || undefined,
         task_document_url: taskDocUrl,
         note: form.note || undefined,
       });
       toast.success("Giao khoán thành công!");
-      setForm({ ...form, dept_id: "", center_id: "", allocated_amount: 0, delivery_date: "", allocation_code: "", note: "" });
+      setForm({ ...form, dept_id: "", center_id: "", allocated_amount: 0, delivery_date: "", start_date: "", end_date: "", allocation_code: "", note: "" });
       setTaskDocFile(null);
     } catch (e: any) {
       toast.error(e.message || "Lỗi giao khoán");
@@ -306,7 +309,7 @@ export default function BudgetAssignPage() {
                   </div>
                 </div>
 
-                {/* Hàng 3: Số tiền + Ngày hoàn thành */}
+                {/* Hàng 3: Số tiền + Tiến độ giao */}
                 <div>
                   <label className="text-sm text-muted-foreground font-medium">{t.kpi.allocatedAmount}</label>
                   <input type="number" min={0} value={form.allocated_amount || ""} onChange={(e) => setForm({ ...form, allocated_amount: +e.target.value })}
@@ -318,7 +321,19 @@ export default function BudgetAssignPage() {
                     className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
                 </div>
 
-                {/* Hàng 4: Ghi chú */}
+                {/* Hàng 4: Ngày bắt đầu + Ngày kết thúc */}
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">Ngày bắt đầu</label>
+                  <input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground font-medium">Ngày kết thúc</label>
+                  <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none" />
+                </div>
+
+                {/* Hàng 5: Ghi chú */}
                 <div className="col-span-2">
                   <label className="text-sm text-muted-foreground font-medium">{t.kpi.note}</label>
                   <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
@@ -386,7 +401,8 @@ export default function BudgetAssignPage() {
                     <th className="text-left px-4 py-2 font-medium">Mã GK</th>
                     <th className="text-left px-4 py-2 font-medium">{t.kpi.deptName}</th>
                     <th className="text-right px-4 py-2 font-medium">{t.kpi.amount}</th>
-                    <th className="text-left px-4 py-2 font-medium">Ngày HT</th>
+                    <th className="text-left px-4 py-2 font-medium">Bắt đầu</th>
+                    <th className="text-left px-4 py-2 font-medium">Kết thúc</th>
                     <th className="text-left px-4 py-2 font-medium">Phiếu GNV</th>
                     <th className="text-left px-4 py-2 font-medium">{t.kpi.note}</th>
                     {canManage && <th className="text-right px-4 py-2 font-medium w-16" />}
@@ -403,7 +419,8 @@ export default function BudgetAssignPage() {
                         {a.department ? <>{a.department.code && <span className="text-muted-foreground mr-1">{a.department.code}</span>}{a.department.name}</> : "—"}
                       </td>
                       <td className="px-4 py-2.5 text-right font-mono font-semibold">{formatVND(Number(a.allocated_amount))}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">{a.delivery_date ? formatDate(a.delivery_date) : "—"}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{a.start_date ? formatDate(a.start_date) : "—"}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{a.end_date ? formatDate(a.end_date) : "—"}</td>
                       <td className="px-4 py-2.5">
                         {a.task_document_url ? (
                           <button onClick={() => handleViewDoc(a.task_document_url!)} className="text-primary hover:underline text-[11px] flex items-center gap-0.5">
@@ -429,7 +446,7 @@ export default function BudgetAssignPage() {
                     <tr className="border-t border-border bg-secondary/20">
                       <td colSpan={3} className="px-4 py-2 font-bold">{t.kpi.totalAssigned}</td>
                       <td className="px-4 py-2 text-right font-mono font-bold">{formatVND(total)}</td>
-                      <td colSpan={canManage ? 4 : 3} />
+                      <td colSpan={canManage ? 5 : 4} />
                     </tr>
                   </tfoot>
                 )}

@@ -62,6 +62,35 @@ function CenterRow({ item, color }: { item: CenterRevenueItem; color: string }) 
   );
 }
 
+function CenterPsChart({ item, color }: { item: CenterRevenueItem; color: string }) {
+  if (item.by_product_service.length === 0) return null;
+
+  const pieData = item.by_product_service.map((ps, i) => ({
+    name: ps.ps_name,
+    value: ps.amount,
+  }));
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+        <p className="text-xs font-medium">{item.center_name}</p>
+        <span className="text-xs text-muted-foreground ml-auto">{formatVND(item.total_revenue)}</span>
+      </div>
+      <ResponsiveContainer width="100%" height={180}>
+        <PieChart>
+          <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={2}
+            label={({ percent }: { percent: number }) => `${(percent * 100).toFixed(1)}%`}>
+            {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+          </Pie>
+          <Tooltip formatter={(v: number) => formatVND(v)} />
+          <Legend wrapperStyle={{ fontSize: 10 }} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export function CenterRevenueOverview({ from, to }: Props) {
   const { t } = useI18n();
   const { data = [], isLoading } = useCenterRevenue({ from, to });
@@ -89,20 +118,11 @@ export function CenterRevenueOverview({ from, to }: Props) {
     fill: COLORS[i % COLORS.length],
   }));
 
-  const psMap = new Map<string, { name: string; amount: number }>();
-  for (const center of data) {
-    for (const ps of center.by_product_service) {
-      const existing = psMap.get(ps.ps_id);
-      if (existing) existing.amount += ps.amount;
-      else psMap.set(ps.ps_id, { name: ps.ps_name, amount: ps.amount });
-    }
-  }
-  const psSummary = Array.from(psMap.values()).sort((a, b) => b.amount - a.amount);
-
   return (
     <div className="space-y-4">
+      {/* Biểu đồ tổng thể */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-xl p-4" role="img" aria-label={t.revenue.centerRevenueTitle}>
+        <div className="bg-card border border-border rounded-xl p-4" role="img" aria-label={t.revenue.revenueByCenter}>
           <p className="text-xs font-medium text-muted-foreground mb-3">{t.revenue.revenueByCenter}</p>
           <ResponsiveContainer width="100%" height={Math.max(200, data.length * 48 + 40)}>
             <BarChart data={data} layout="vertical" margin={{ left: 10 }}>
@@ -122,7 +142,7 @@ export function CenterRevenueOverview({ from, to }: Props) {
           <ResponsiveContainer width="100%" height={Math.max(200, data.length * 48 + 40)}>
             <PieChart>
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}
-                label={({ value }: { value: number }) => shortVND(value)}>
+                label={({ value, percent }: { value: number; percent: number }) => `${(percent * 100).toFixed(1)}%`}>
                 {pieData.map((d, i) => <Cell key={i} fill={d.fill} />)}
               </Pie>
               <Tooltip formatter={(v: number) => formatVND(v)} />
@@ -132,22 +152,15 @@ export function CenterRevenueOverview({ from, to }: Props) {
         </div>
       </div>
 
-      {psSummary.length > 1 && (
-        <div className="bg-card border border-border rounded-xl p-4" role="img" aria-label={t.revenue.byProductService}>
-          <p className="text-xs font-medium text-muted-foreground mb-3">{t.revenue.byProductService}</p>
-          <ResponsiveContainer width="100%" height={Math.max(180, psSummary.length * 40 + 40)}>
-            <BarChart data={psSummary} layout="vertical" margin={{ left: 10 }}>
-              <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
-              <Tooltip formatter={(v: number) => [formatVND(v), ""]} />
-              <Bar dataKey="amount" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={24}>
-                <LabelList dataKey="amount" position="right" fontSize={10} formatter={(v: number) => shortVND(v)} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      {/* SP/DV từng trung tâm riêng */}
+      <p className="text-xs font-medium text-muted-foreground">{t.revenue.byProductService} — {t.revenue.revenueByCenter}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {data.map((item, i) => (
+          <CenterPsChart key={item.center_id} item={item} color={COLORS[i % COLORS.length]} />
+        ))}
+      </div>
 
+      {/* Bảng chi tiết */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full text-xs">
           <thead>

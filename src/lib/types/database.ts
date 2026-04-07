@@ -277,6 +277,8 @@ export type Database = {
           allocated_amount: number
           delivery_progress: number
           delivery_date: string | null
+          start_date: string | null
+          end_date: string | null
           allocation_code: string | null
           task_document_url: string | null
           note: string | null
@@ -294,6 +296,8 @@ export type Database = {
           allocated_amount?: number
           delivery_progress?: number
           delivery_date?: string | null
+          start_date?: string | null
+          end_date?: string | null
           allocation_code?: string | null
           task_document_url?: string | null
           note?: string | null
@@ -311,6 +315,8 @@ export type Database = {
           allocated_amount?: number
           delivery_progress?: number
           delivery_date?: string | null
+          start_date?: string | null
+          end_date?: string | null
           allocation_code?: string | null
           task_document_url?: string | null
           note?: string | null
