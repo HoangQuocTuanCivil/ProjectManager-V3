@@ -13,25 +13,6 @@ import { createClient } from "@/lib/supabase/client";
 
 const supabase = createClient();
 
-// Lấy doanh thu confirmed per hợp đồng
-function useContractRevenue() {
-  return useQuery({
-    queryKey: ["report", "contract-revenue"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("revenue_entries")
-        .select("contract_id, amount")
-        .eq("status", "confirmed")
-        .not("contract_id", "is", null);
-      const map = new Map<string, number>();
-      for (const r of data ?? []) {
-        map.set(r.contract_id!, (map.get(r.contract_id!) || 0) + Number(r.amount));
-      }
-      return map;
-    },
-  });
-}
-
 // Lấy chi phí per hợp đồng, phân theo loại kế toán
 function useContractCosts() {
   return useQuery({
@@ -55,16 +36,15 @@ function useContractCosts() {
 
 export default function BusinessReportPage() {
   const { data: contracts = [] } = useContracts();
-  const { data: revenueMap = new Map() } = useContractRevenue();
   const { data: costsMap = new Map() } = useContractCosts();
   const [filterStatus, setFilterStatus] = useState("");
 
-  // Tính báo cáo Lãi/Lỗ per hợp đồng
   const report = useMemo(() => {
     return (contracts as any[])
+      .filter((c) => c.contract_type === "outgoing" && ["active", "completed"].includes(c.status))
       .filter((c) => !filterStatus || c.status === filterStatus)
       .map((c) => {
-        const revenue = revenueMap.get(c.id) || 0;
+        const revenue = Number(c.contract_value);
         const costs = costsMap.get(c.id) || { cogs: 0, selling: 0, admin: 0, financial: 0 };
         const grossProfit = revenue - costs.cogs;
         const opex = costs.selling + costs.admin;
@@ -88,7 +68,7 @@ export default function BusinessReportPage() {
           margin,
         };
       });
-  }, [contracts, revenueMap, costsMap, filterStatus]);
+  }, [contracts, costsMap, filterStatus]);
 
   // Tổng cộng
   const totals = useMemo(() => report.reduce((acc, r) => ({
