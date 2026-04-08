@@ -113,7 +113,7 @@ CREATE TABLE centers (
   UNIQUE(org_id, code)
 );
 
--- Thêm cột center_id vào departments với FK
+-- Thêm center_id vào departments với FK
 ALTER TABLE departments ADD COLUMN center_id UUID REFERENCES centers(id) ON DELETE SET NULL;
 
 -- FK users.center_id → centers
