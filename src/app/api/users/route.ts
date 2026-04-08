@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   if (roleErr) return errorResponse(roleErr, 403);
 
   const body = await req.json();
-  const { email, password, full_name, role, dept_id, team_id, job_title } = body;
+  const { email, password, full_name, role, dept_id, team_id, job_title, employee_code } = body;
 
   // Director: chỉ tạo user trong center mình
   if (profile!.role === "director" && dept_id) {
@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
     email,
     role: role || "staff",
     job_title: job_title || null,
+    employee_code: employee_code || null,
     is_active: true,
   }).select("*, department:departments!users_dept_id_fkey(id, name, code)").single();
 

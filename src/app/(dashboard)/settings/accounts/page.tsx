@@ -101,7 +101,7 @@ export default function AccountsSettingsPage() {
   }, [allTeams, filterDept, filterCenter, filterDeptOptions]);
 
   // Create form
-  const [createForm, setCreateForm] = useState({ email: "", password: "", full_name: "", role: "staff", center_id: "", dept_id: "", team_id: "", job_title: "" });
+  const [createForm, setCreateForm] = useState({ email: "", password: "", full_name: "", employee_code: "", role: "staff", center_id: "", dept_id: "", team_id: "", job_title: "" });
 
   // Cascade: create form dept options by center
   const createDeptsFiltered = useMemo(() => {
@@ -190,7 +190,7 @@ export default function AccountsSettingsPage() {
       await createUser.mutateAsync(createForm);
       toast.success("Tạo tài khoản thành công!");
       setShowCreate(false);
-      setCreateForm({ email: "", password: "", full_name: "", role: "staff", center_id: "", dept_id: "", team_id: "", job_title: "" });
+      setCreateForm({ email: "", password: "", full_name: "", employee_code: "", role: "staff", center_id: "", dept_id: "", team_id: "", job_title: "" });
     } catch (e: any) {
       toast.error(e.message || "Lỗi tạo tài khoản");
     }
@@ -212,6 +212,7 @@ export default function AccountsSettingsPage() {
       const center = (allCenters as any[]).find((c: any) => c.id === u.center_id || c.id === u.department?.center_id);
       return {
         "Họ tên": u.full_name,
+        "Mã hệ thống": u.employee_code || "",
         "Email": u.email,
         "Vai trò": ROLE_CONFIG[u.role as keyof typeof ROLE_CONFIG]?.label || u.role,
         "Chức danh": u.job_title || "",
@@ -229,7 +230,7 @@ export default function AccountsSettingsPage() {
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     ws["!cols"] = [
-      { wch: 22 }, { wch: 28 }, { wch: 14 }, { wch: 18 },
+      { wch: 22 }, { wch: 14 }, { wch: 28 }, { wch: 14 }, { wch: 18 },
       { wch: 18 }, { wch: 10 }, { wch: 18 }, { wch: 10 },
       { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 },
     ];
@@ -313,18 +314,18 @@ export default function AccountsSettingsPage() {
                   <input value={createForm.full_name} onChange={(e) => setCreateForm({ ...createForm, full_name: e.target.value })} placeholder="Nguyễn Văn A" className={inputClass} />
                 </div>
                 <div>
-                  <label className={labelClass}>Email *</label>
-                  <input type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="user@company.com" className={inputClass} />
+                  <label className={labelClass}>Mã hệ thống</label>
+                  <input value={createForm.employee_code} onChange={(e) => setCreateForm({ ...createForm, employee_code: e.target.value })} placeholder="" className={inputClass} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass}>Mật khẩu *</label>
-                  <input type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} placeholder="Tối thiểu 8 ký tự" className={inputClass} />
+                  <label className={labelClass}>Email *</label>
+                  <input type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="user@company.com" className={inputClass} />
                 </div>
                 <div>
-                  <label className={labelClass}>Chức danh</label>
-                  <input value={createForm.job_title} onChange={(e) => setCreateForm({ ...createForm, job_title: e.target.value })} placeholder="Kỹ sư BIM" className={inputClass} />
+                  <label className={labelClass}>Mật khẩu *</label>
+                  <input type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} placeholder="Tối thiểu 8 ký tự" className={inputClass} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -339,6 +340,12 @@ export default function AccountsSettingsPage() {
                   />
                 </div>
                 <div>
+                  <label className={labelClass}>Chức danh</label>
+                  <input value={createForm.job_title} onChange={(e) => setCreateForm({ ...createForm, job_title: e.target.value })} placeholder="Kỹ sư BIM" className={inputClass} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className={labelClass}>Trung tâm</label>
                   <select
                     value={createForm.center_id}
@@ -351,8 +358,6 @@ export default function AccountsSettingsPage() {
                     ))}
                   </select>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelClass}>Phòng ban</label>
                   <SearchSelect
@@ -363,16 +368,16 @@ export default function AccountsSettingsPage() {
                     className="mt-1"
                   />
                 </div>
-                <div>
-                  <label className={labelClass}>Nhóm</label>
-                  <SearchSelect
-                    value={createForm.team_id}
-                    onChange={(val) => setCreateForm({ ...createForm, team_id: val })}
-                    options={createTeamsFiltered.map((t: any) => ({ value: t.id, label: t.code ? `${t.code} — ${t.name}` : t.name }))}
-                    placeholder="— Không —"
-                    className="mt-1"
-                  />
-                </div>
+              </div>
+              <div>
+                <label className={labelClass}>Nhóm</label>
+                <SearchSelect
+                  value={createForm.team_id}
+                  onChange={(val) => setCreateForm({ ...createForm, team_id: val })}
+                  options={createTeamsFiltered.map((t: any) => ({ value: t.id, label: t.code ? `${t.code} — ${t.name}` : t.name }))}
+                  placeholder="— Không —"
+                  className="mt-1"
+                />
               </div>
             </div>
             <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
@@ -571,6 +576,7 @@ function EditUserModal({ user, departments, teams, centers, customRoles, onClose
 }) {
   const [form, setForm] = useState({
     full_name: user.full_name || "",
+    employee_code: user.employee_code || "",
     role: user.role,
     center_id: user.center_id || user.department?.center_id || "",
     dept_id: user.dept_id || "",
@@ -614,8 +620,8 @@ function EditUserModal({ user, departments, teams, centers, customRoles, onClose
               <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Email</label>
-              <input value={user.email} disabled className={inputClass + " opacity-50 cursor-not-allowed"} />
+              <label className={labelClass}>Mã hệ thống</label>
+              <input value={form.employee_code} onChange={(e) => setForm({ ...form, employee_code: e.target.value })} placeholder="" className={inputClass} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -630,6 +636,28 @@ function EditUserModal({ user, departments, teams, centers, customRoles, onClose
               />
             </div>
             <div>
+              <label className={labelClass}>Vai trò tùy chỉnh</label>
+              <SearchSelect
+                value={form.custom_role_id}
+                onChange={(val) => setForm({ ...form, custom_role_id: val })}
+                options={customRoles.map((r: any) => ({ value: r.id, label: r.name }))}
+                placeholder="— Không —"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Email</label>
+              <input value={user.email} disabled className={inputClass + " opacity-50 cursor-not-allowed"} />
+            </div>
+            <div>
+              <label className={labelClass}>Chức danh</label>
+              <input value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} className={inputClass} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <label className={labelClass}>Trung tâm</label>
               <select
                 value={form.center_id}
@@ -642,8 +670,6 @@ function EditUserModal({ user, departments, teams, centers, customRoles, onClose
                 ))}
               </select>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Phòng ban</label>
               <SearchSelect
@@ -654,6 +680,8 @@ function EditUserModal({ user, departments, teams, centers, customRoles, onClose
                 className="mt-1"
               />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Nhóm</label>
               <SearchSelect
@@ -664,27 +692,11 @@ function EditUserModal({ user, departments, teams, centers, customRoles, onClose
                 className="mt-1"
               />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Chức danh</label>
-              <input value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} className={inputClass} />
+            <div className="flex items-center gap-3 pt-5">
+              <label className={labelClass}>Trạng thái:</label>
+              <Toggle checked={form.is_active} onChange={(v) => setForm({ ...form, is_active: v })} />
+              <span className="text-sm">{form.is_active ? "Hoạt động" : "Đã khóa"}</span>
             </div>
-            <div>
-              <label className={labelClass}>Vai trò tùy chỉnh</label>
-              <SearchSelect
-                value={form.custom_role_id}
-                onChange={(val) => setForm({ ...form, custom_role_id: val })}
-                options={customRoles.map((r: any) => ({ value: r.id, label: r.name }))}
-                placeholder="— Không —"
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-3 pt-1">
-            <label className={labelClass}>Trạng thái:</label>
-            <Toggle checked={form.is_active} onChange={(v) => setForm({ ...form, is_active: v })} />
-            <span className="text-sm">{form.is_active ? "Hoạt động" : "Đã khóa"}</span>
           </div>
         </div>
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
