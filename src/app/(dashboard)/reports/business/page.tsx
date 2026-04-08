@@ -31,6 +31,7 @@ const GROUP_OPTIONS: Array<{ value: GroupBy; label: string }> = [
 ];
 
 const PIE_COLORS = ["#ef4444", "#f97316", "#eab308", "#a855f7", "#3b82f6", "#06b6d4"];
+const BAR_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4"];
 
 function useDepartments(centerId?: string) {
   return useQuery({
@@ -87,30 +88,30 @@ export default function BusinessReportPage() {
     if (v === "center") setDeptId("");
   };
 
+  const isCenter = groupBy === "center";
+
   const handleExport = () => {
     if (!rows.length) return;
-    const sheet = rows.map((r) => ({
-      "Mã": r.code,
-      "Tên": r.name,
-      "Doanh thu": r.revenue,
-      "Giá vốn": r.cogs,
-      "CP bán hàng": r.selling,
-      "CP quản lý": r.admin,
-      "CP tài chính": r.financial,
-      "Lương": r.salary,
-      "HĐ giao khoán": r.incoming,
-      "Tổng chi phí": r.total_cost,
-      "Lợi nhuận": r.profit,
-      "Tỷ suất LN (%)": r.margin,
-    }));
-    sheet.push({
-      "Mã": "", "Tên": "TỔNG CỘNG",
-      "Doanh thu": totals.revenue, "Giá vốn": totals.cogs,
-      "CP bán hàng": totals.selling, "CP quản lý": totals.admin,
-      "CP tài chính": totals.financial, "Lương": totals.salary,
-      "HĐ giao khoán": totals.incoming, "Tổng chi phí": totals.total_cost,
-      "Lợi nhuận": totals.profit, "Tỷ suất LN (%)": totals.margin,
-    });
+    const sheet = isCenter
+      ? rows.map((r) => ({
+          "Mã": r.code, "Tên": r.name,
+          "Doanh thu": r.revenue, "Lương": r.salary,
+          "Lợi nhuận": r.profit, "Tỷ suất LN (%)": r.margin,
+        }))
+      : rows.map((r) => ({
+          "Mã": r.code, "Tên": r.name,
+          "Doanh thu": r.revenue, "Giá vốn": r.cogs,
+          "CP bán hàng": r.selling, "CP quản lý": r.admin,
+          "CP tài chính": r.financial, "Lương": r.salary,
+          "HĐ giao khoán": r.incoming, "Tổng chi phí": r.total_cost,
+          "Lợi nhuận": r.profit, "Tỷ suất LN (%)": r.margin,
+        }));
+
+    const totalRow = isCenter
+      ? { "Mã": "", "Tên": "TỔNG CỘNG", "Doanh thu": totals.revenue, "Lương": totals.salary, "Lợi nhuận": totals.profit, "Tỷ suất LN (%)": totals.margin }
+      : { "Mã": "", "Tên": "TỔNG CỘNG", "Doanh thu": totals.revenue, "Giá vốn": totals.cogs, "CP bán hàng": totals.selling, "CP quản lý": totals.admin, "CP tài chính": totals.financial, "Lương": totals.salary, "HĐ giao khoán": totals.incoming, "Tổng chi phí": totals.total_cost, "Lợi nhuận": totals.profit, "Tỷ suất LN (%)": totals.margin };
+
+    sheet.push(totalRow as any);
     const ws = XLSX.utils.json_to_sheet(sheet);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Báo cáo kinh doanh");
@@ -125,10 +126,12 @@ export default function BusinessReportPage() {
   return (
     <div className="space-y-5 animate-fade-in">
       <p className="text-sm text-muted-foreground">
-        Doanh thu − Chi phí − Giao khoán = Lợi nhuận · {groupLabel}
+        {isCenter
+          ? "Doanh thu − Lương = Lợi nhuận · Theo trung tâm"
+          : `Doanh thu − Chi phí − Giao khoán = Lợi nhuận · ${groupLabel}`}
       </p>
 
-      <SummaryCards totals={totals} />
+      <SummaryCards totals={totals} isCenter={isCenter} />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="w-48">
@@ -169,25 +172,34 @@ export default function BusinessReportPage() {
       ) : (
         <>
           <Charts rows={rows} totals={totals} groupBy={groupBy} />
-          <ReportTable rows={rows} totals={totals} groupBy={groupBy} />
+          {isCenter
+            ? <CenterTable rows={rows} totals={totals} />
+            : <FullTable rows={rows} totals={totals} groupBy={groupBy} />}
         </>
       )}
     </div>
   );
 }
 
-function SummaryCards({ totals }: { totals: BusinessTotals }) {
-  const items: Array<{ label: string; value: number; color: string; pct?: boolean }> = [
-    { label: "Doanh thu", value: totals.revenue, color: "text-green-500" },
-    { label: "Tổng chi phí", value: totals.total_cost, color: "text-orange-500" },
-    { label: "HĐ giao khoán", value: totals.incoming, color: "text-cyan-500" },
-    { label: "Lương", value: totals.salary, color: "text-blue-500" },
-    { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500" },
-    { label: "Tỷ suất LN", value: totals.margin, color: totals.margin >= 0 ? "text-green-500" : "text-red-500", pct: true },
-  ];
+function SummaryCards({ totals, isCenter }: { totals: BusinessTotals; isCenter: boolean }) {
+  const items: Array<{ label: string; value: number; color: string; pct?: boolean }> = isCenter
+    ? [
+        { label: "Doanh thu", value: totals.revenue, color: "text-green-500" },
+        { label: "Lương", value: totals.salary, color: "text-blue-500" },
+        { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500" },
+        { label: "Tỷ suất LN", value: totals.margin, color: totals.margin >= 0 ? "text-green-500" : "text-red-500", pct: true },
+      ]
+    : [
+        { label: "Doanh thu", value: totals.revenue, color: "text-green-500" },
+        { label: "Tổng chi phí", value: totals.total_cost, color: "text-orange-500" },
+        { label: "HĐ giao khoán", value: totals.incoming, color: "text-cyan-500" },
+        { label: "Lương", value: totals.salary, color: "text-blue-500" },
+        { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500" },
+        { label: "Tỷ suất LN", value: totals.margin, color: totals.margin >= 0 ? "text-green-500" : "text-red-500", pct: true },
+      ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div className={`grid grid-cols-2 gap-3 ${isCenter ? "sm:grid-cols-4" : "sm:grid-cols-3 lg:grid-cols-6"}`}>
       {items.map((item, i) => (
         <div key={i} className="bg-card border border-border rounded-xl p-3">
           <p className="text-[10px] text-muted-foreground mb-1">{item.label}</p>
@@ -205,36 +217,45 @@ function Charts({ rows, totals, groupBy }: {
   totals: BusinessTotals;
   groupBy: GroupBy;
 }) {
+  const isCenter = groupBy === "center";
+
   const barData = useMemo(() => {
     if (groupBy === "company") return [];
-    return rows.slice(0, 10).map((r) => ({
-      name: r.code || r.name.slice(0, 12),
-      "Doanh thu": r.revenue,
-      "Chi phí": r.total_cost,
-      "Lợi nhuận": r.profit,
-    }));
-  }, [rows, groupBy]);
+    return rows.slice(0, 10).map((r) => {
+      const base: any = {
+        name: r.code || r.name.slice(0, 12),
+        "Doanh thu": r.revenue,
+        "Lợi nhuận": r.profit,
+      };
+      if (isCenter) base["Lương"] = r.salary;
+      else base["Chi phí"] = r.total_cost;
+      return base;
+    });
+  }, [rows, groupBy, isCenter]);
 
   const pieData = useMemo(() => {
-    const items = [
+    if (isCenter) {
+      return rows.map((r) => ({ name: r.name, value: r.revenue })).filter((i) => i.value > 0);
+    }
+    return [
       { name: "Giá vốn", value: totals.cogs },
       { name: "CP bán hàng", value: totals.selling },
       { name: "CP quản lý", value: totals.admin },
       { name: "CP tài chính", value: totals.financial },
       { name: "Lương", value: totals.salary },
       { name: "HĐ giao khoán", value: totals.incoming },
-    ];
-    return items.filter((i) => i.value > 0);
-  }, [totals]);
+    ].filter((i) => i.value > 0);
+  }, [totals, rows, isCenter]);
 
   const showBar = barData.length > 1;
+  const colors = isCenter ? BAR_COLORS : PIE_COLORS;
 
   return (
     <div className={`grid gap-4 ${showBar ? "grid-cols-1 lg:grid-cols-5" : "grid-cols-1 lg:grid-cols-2"}`}>
       {showBar && (
         <div className="lg:col-span-3 bg-card border border-border rounded-xl p-4">
           <p className="text-xs font-medium text-muted-foreground mb-3">
-            Doanh thu · Chi phí · Lợi nhuận
+            {isCenter ? "Doanh thu · Lương · Lợi nhuận theo trung tâm" : "Doanh thu · Chi phí · Lợi nhuận"}
           </p>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={barData}>
@@ -243,8 +264,10 @@ function Charts({ rows, totals, groupBy }: {
               <Tooltip formatter={(v: number) => formatVND(v)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="Doanh thu" fill="#22c55e" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Chi phí" fill="#f97316" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Lợi nhuận" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              {isCenter
+                ? <Bar dataKey="Lương" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                : <Bar dataKey="Chi phí" fill="#f97316" radius={[4, 4, 0, 0]} />}
+              <Bar dataKey="Lợi nhuận" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -253,13 +276,16 @@ function Charts({ rows, totals, groupBy }: {
       {pieData.length > 0 && (
         <div className={showBar ? "lg:col-span-2" : ""}>
           <div className="bg-card border border-border rounded-xl p-4">
-            <p className="text-xs font-medium text-muted-foreground mb-3">Cơ cấu chi phí</p>
+            <p className="text-xs font-medium text-muted-foreground mb-3">
+              {isCenter ? "Tỷ trọng doanh thu" : "Cơ cấu chi phí"}
+            </p>
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie data={pieData} dataKey="value" nameKey="name"
-                  cx="50%" cy="50%" innerRadius={60} outerRadius={95} paddingAngle={2}>
+                  cx="50%" cy="50%" innerRadius={60} outerRadius={95} paddingAngle={2}
+                  label={({ percent }: { percent: number }) => `${(percent * 100).toFixed(1)}%`}>
                   {pieData.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    <Cell key={i} fill={colors[i % colors.length]} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(v: number) => formatVND(v)} />
@@ -273,13 +299,55 @@ function Charts({ rows, totals, groupBy }: {
   );
 }
 
-function ReportTable({ rows, totals, groupBy }: {
+function CenterTable({ rows, totals }: { rows: BusinessRow[]; totals: BusinessTotals }) {
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-x-auto">
+      <table className="w-full text-xs whitespace-nowrap">
+        <thead>
+          <tr className="border-b border-border text-muted-foreground">
+            {["Trung tâm", "Doanh thu", "Lương", "Lợi nhuận", "Tỷ suất"].map((h) => (
+              <th key={h} className="text-left px-3 py-2.5 font-medium">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/30">
+          {rows.map((r) => (
+            <tr key={r.id} className={`hover:bg-secondary/20 transition-colors ${r.profit < 0 ? "bg-red-500/5" : ""}`}>
+              <td className="px-3 py-2.5 font-medium">
+                {r.name}
+                {r.code && <span className="ml-1.5 text-muted-foreground text-[10px]">{r.code}</span>}
+              </td>
+              <CurrencyCell value={r.revenue} color="text-green-500" />
+              <CurrencyCell value={r.salary} color="text-blue-500" />
+              <td className={`px-3 py-2.5 font-mono font-bold ${r.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
+                {r.profit >= 0 ? "+" : ""}{formatVND(r.profit)}
+              </td>
+              <td className="px-3 py-2.5"><MarginBadge value={r.margin} /></td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-border bg-secondary/30 font-bold">
+            <td className="px-3 py-2.5">TỔNG CỘNG</td>
+            <CurrencyCell value={totals.revenue} color="text-green-500" />
+            <CurrencyCell value={totals.salary} color="text-blue-500" />
+            <td className={`px-3 py-2.5 font-mono ${totals.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
+              {totals.profit >= 0 ? "+" : ""}{formatVND(totals.profit)}
+            </td>
+            <td className="px-3 py-2.5"><MarginBadge value={totals.margin} /></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+function FullTable({ rows, totals, groupBy }: {
   rows: BusinessRow[];
   totals: BusinessTotals;
   groupBy: GroupBy;
 }) {
-  const nameHeader = groupBy === "center" ? "Trung tâm"
-    : groupBy === "department" ? "Phòng ban"
+  const nameHeader = groupBy === "department" ? "Phòng ban"
     : groupBy === "product_service" ? "Sản phẩm/DV"
     : "Đơn vị";
 

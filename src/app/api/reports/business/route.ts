@@ -29,6 +29,10 @@ export async function GET(req: NextRequest) {
   };
   const orgId = profile.org_id;
 
+  if (groupBy === "center") {
+    return buildCenterReport(admin, orgId, filters);
+  }
+
   const [revenueMap, costsMap, salaryMap, incomingMap, centersRes, deptsRes, psRes] =
     await Promise.all([
       fetchRevenue(admin, orgId, groupBy, filters),
@@ -41,10 +45,7 @@ export async function GET(req: NextRequest) {
     ]);
 
   const allKeys = new Set([
-    ...revenueMap.keys(),
-    ...costsMap.keys(),
-    ...salaryMap.keys(),
-    ...incomingMap.keys(),
+    ...revenueMap.keys(), ...costsMap.keys(), ...salaryMap.keys(), ...incomingMap.keys(),
   ]);
 
   const resolve = buildNameResolver(groupBy, centersRes.data ?? [], deptsRes.data ?? [], psRes.data ?? [], orgId);
@@ -63,25 +64,99 @@ export async function GET(req: NextRequest) {
     const margin = revenue > 0 ? Math.round((profit / revenue) * 1000) / 10 : 0;
 
     rows.push({
-      id: key,
-      name: resolved.name,
-      code: resolved.code,
-      revenue,
-      cogs: costs.cogs,
-      selling: costs.selling,
-      admin: costs.admin,
-      financial: costs.financial,
-      salary,
-      incoming,
-      total_cost: totalCost,
-      profit,
-      margin,
+      id: key, name: resolved.name, code: resolved.code,
+      revenue, cogs: costs.cogs, selling: costs.selling, admin: costs.admin, financial: costs.financial,
+      salary, incoming, total_cost: totalCost, profit, margin,
     });
   }
 
   rows.sort((a, b) => b.revenue - a.revenue);
+  return jsonResponse({ rows, totals: sumTotals(rows) });
+}
 
-  const totals = rows.reduce(
+async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
+  const [allocsRes, contractsRes, salaryMap] = await Promise.all([
+    admin.from("dept_budget_allocations")
+      .select("project_id, center_id, allocated_amount, delivery_date, start_date, end_date, created_at, center:centers(id, name, code)")
+      .eq("org_id", orgId)
+      .not("center_id", "is", null),
+    admin.from("contracts")
+      .select("id, project_id, contract_value, status")
+      .eq("org_id", orgId)
+      .eq("contract_type", "outgoing")
+      .in("status", ["active", "completed"]),
+    fetchSalary(admin, orgId, "center", f),
+  ]);
+
+  const allocs = (allocsRes.data ?? []).filter((a: any) => {
+    if (!a.center_id) return false;
+    const startRef = a.start_date || a.delivery_date || a.created_at?.slice(0, 10);
+    const endRef = a.end_date || a.delivery_date || a.created_at?.slice(0, 10);
+    if (f.from && endRef && endRef < f.from) return false;
+    if (f.to && startRef && startRef > f.to) return false;
+    return true;
+  });
+
+  const projectTotalAlloc = new Map<string, number>();
+  for (const a of allocs) {
+    projectTotalAlloc.set(a.project_id, (projectTotalAlloc.get(a.project_id) || 0) + Number(a.allocated_amount));
+  }
+
+  const centerAllocByProject = new Map<string, Map<string, number>>();
+  const centerInfo = new Map<string, { name: string; code: string }>();
+  for (const a of allocs) {
+    const center = a.center as any;
+    if (!center) continue;
+    centerInfo.set(a.center_id!, { name: center.name, code: center.code ?? "" });
+    if (!centerAllocByProject.has(a.project_id)) centerAllocByProject.set(a.project_id, new Map());
+    const projMap = centerAllocByProject.get(a.project_id)!;
+    projMap.set(a.center_id!, (projMap.get(a.center_id!) || 0) + Number(a.allocated_amount));
+  }
+
+  const contractsByProject = new Map<string, Array<{ contract_value: number }>>();
+  for (const c of contractsRes.data ?? []) {
+    if (!contractsByProject.has(c.project_id)) contractsByProject.set(c.project_id, []);
+    contractsByProject.get(c.project_id)!.push({ contract_value: Number(c.contract_value) });
+  }
+
+  const revenueMap = new Map<string, number>();
+  for (const [projectId, centerMap] of centerAllocByProject) {
+    const totalAlloc = projectTotalAlloc.get(projectId) || 0;
+    if (totalAlloc <= 0) continue;
+    const projContracts = contractsByProject.get(projectId) || [];
+    for (const [centerId, centerAlloc] of centerMap) {
+      const ratio = centerAlloc / totalAlloc;
+      let revenue = 0;
+      for (const ct of projContracts) revenue += ratio * ct.contract_value;
+      revenueMap.set(centerId, (revenueMap.get(centerId) ?? 0) + Math.round(revenue));
+    }
+  }
+
+  const allKeys = new Set([...revenueMap.keys(), ...salaryMap.keys()]);
+  const rows: any[] = [];
+  for (const key of allKeys) {
+    const info = centerInfo.get(key);
+    if (!info) continue;
+    if (f.centerId && key !== f.centerId) continue;
+
+    const revenue = revenueMap.get(key) ?? 0;
+    const salary = salaryMap.get(key) ?? 0;
+    const profit = revenue - salary;
+    const margin = revenue > 0 ? Math.round((profit / revenue) * 1000) / 10 : 0;
+
+    rows.push({
+      id: key, name: info.name, code: info.code,
+      revenue, cogs: 0, selling: 0, admin: 0, financial: 0,
+      salary, incoming: 0, total_cost: salary, profit, margin,
+    });
+  }
+
+  rows.sort((a, b) => b.revenue - a.revenue);
+  return jsonResponse({ rows, totals: sumTotals(rows) });
+}
+
+function sumTotals(rows: any[]) {
+  const t = rows.reduce(
     (acc, r) => ({
       revenue: acc.revenue + r.revenue,
       cogs: acc.cogs + r.cogs,
@@ -95,12 +170,8 @@ export async function GET(req: NextRequest) {
     }),
     { revenue: 0, cogs: 0, selling: 0, admin: 0, financial: 0, salary: 0, incoming: 0, total_cost: 0, profit: 0 },
   );
-
-  const totalMargin = totals.revenue > 0
-    ? Math.round((totals.profit / totals.revenue) * 1000) / 10
-    : 0;
-
-  return jsonResponse({ rows, totals: { ...totals, margin: totalMargin } });
+  t.margin = t.revenue > 0 ? Math.round((t.profit / t.revenue) * 1000) / 10 : 0;
+  return t;
 }
 
 async function fetchRevenue(admin: Admin, orgId: string, groupBy: GroupBy, f: Filters) {
@@ -141,16 +212,9 @@ async function fetchRevenue(admin: Admin, orgId: string, groupBy: GroupBy, f: Fi
     if (!entry || entry.status !== "confirmed" || entry.org_id !== orgId) continue;
     if (f.from && entry.recognition_date < f.from) continue;
     if (f.to && entry.recognition_date > f.to) continue;
-
-    if (groupBy === "center") {
-      if (!dept?.center_id) continue;
-      if (f.centerId && dept.center_id !== f.centerId) continue;
-      map.set(dept.center_id, (map.get(dept.center_id) ?? 0) + Number(row.allocated_amount));
-    } else {
-      if (f.centerId && dept?.center_id !== f.centerId) continue;
-      if (f.deptId && row.dept_id !== f.deptId) continue;
-      map.set(row.dept_id, (map.get(row.dept_id) ?? 0) + Number(row.allocated_amount));
-    }
+    if (f.centerId && dept?.center_id !== f.centerId) continue;
+    if (f.deptId && row.dept_id !== f.deptId) continue;
+    map.set(row.dept_id, (map.get(row.dept_id) ?? 0) + Number(row.allocated_amount));
   }
   return map;
 }
@@ -202,7 +266,7 @@ async function fetchCosts(admin: Admin, orgId: string, groupBy: GroupBy, f: Filt
   for (const r of data ?? []) {
     if (!r.dept_id) continue;
     const cat = r.category as keyof CostBucket;
-    const key = resolveGroupKey(groupBy, r.dept_id, deptCenter, f);
+    const key = resolveGroupKey(r.dept_id, deptCenter, f);
     if (!key) continue;
     const bucket = map.get(key) ?? empty();
     if (cat in bucket) bucket[cat] += Number(r.amount);
@@ -232,9 +296,18 @@ async function fetchSalary(admin: Admin, orgId: string, groupBy: GroupBy, f: Fil
   const deptCenter = await buildDeptCenterMap(admin, orgId);
   for (const r of data ?? []) {
     if (!r.dept_id) continue;
-    const key = resolveGroupKey(groupBy, r.dept_id, deptCenter, f);
-    if (!key) continue;
-    map.set(key, (map.get(key) ?? 0) + Number(r.base_salary));
+    const amount = Number(r.base_salary);
+
+    if (groupBy === "center") {
+      const cid = deptCenter.get(r.dept_id);
+      if (!cid) continue;
+      if (f.centerId && cid !== f.centerId) continue;
+      map.set(cid, (map.get(cid) ?? 0) + amount);
+    } else {
+      const key = resolveGroupKey(r.dept_id, deptCenter, f);
+      if (!key) continue;
+      map.set(key, (map.get(key) ?? 0) + amount);
+    }
   }
   return map;
 }
@@ -280,20 +353,14 @@ async function fetchIncomingContracts(admin: Admin, orgId: string, groupBy: Grou
     if (a.contract_id) allocMap.set(a.contract_id, { dept_id: a.dept_id, center_id: a.center_id });
   }
 
+  const deptCenter = await buildDeptCenterMap(admin, orgId);
   for (const c of contracts) {
     const alloc = allocMap.get(c.id);
     if (!alloc) continue;
     const amount = Number(c.contract_value);
-
-    if (groupBy === "center") {
-      const cid = alloc.center_id;
-      if (!cid) continue;
-      if (f.centerId && cid !== f.centerId) continue;
-      map.set(cid, (map.get(cid) ?? 0) + amount);
-    } else {
-      if (f.centerId && alloc.center_id !== f.centerId) continue;
-      if (f.deptId && alloc.dept_id !== f.deptId) continue;
-      const key = alloc.dept_id || alloc.center_id;
+    const deptId = alloc.dept_id;
+    if (deptId) {
+      const key = resolveGroupKey(deptId, deptCenter, f);
       if (!key) continue;
       map.set(key, (map.get(key) ?? 0) + amount);
     }
@@ -307,18 +374,7 @@ async function buildDeptCenterMap(admin: Admin, orgId: string) {
   return new Map((data ?? []).map((d: any) => [d.id, d.center_id as string]));
 }
 
-function resolveGroupKey(
-  groupBy: GroupBy,
-  deptId: string,
-  deptCenter: Map<string, string>,
-  f: Filters,
-): string | null {
-  if (groupBy === "center") {
-    const cid = deptCenter.get(deptId);
-    if (!cid) return null;
-    if (f.centerId && cid !== f.centerId) return null;
-    return cid;
-  }
+function resolveGroupKey(deptId: string, deptCenter: Map<string, string>, f: Filters): string | null {
   if (f.centerId) {
     const cid = deptCenter.get(deptId);
     if (cid !== f.centerId) return null;
