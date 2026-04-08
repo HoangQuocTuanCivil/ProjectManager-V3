@@ -45,13 +45,13 @@ function useDeptUsers(deptId?: string) {
   });
 }
 
-/** Tất cả user có employee_code — dùng cho import Excel lương theo mã hệ thống */
+/** Tất cả user active — dùng cho nhập lương thủ công và import Excel */
 function useAllActiveUsers() {
   return useQuery({
     queryKey: ["all-active-users"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("users").select("id, full_name, email, dept_id, employee_code")
+        .from("users").select("id, full_name, email, dept_id, center_id, employee_code")
         .eq("is_active", true).order("full_name");
       if (error) throw error;
       return data;
@@ -421,8 +421,8 @@ function SalarySection({ canManage }: { canManage: boolean }) {
       {salaryTab === "view" && <SalaryViewInner month={month} setMonth={setMonth} centerId={centerId} setCenterId={setCenterId} deptId={deptId} setDeptId={setDeptId} depts={departments} centers={allCenters as any[]} />}
       {salaryTab === "deductions" && <DeductionsInner />}
 
-      {/* Popup nhập lương thủ công */}
-      {showManualPopup && <SalaryManualPopup month={month} setMonth={setMonth} depts={departments} centers={allCenters as any[]} onClose={() => setShowManualPopup(false)} />}
+      {/* Popup nhập lương thủ công — kế thừa bộ lọc TT/PB từ view cha */}
+      {showManualPopup && <SalaryManualPopup month={month} setMonth={setMonth} initCenterId={centerId} initDeptId={deptId} depts={departments} centers={allCenters as any[]} onClose={() => setShowManualPopup(false)} />}
       {/* Popup chèn lương từ Excel */}
       {showExcelPopup && <SalaryExcelPopup month={month} setMonth={setMonth} onClose={() => setShowExcelPopup(false)} />}
     </div>
@@ -447,12 +447,15 @@ function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDe
   const { data: existing } = useSalaryRecords({ month, dept_id: deptId || undefined });
   const salaryRows = existing?.data ?? [];
 
-  /* Lọc thêm theo trung tâm nếu chọn trung tâm mà chưa chọn PB cụ thể */
+  /* Lọc theo TT: bao gồm user có dept trong TT hoặc center_id trực tiếp */
   const visibleRows = useMemo(() => {
     if (deptId) return salaryRows;
     if (!centerId) return salaryRows;
     const deptIdsInCenter = new Set(filteredDepts.map((d) => d.id));
-    return salaryRows.filter((r: any) => deptIdsInCenter.has(r.dept_id));
+    return salaryRows.filter((r: any) =>
+      deptIdsInCenter.has(r.dept_id) ||
+      r.user?.center_id === centerId
+    );
   }, [salaryRows, deptId, centerId, filteredDepts]);
 
   const rows = visibleRows.map((r: any) => ({
@@ -537,8 +540,9 @@ function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDe
 }
 
 /* ── Popup nhập lương thủ công: lọc TT/PB → nhập từng nhân sự ── */
-function SalaryManualPopup({ month, setMonth, depts, centers, onClose }: {
+function SalaryManualPopup({ month, setMonth, initCenterId, initDeptId, depts, centers, onClose }: {
   month: string; setMonth: (v: string) => void;
+  initCenterId: string; initDeptId: string;
   depts: { id: string; name: string; code: string; center_id?: string }[];
   centers: { id: string; name: string; code?: string; is_active?: boolean }[];
   onClose: () => void;
@@ -548,21 +552,25 @@ function SalaryManualPopup({ month, setMonth, depts, centers, onClose }: {
   const createBatch = useCreateSalaryBatch();
   const existingMap = new Map((existing?.data ?? []).map((r: any) => [r.user_id, r]));
   const [rows, setRows] = useState<Record<string, number>>({});
-  const [popupCenter, setPopupCenter] = useState("");
-  const [popupDept, setPopupDept] = useState("");
+  const [popupCenter, setPopupCenter] = useState(initCenterId);
+  const [popupDept, setPopupDept] = useState(initDeptId);
 
   const filteredDepts = useMemo(() => {
     if (!popupCenter) return depts;
     return depts.filter((d: any) => d.center_id === popupCenter);
   }, [depts, popupCenter]);
 
+  /* Lọc nhân sự: theo PB, hoặc theo TT (qua dept + center_id trực tiếp) */
   const visibleUsers = useMemo(() => {
     let list = allUsers;
     if (popupDept) {
       list = list.filter((u) => u.dept_id === popupDept);
     } else if (popupCenter) {
       const deptIds = new Set(filteredDepts.map((d) => d.id));
-      list = list.filter((u) => u.dept_id && deptIds.has(u.dept_id));
+      list = list.filter((u) =>
+        u.center_id === popupCenter ||
+        (u.dept_id && deptIds.has(u.dept_id))
+      );
     }
     return list;
   }, [allUsers, popupDept, popupCenter, filteredDepts]);
