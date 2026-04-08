@@ -418,7 +418,7 @@ function SalarySection({ canManage }: { canManage: boolean }) {
       </div>
       {salaryTab === "view" && <SalaryViewInner month={month} setMonth={setMonth} centerId={centerId} setCenterId={setCenterId} deptId={deptId} setDeptId={setDeptId} depts={departments} centers={allCenters as any[]} />}
       {salaryTab === "deductions" && <DeductionsInner />}
-      {salaryTab === "input-manual" && <SalaryManualInput month={month} setMonth={setMonth} deptId={deptId} setDeptId={setDeptId} depts={departments} />}
+      {salaryTab === "input-manual" && <SalaryManualInput month={month} setMonth={setMonth} centerId={centerId} setCenterId={setCenterId} deptId={deptId} setDeptId={setDeptId} depts={departments} centers={allCenters as any[]} />}
       {salaryTab === "input-excel" && <SalaryExcelInput month={month} setMonth={setMonth} />}
     </div>
   );
@@ -531,20 +531,43 @@ function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDe
   );
 }
 
-/* ── Nhập lương thủ công: chọn PB → nhập từng nhân sự ── */
-function SalaryManualInput({ month, setMonth, deptId, setDeptId, depts }: {
+/* ── Nhập lương thủ công: lọc theo Trung tâm / Phòng ban → nhập từng nhân sự ── */
+function SalaryManualInput({ month, setMonth, centerId, setCenterId, deptId, setDeptId, depts, centers }: {
   month: string; setMonth: (v: string) => void;
+  centerId: string; setCenterId: (v: string) => void;
   deptId: string; setDeptId: (v: string) => void;
-  depts: { id: string; name: string; code: string }[];
+  depts: { id: string; name: string; code: string; center_id?: string }[];
+  centers: { id: string; name: string; code?: string; is_active?: boolean }[];
 }) {
-  const { data: deptUsers = [] } = useDeptUsers(deptId || undefined);
-  const { data: existing } = useSalaryRecords({ month, dept_id: deptId || undefined });
+  const { data: allUsers = [] } = useAllActiveUsers();
+  const { data: existing } = useSalaryRecords({ month });
   const createBatch = useCreateSalaryBatch();
   const existingMap = new Map((existing?.data ?? []).map((r: any) => [r.user_id, r]));
   const [rows, setRows] = useState<Record<string, number>>({});
 
-  const effectiveRows = deptUsers.map((u) => ({
+  /* PB theo TT đã chọn */
+  const filteredDepts = useMemo(() => {
+    if (!centerId) return depts;
+    return depts.filter((d: any) => d.center_id === centerId);
+  }, [depts, centerId]);
+
+  /* Lọc nhân sự theo TT + PB */
+  const visibleUsers = useMemo(() => {
+    let list = allUsers;
+    if (deptId) {
+      list = list.filter((u) => u.dept_id === deptId);
+    } else if (centerId) {
+      const deptIds = new Set(filteredDepts.map((d) => d.id));
+      list = list.filter((u) => u.dept_id && deptIds.has(u.dept_id));
+    }
+    return list;
+  }, [allUsers, deptId, centerId, filteredDepts]);
+
+  const hasFilter = !!(centerId || deptId);
+
+  const effectiveRows = visibleUsers.map((u) => ({
     user_id: u.id, full_name: u.full_name, employee_code: u.employee_code,
+    dept_id: u.dept_id,
     hasCode: !!u.employee_code,
     current: existingMap.get(u.id)?.base_salary ?? 0,
     deduction: existingMap.get(u.id)?.deduction_applied ?? 0,
@@ -552,23 +575,22 @@ function SalaryManualInput({ month, setMonth, deptId, setDeptId, depts }: {
     input: rows[u.id] ?? (existingMap.get(u.id)?.base_salary ?? 0),
   }));
 
-  /* Tải mẫu Excel theo PB để nhập ngoài, import lại */
+  /* Tải mẫu Excel cho nhân sự đang hiển thị */
   const handleDownloadTemplate = () => {
-    if (!deptId || deptUsers.length === 0) { toast.error("Chọn PB có nhân viên trước"); return; }
-    const dept = depts.find((d) => d.id === deptId);
+    if (visibleUsers.length === 0) { toast.error("Không có nhân viên để xuất"); return; }
     const headers = ["MÃ HT", "Họ tên", "Email", "LƯƠNG THEO NGÀY CÔNG THỰC TẾ"];
-    const dataRows = deptUsers.map((u) => [u.employee_code || "", u.full_name, u.email || "", existingMap.get(u.id)?.base_salary ?? 0]);
+    const dataRows = visibleUsers.map((u) => [u.employee_code || "", u.full_name, u.email || "", existingMap.get(u.id)?.base_salary ?? 0]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
     ws["!cols"] = [{ wch: 14 }, { wch: 25 }, { wch: 30 }, { wch: 30 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Lương tháng");
-    XLSX.writeFile(wb, `Luong_${dept?.code || "PB"}_${month.slice(0, 7)}.xlsx`);
+    XLSX.writeFile(wb, `Luong_${month.slice(0, 7)}.xlsx`);
   };
 
   const handleSave = async () => {
     const records = effectiveRows
       .filter((r) => r.hasCode && r.input > 0)
-      .map((r) => ({ user_id: r.user_id, dept_id: deptId || undefined, month, base_salary: r.input }));
+      .map((r) => ({ user_id: r.user_id, dept_id: r.dept_id || undefined, month, base_salary: r.input }));
     if (records.length === 0) { toast.error("Không có dữ liệu lương để lưu"); return; }
     try {
       await createBatch.mutateAsync(records);
@@ -578,19 +600,32 @@ function SalaryManualInput({ month, setMonth, deptId, setDeptId, depts }: {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div>
           <label className="text-xs text-muted-foreground font-medium">Tháng</label>
           <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")}
             className="mt-1 block h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
         </div>
         <div className="w-48">
+          <label className="text-xs text-muted-foreground font-medium">Trung tâm</label>
+          <select
+            value={centerId}
+            onChange={(e) => { setCenterId(e.target.value); setDeptId(""); }}
+            className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none"
+          >
+            <option value="">Tất cả Trung tâm</option>
+            {centers.filter((c) => c.is_active !== false).map((c) => (
+              <option key={c.id} value={c.id}>{c.code ? `${c.code} — ${c.name}` : c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-48">
           <label className="text-xs text-muted-foreground font-medium">Phòng ban</label>
           <SearchSelect value={deptId} onChange={setDeptId}
-            options={[{ value: "", label: "— Chọn PB —" }, ...depts.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))]}
+            options={[{ value: "", label: "Tất cả Phòng ban" }, ...filteredDepts.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))]}
             className="mt-1" />
         </div>
-        {deptId && (
+        {hasFilter && (
           <div className="self-end flex items-center gap-2">
             <button onClick={handleDownloadTemplate} className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors">
               <Download size={13} /> Tải mẫu
@@ -601,8 +636,8 @@ function SalaryManualInput({ month, setMonth, deptId, setDeptId, depts }: {
           </div>
         )}
       </div>
-      {!deptId ? (
-        <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chọn phòng ban" subtitle="Chọn phòng ban để nhập lương từng nhân sự" />
+      {!hasFilter ? (
+        <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chọn trung tâm hoặc phòng ban" subtitle="Lọc theo trung tâm hoặc phòng ban để nhập lương" />
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <table className="w-full text-xs">
@@ -629,7 +664,7 @@ function SalaryManualInput({ month, setMonth, deptId, setDeptId, depts }: {
                   </td>
                 </tr>
               ))}
-              {effectiveRows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Không có nhân viên trong phòng ban</td></tr>}
+              {effectiveRows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Không có nhân viên</td></tr>}
             </tbody>
           </table>
         </div>
