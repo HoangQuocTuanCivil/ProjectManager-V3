@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { useContracts } from "@/lib/hooks/use-contracts";
 import { useCostEntries, useCreateCostEntry, useDeleteCostEntry } from "@/lib/hooks/use-revenue";
 import { useSalaryRecords, useCreateSalaryBatch, useSalaryDeductions } from "@/features/kpi";
+import { useCenters } from "@/lib/hooks/use-teams";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
-import { BarChart3, Wallet, AlertTriangle, Download, Upload } from "lucide-react";
+import { BarChart3, Wallet, AlertTriangle, Download, Upload, ChevronDown } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
@@ -357,15 +358,29 @@ function CostsSection({ canManage }: { canManage: boolean }) {
 
 function SalarySection({ canManage }: { canManage: boolean }) {
   const { data: departments = [] } = useDepartments();
+  const { data: allCenters = [] } = useCenters();
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7) + "-01");
+  const [centerId, setCenterId] = useState("");
   const [deptId, setDeptId] = useState("");
-  const [salaryTab, setSalaryTab] = useState<"input" | "deductions">("input");
+  const [salaryTab, setSalaryTab] = useState<"view" | "deductions" | "input-manual" | "input-excel">("view");
+  const isInputMode = salaryTab === "input-manual" || salaryTab === "input-excel";
+
+  /* Dropdown "Nhập lương" */
+  const [inputMenuOpen, setInputMenuOpen] = useState(false);
+  const inputMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (inputMenuRef.current && !inputMenuRef.current.contains(e.target as Node)) setInputMenuOpen(false);
+    };
+    if (inputMenuOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [inputMenuOpen]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-1">
         {([
-          { key: "input" as const, label: "Lương tháng" },
+          { key: "view" as const, label: "Lương tháng" },
           { key: "deductions" as const, label: "Công nợ khoán" },
         ]).map(v => (
           <button key={v.key} onClick={() => setSalaryTab(v.key)}
@@ -373,29 +388,265 @@ function SalarySection({ canManage }: { canManage: boolean }) {
             {v.label}
           </button>
         ))}
+        {/* Nút "Nhập lương" — dropdown chứa 2 chế độ nhập */}
+        {canManage && (
+          <div className="relative" ref={inputMenuRef}>
+            <button
+              onClick={() => setInputMenuOpen((o) => !o)}
+              className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors inline-flex items-center gap-1 ${isInputMode ? "bg-primary text-primary-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}
+            >
+              Nhập lương <ChevronDown size={12} className={`transition-transform ${inputMenuOpen ? "rotate-180" : ""}`} />
+            </button>
+            {inputMenuOpen && (
+              <div className="absolute left-0 top-full mt-1 w-48 bg-card border border-border rounded-xl shadow-lg z-50 py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+                <button
+                  onClick={() => { setSalaryTab("input-manual"); setInputMenuOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${salaryTab === "input-manual" ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-secondary"}`}
+                >
+                  <Wallet size={13} className="text-muted-foreground" /> Nhập thủ công
+                </button>
+                <button
+                  onClick={() => { setSalaryTab("input-excel"); setInputMenuOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${salaryTab === "input-excel" ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-secondary"}`}
+                >
+                  <Upload size={13} className="text-muted-foreground" /> Chèn từ Excel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      {salaryTab === "input" && <SalaryInputInner month={month} setMonth={setMonth} deptId={deptId} setDeptId={setDeptId} depts={departments} canManage={canManage} />}
+      {salaryTab === "view" && <SalaryViewInner month={month} setMonth={setMonth} centerId={centerId} setCenterId={setCenterId} deptId={deptId} setDeptId={setDeptId} depts={departments} centers={allCenters as any[]} />}
       {salaryTab === "deductions" && <DeductionsInner />}
+      {salaryTab === "input-manual" && <SalaryManualInput month={month} setMonth={setMonth} deptId={deptId} setDeptId={setDeptId} depts={departments} />}
+      {salaryTab === "input-excel" && <SalaryExcelInput month={month} setMonth={setMonth} />}
     </div>
   );
 }
 
-function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage }: {
+/* ── Tab "Lương tháng": xem bảng lương đã ghi nhận, lọc theo tháng / trung tâm / phòng ban ── */
+function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDeptId, depts, centers }: {
+  month: string; setMonth: (v: string) => void;
+  centerId: string; setCenterId: (v: string) => void;
+  deptId: string; setDeptId: (v: string) => void;
+  depts: { id: string; name: string; code: string; center_id?: string }[];
+  centers: { id: string; name: string; code?: string; is_active?: boolean }[];
+}) {
+  /* Phòng ban phụ thuộc trung tâm đã chọn */
+  const filteredDepts = useMemo(() => {
+    if (!centerId) return depts;
+    return depts.filter((d: any) => d.center_id === centerId);
+  }, [depts, centerId]);
+
+  /* Fetch lương theo tháng + PB (nếu chọn PB), hoặc toàn bộ tháng */
+  const { data: existing } = useSalaryRecords({ month, dept_id: deptId || undefined });
+  const salaryRows = existing?.data ?? [];
+
+  /* Lọc thêm theo trung tâm nếu chọn trung tâm mà chưa chọn PB cụ thể */
+  const visibleRows = useMemo(() => {
+    if (deptId) return salaryRows;
+    if (!centerId) return salaryRows;
+    const deptIdsInCenter = new Set(filteredDepts.map((d) => d.id));
+    return salaryRows.filter((r: any) => deptIdsInCenter.has(r.dept_id));
+  }, [salaryRows, deptId, centerId, filteredDepts]);
+
+  const rows = visibleRows.map((r: any) => ({
+    id: r.id,
+    user_id: r.user_id,
+    full_name: r.user?.full_name ?? "—",
+    employee_code: r.user?.employee_code ?? "",
+    dept_name: r.department?.name ?? "",
+    base: Number(r.base_salary ?? 0),
+    deduction: Number(r.deduction_applied ?? 0),
+    net: Number(r.net_salary ?? 0),
+  }));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div>
+          <label className="text-xs text-muted-foreground font-medium">Tháng</label>
+          <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")}
+            className="mt-1 block h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+        </div>
+        <div className="w-48">
+          <label className="text-xs text-muted-foreground font-medium">Trung tâm</label>
+          <select
+            value={centerId}
+            onChange={(e) => { setCenterId(e.target.value); setDeptId(""); }}
+            className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none"
+          >
+            <option value="">Tất cả Trung tâm</option>
+            {centers.filter((c) => c.is_active !== false).map((c) => (
+              <option key={c.id} value={c.id}>{c.code ? `${c.code} — ${c.name}` : c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-48">
+          <label className="text-xs text-muted-foreground font-medium">Phòng ban</label>
+          <SearchSelect value={deptId} onChange={setDeptId}
+            options={[{ value: "", label: "Tất cả Phòng ban" }, ...filteredDepts.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))]}
+            className="mt-1" />
+        </div>
+        {(centerId || deptId) && (
+          <button onClick={() => { setCenterId(""); setDeptId(""); }}
+            className="self-end h-9 px-3 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+            Xóa lọc
+          </button>
+        )}
+      </div>
+
+      {rows.length === 0 ? (
+        <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chưa có dữ liệu lương" subtitle="Chưa có bản ghi lương cho bộ lọc đã chọn" />
+      ) : (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <table className="w-full text-xs">
+            <thead><tr className="border-b border-border text-muted-foreground">
+              {["Mã HT", "Nhân viên", "Phòng ban", "Lương tháng", "Đã khấu trừ", "Thực nhận"].map(h => (
+                <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
+              ))}
+            </tr></thead>
+            <tbody className="divide-y divide-border/30">
+              {rows.map((r) => (
+                <tr key={r.id} className="hover:bg-secondary/20 transition-colors">
+                  <td className="px-4 py-2.5 font-mono text-xs">{r.employee_code || "—"}</td>
+                  <td className="px-4 py-2.5 font-medium">{r.full_name}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{r.dept_name || "—"}</td>
+                  <td className="px-4 py-2.5 font-mono">{formatVND(r.base)}</td>
+                  <td className="px-4 py-2.5 font-mono text-red-400">{r.deduction > 0 ? `-${formatVND(r.deduction)}` : "—"}</td>
+                  <td className="px-4 py-2.5 font-mono text-green-500">{formatVND(r.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr className="border-t border-border bg-secondary/20">
+              <td colSpan={3} className="px-4 py-2 font-bold">Tổng ({rows.length} NV)</td>
+              <td className="px-4 py-2 font-mono font-bold">{formatVND(rows.reduce((s, r) => s + r.base, 0))}</td>
+              <td className="px-4 py-2 font-mono font-bold text-red-400">{formatVND(rows.reduce((s, r) => s + r.deduction, 0))}</td>
+              <td className="px-4 py-2 font-mono font-bold text-green-500">{formatVND(rows.reduce((s, r) => s + r.net, 0))}</td>
+            </tr></tfoot>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Nhập lương thủ công: chọn PB → nhập từng nhân sự ── */
+function SalaryManualInput({ month, setMonth, deptId, setDeptId, depts }: {
   month: string; setMonth: (v: string) => void;
   deptId: string; setDeptId: (v: string) => void;
   depts: { id: string; name: string; code: string }[];
-  canManage: boolean;
 }) {
   const { data: deptUsers = [] } = useDeptUsers(deptId || undefined);
-  const { data: allUsers = [] } = useAllActiveUsers();
   const { data: existing } = useSalaryRecords({ month, dept_id: deptId || undefined });
   const createBatch = useCreateSalaryBatch();
-  const fileRef = useRef<HTMLInputElement>(null);
   const existingMap = new Map((existing?.data ?? []).map((r: any) => [r.user_id, r]));
   const [rows, setRows] = useState<Record<string, number>>({});
-  const [inputMode, setInputMode] = useState<"manual" | "excel">("manual");
 
-  /* Map employee_code → user cho import Excel */
+  const effectiveRows = deptUsers.map((u) => ({
+    user_id: u.id, full_name: u.full_name, employee_code: u.employee_code,
+    hasCode: !!u.employee_code,
+    current: existingMap.get(u.id)?.base_salary ?? 0,
+    deduction: existingMap.get(u.id)?.deduction_applied ?? 0,
+    net: existingMap.get(u.id)?.net_salary ?? 0,
+    input: rows[u.id] ?? (existingMap.get(u.id)?.base_salary ?? 0),
+  }));
+
+  /* Tải mẫu Excel theo PB để nhập ngoài, import lại */
+  const handleDownloadTemplate = () => {
+    if (!deptId || deptUsers.length === 0) { toast.error("Chọn PB có nhân viên trước"); return; }
+    const dept = depts.find((d) => d.id === deptId);
+    const headers = ["MÃ HT", "Họ tên", "Email", "LƯƠNG THEO NGÀY CÔNG THỰC TẾ"];
+    const dataRows = deptUsers.map((u) => [u.employee_code || "", u.full_name, u.email || "", existingMap.get(u.id)?.base_salary ?? 0]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+    ws["!cols"] = [{ wch: 14 }, { wch: 25 }, { wch: 30 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Lương tháng");
+    XLSX.writeFile(wb, `Luong_${dept?.code || "PB"}_${month.slice(0, 7)}.xlsx`);
+  };
+
+  const handleSave = async () => {
+    const records = effectiveRows
+      .filter((r) => r.hasCode && r.input > 0)
+      .map((r) => ({ user_id: r.user_id, dept_id: deptId || undefined, month, base_salary: r.input }));
+    if (records.length === 0) { toast.error("Không có dữ liệu lương để lưu"); return; }
+    try {
+      await createBatch.mutateAsync(records);
+      toast.success(`Lưu lương ${records.length} nhân sự`);
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground font-medium">Tháng</label>
+          <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")}
+            className="mt-1 block h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+        </div>
+        <div className="w-48">
+          <label className="text-xs text-muted-foreground font-medium">Phòng ban</label>
+          <SearchSelect value={deptId} onChange={setDeptId}
+            options={[{ value: "", label: "— Chọn PB —" }, ...depts.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))]}
+            className="mt-1" />
+        </div>
+        {deptId && (
+          <div className="self-end flex items-center gap-2">
+            <button onClick={handleDownloadTemplate} className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors">
+              <Download size={13} /> Tải mẫu
+            </button>
+            <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>
+              {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
+            </Button>
+          </div>
+        )}
+      </div>
+      {!deptId ? (
+        <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chọn phòng ban" subtitle="Chọn phòng ban để nhập lương từng nhân sự" />
+      ) : (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <table className="w-full text-xs">
+            <thead><tr className="border-b border-border text-muted-foreground">
+              {["Mã HT", "Nhân viên", "Lương hiện tại", "Đã khấu trừ", "Thực nhận", "Lương mới"].map(h => (
+                <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
+              ))}
+            </tr></thead>
+            <tbody className="divide-y divide-border/30">
+              {effectiveRows.map((r) => (
+                <tr key={r.user_id} className={`transition-colors ${r.hasCode ? "hover:bg-secondary/20" : "opacity-40"}`}>
+                  <td className="px-4 py-2.5 font-mono text-xs">{r.employee_code || <span className="text-muted-foreground italic">Chưa có</span>}</td>
+                  <td className="px-4 py-2.5 font-medium">{r.full_name}</td>
+                  <td className="px-4 py-2.5 font-mono">{formatVND(r.current)}</td>
+                  <td className="px-4 py-2.5 font-mono text-red-400">{r.deduction > 0 ? `-${formatVND(r.deduction)}` : "—"}</td>
+                  <td className="px-4 py-2.5 font-mono text-green-500">{formatVND(r.net)}</td>
+                  <td className="px-4 py-2.5">
+                    {r.hasCode ? (
+                      <input type="number" min={0} value={r.input || ""} onChange={(e) => setRows({ ...rows, [r.user_id]: +e.target.value })}
+                        className="w-32 h-7 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
+                    ) : (
+                      <span className="text-muted-foreground italic text-[10px]">Cần Mã HT</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {effectiveRows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Không có nhân viên trong phòng ban</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Nhập lương từ Excel: khớp mã hệ thống, preview trước khi lưu ── */
+function SalaryExcelInput({ month, setMonth }: {
+  month: string; setMonth: (v: string) => void;
+}) {
+  const { data: allUsers = [] } = useAllActiveUsers();
+  const createBatch = useCreateSalaryBatch();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  /* Map employee_code → user để khớp từng dòng Excel */
   const codeToUser = useMemo(() => {
     const map = new Map<string, typeof allUsers[0]>();
     for (const u of allUsers) {
@@ -404,13 +655,12 @@ function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage
     return map;
   }, [allUsers]);
 
-  /* Trạng thái preview sau khi đọc file Excel */
   const [excelPreview, setExcelPreview] = useState<{
     matched: { code: string; name: string; userId: string; deptId: string | null; salary: number }[];
     unmatched: { code: string; salary: number }[];
   } | null>(null);
 
-  /* ── Nhập từ Excel: đọc file, khớp mã hệ thống ── */
+  /* Đọc file Excel, khớp cột MÃ HT với employee_code trong DB */
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -420,9 +670,8 @@ function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage
       const ws = wb.Sheets[wb.SheetNames[0]];
       const jsonRows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
 
-      const matched: typeof excelPreview extends null ? never : NonNullable<typeof excelPreview>["matched"] = [];
+      const matched: NonNullable<typeof excelPreview>["matched"] = [];
       const unmatched: { code: string; salary: number }[] = [];
-      const newRows: Record<string, number> = {};
 
       for (const row of jsonRows) {
         /* Tìm cột mã hệ thống — hỗ trợ nhiều tên header phổ biến */
@@ -440,13 +689,11 @@ function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage
         const user = codeToUser.get(code);
         if (user) {
           matched.push({ code, name: user.full_name, userId: user.id, deptId: user.dept_id, salary });
-          newRows[user.id] = salary;
         } else {
           unmatched.push({ code, salary });
         }
       }
 
-      setRows(newRows);
       setExcelPreview({ matched, unmatched });
       toast.success(`Đọc ${matched.length} nhân sự khớp mã, ${unmatched.length} không khớp`);
     };
@@ -454,148 +701,42 @@ function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage
     e.target.value = "";
   };
 
-  /* ── Tải mẫu Excel theo phòng ban ── */
-  const handleDownloadTemplate = () => {
-    if (!deptId || deptUsers.length === 0) { toast.error("Chọn PB có nhân viên trước"); return; }
-    const dept = depts.find((d) => d.id === deptId);
-    const headers = ["MÃ HT", "Họ tên", "Email", "LƯƠNG THEO NGÀY CÔNG THỰC TẾ"];
-    const dataRows = deptUsers.map((u) => [u.employee_code || "", u.full_name, u.email || "", existingMap.get(u.id)?.base_salary ?? 0]);
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-    ws["!cols"] = [{ wch: 14 }, { wch: 25 }, { wch: 30 }, { wch: 30 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Lương tháng");
-    XLSX.writeFile(wb, `Luong_${dept?.code || "PB"}_${month.slice(0, 7)}.xlsx`);
-  };
-
-  /* ── Danh sách nhân sự hiển thị trong bảng (chế độ nhập tay) ── */
-  const effectiveRows = deptUsers.map((u) => ({
-    user_id: u.id, full_name: u.full_name, employee_code: u.employee_code,
-    hasCode: !!u.employee_code,
-    current: existingMap.get(u.id)?.base_salary ?? 0,
-    deduction: existingMap.get(u.id)?.deduction_applied ?? 0,
-    net: existingMap.get(u.id)?.net_salary ?? 0,
-    input: rows[u.id] ?? (existingMap.get(u.id)?.base_salary ?? 0),
-  }));
-
-  /* ── Lưu lương — gộp cả 2 chế độ ── */
   const handleSave = async () => {
-    let records: { user_id: string; dept_id?: string; month: string; base_salary: number }[];
-
-    if (inputMode === "excel" && excelPreview) {
-      /* Chế độ Excel: lưu tất cả dòng đã match */
-      records = excelPreview.matched.map((r) => ({
-        user_id: r.userId, dept_id: r.deptId || undefined, month, base_salary: r.salary,
-      }));
-    } else {
-      /* Chế độ nhập tay: chỉ lưu user có mã hệ thống */
-      records = effectiveRows
-        .filter((r) => r.hasCode && r.input > 0)
-        .map((r) => ({ user_id: r.user_id, dept_id: deptId || undefined, month, base_salary: r.input }));
-    }
-
-    if (records.length === 0) { toast.error("Không có dữ liệu lương để lưu"); return; }
+    if (!excelPreview || excelPreview.matched.length === 0) { toast.error("Không có dữ liệu lương để lưu"); return; }
+    const records = excelPreview.matched.map((r) => ({
+      user_id: r.userId, dept_id: r.deptId || undefined, month, base_salary: r.salary,
+    }));
     try {
       await createBatch.mutateAsync(records);
       toast.success(`Lưu lương ${records.length} nhân sự`);
-      if (inputMode === "excel") setExcelPreview(null);
+      setExcelPreview(null);
     } catch (e: any) { toast.error(e.message); }
   };
 
   return (
     <div className="space-y-4">
-      {/* Chọn chế độ nhập */}
-      <div className="flex items-center gap-1">
-        {([
-          { key: "manual" as const, label: "Nhập từng nhân sự" },
-          { key: "excel" as const, label: "Nhập từ Excel" },
-        ]).map(v => (
-          <button key={v.key} onClick={() => { setInputMode(v.key); setExcelPreview(null); setRows({}); }}
-            className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${inputMode === v.key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
-            {v.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Bộ lọc + hành động */}
+      {/* Chọn tháng + nút chọn file */}
       <div className="flex items-center gap-3">
         <div>
           <label className="text-xs text-muted-foreground font-medium">Tháng</label>
           <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")}
             className="mt-1 block h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
         </div>
-        {inputMode === "manual" && (
-          <div className="w-48">
-            <label className="text-xs text-muted-foreground font-medium">Phòng ban</label>
-            <SearchSelect value={deptId} onChange={setDeptId}
-              options={[{ value: "", label: "— Chọn PB —" }, ...depts.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))]}
-              className="mt-1" />
-          </div>
-        )}
-        {canManage && (
-          <div className="self-end flex items-center gap-2">
-            {inputMode === "manual" && deptId && (
-              <button onClick={handleDownloadTemplate} className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors">
-                <Download size={13} /> Tải mẫu
-              </button>
-            )}
-            {inputMode === "excel" && (
-              <>
-                <button onClick={() => fileRef.current?.click()} className="h-9 px-3 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 text-xs flex items-center gap-1 transition-colors text-primary font-medium">
-                  <Upload size={13} /> Chọn file Excel
-                </button>
-                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
-              </>
-            )}
-            {((inputMode === "manual" && deptId) || (inputMode === "excel" && excelPreview)) && (
-              <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>
-                {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="self-end flex items-center gap-2">
+          <button onClick={() => fileRef.current?.click()} className="h-9 px-3 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 text-xs flex items-center gap-1 transition-colors text-primary font-medium">
+            <Upload size={13} /> Chọn file Excel
+          </button>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
+          {excelPreview && excelPreview.matched.length > 0 && (
+            <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>
+              {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* ── Chế độ nhập tay: bảng nhân sự theo PB ── */}
-      {inputMode === "manual" && (
-        !deptId ? (
-          <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chọn phòng ban" subtitle="Chọn phòng ban để nhập lương từng nhân sự" />
-        ) : (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full text-xs">
-              <thead><tr className="border-b border-border text-muted-foreground">
-                {["Mã HT", "Nhân viên", "Lương hiện tại", "Đã khấu trừ", "Thực nhận", "Lương mới"].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody className="divide-y divide-border/30">
-                {effectiveRows.map((r) => (
-                  <tr key={r.user_id} className={`transition-colors ${r.hasCode ? "hover:bg-secondary/20" : "opacity-40"}`}>
-                    <td className="px-4 py-2.5 font-mono text-xs">{r.employee_code || <span className="text-muted-foreground italic">Chưa có</span>}</td>
-                    <td className="px-4 py-2.5 font-medium">{r.full_name}</td>
-                    <td className="px-4 py-2.5 font-mono">{formatVND(r.current)}</td>
-                    <td className="px-4 py-2.5 font-mono text-red-400">{r.deduction > 0 ? `-${formatVND(r.deduction)}` : "—"}</td>
-                    <td className="px-4 py-2.5 font-mono text-green-500">{formatVND(r.net)}</td>
-                    <td className="px-4 py-2.5">
-                      {canManage && r.hasCode ? (
-                        <input type="number" min={0} value={r.input || ""} onChange={(e) => setRows({ ...rows, [r.user_id]: +e.target.value })}
-                          className="w-32 h-7 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
-                      ) : r.hasCode ? (
-                        <span className="font-mono">{formatVND(r.input)}</span>
-                      ) : (
-                        <span className="text-muted-foreground italic text-[10px]">Cần Mã HT</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {effectiveRows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Không có nhân viên trong phòng ban</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        )
-      )}
-
-      {/* ── Chế độ Excel: hướng dẫn + preview kết quả ── */}
-      {inputMode === "excel" && !excelPreview && (
+      {/* Hướng dẫn khi chưa chọn file */}
+      {!excelPreview && (
         <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center space-y-3">
           <Upload size={36} strokeWidth={1.2} className="mx-auto text-muted-foreground" />
           <div>
@@ -607,16 +748,12 @@ function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage
               Hệ thống sẽ khớp mã hệ thống để gán lương. Tài khoản không có mã sẽ bị bỏ qua.
             </p>
           </div>
-          <button onClick={() => fileRef.current?.click()} className="mx-auto h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5">
-            <Upload size={13} /> Chọn file Excel
-          </button>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
         </div>
       )}
 
-      {inputMode === "excel" && excelPreview && (
+      {/* Preview sau khi đọc file */}
+      {excelPreview && (
         <div className="space-y-3">
-          {/* Tóm tắt kết quả đọc */}
           <div className="flex items-center gap-3">
             <div className="bg-green-500/10 text-green-600 px-3 py-1.5 rounded-lg text-xs font-medium">
               {excelPreview.matched.length} nhân sự khớp mã
@@ -628,7 +765,6 @@ function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage
             )}
           </div>
 
-          {/* Bảng preview dòng đã khớp */}
           {excelPreview.matched.length > 0 && (
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <table className="w-full text-xs">
@@ -654,7 +790,6 @@ function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage
             </div>
           )}
 
-          {/* Bảng mã không khớp */}
           {excelPreview.unmatched.length > 0 && (
             <details className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl overflow-hidden">
               <summary className="px-4 py-2.5 text-xs font-medium text-yellow-600 cursor-pointer">
