@@ -3139,6 +3139,7 @@ export type Database = {
           custom_role_id: string | null
           dept_id: string | null
           email: string
+          employee_code: string | null
           failed_login_count: number | null
           full_name: string
           id: string
@@ -3165,6 +3166,7 @@ export type Database = {
           custom_role_id?: string | null
           dept_id?: string | null
           email: string
+          employee_code?: string | null
           failed_login_count?: number | null
           full_name: string
           id: string
@@ -3191,6 +3193,7 @@ export type Database = {
           custom_role_id?: string | null
           dept_id?: string | null
           email?: string
+          employee_code?: string | null
           failed_login_count?: number | null
           full_name?: string
           id?: string

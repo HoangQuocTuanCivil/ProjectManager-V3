@@ -36,8 +36,22 @@ function useDeptUsers(deptId?: string) {
     enabled: !!deptId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("users").select("id, full_name, email, dept_id")
+        .from("users").select("id, full_name, email, dept_id, employee_code")
         .eq("is_active", true).eq("dept_id", deptId!).order("full_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/** Tất cả user có employee_code — dùng cho import Excel lương theo mã hệ thống */
+function useAllActiveUsers() {
+  return useQuery({
+    queryKey: ["all-active-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("users").select("id, full_name, email, dept_id, employee_code")
+        .eq("is_active", true).order("full_name");
       if (error) throw error;
       return data;
     },
@@ -372,25 +386,31 @@ function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage
   depts: { id: string; name: string; code: string }[];
   canManage: boolean;
 }) {
-  const { data: users = [] } = useDeptUsers(deptId || undefined);
+  const { data: deptUsers = [] } = useDeptUsers(deptId || undefined);
+  const { data: allUsers = [] } = useAllActiveUsers();
   const { data: existing } = useSalaryRecords({ month, dept_id: deptId || undefined });
   const createBatch = useCreateSalaryBatch();
   const fileRef = useRef<HTMLInputElement>(null);
   const existingMap = new Map((existing?.data ?? []).map((r: any) => [r.user_id, r]));
   const [rows, setRows] = useState<Record<string, number>>({});
+  const [inputMode, setInputMode] = useState<"manual" | "excel">("manual");
 
-  const handleDownloadTemplate = () => {
-    if (!deptId || users.length === 0) { toast.error("Chọn PB có nhân viên trước"); return; }
-    const dept = depts.find((d) => d.id === deptId);
-    const headers = ["user_id", "Họ tên", "Email", "Lương cơ bản (VNĐ)"];
-    const dataRows = users.map((u) => [u.id, u.full_name, u.email || "", existingMap.get(u.id)?.base_salary ?? 0]);
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-    ws["!cols"] = [{ wch: 40 }, { wch: 25 }, { wch: 30 }, { wch: 20 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Lương tháng");
-    XLSX.writeFile(wb, `Luong_${dept?.code || "PB"}_${month.slice(0, 7)}.xlsx`);
-  };
+  /* Map employee_code → user cho import Excel */
+  const codeToUser = useMemo(() => {
+    const map = new Map<string, typeof allUsers[0]>();
+    for (const u of allUsers) {
+      if (u.employee_code) map.set(u.employee_code.trim().toUpperCase(), u);
+    }
+    return map;
+  }, [allUsers]);
 
+  /* Trạng thái preview sau khi đọc file Excel */
+  const [excelPreview, setExcelPreview] = useState<{
+    matched: { code: string; name: string; userId: string; deptId: string | null; salary: number }[];
+    unmatched: { code: string; salary: number }[];
+  } | null>(null);
+
+  /* ── Nhập từ Excel: đọc file, khớp mã hệ thống ── */
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -399,88 +419,259 @@ function SalaryInputInner({ month, setMonth, deptId, setDeptId, depts, canManage
       const wb = XLSX.read(evt.target?.result, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const jsonRows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
+
+      const matched: typeof excelPreview extends null ? never : NonNullable<typeof excelPreview>["matched"] = [];
+      const unmatched: { code: string; salary: number }[] = [];
       const newRows: Record<string, number> = {};
-      let imported = 0;
+
       for (const row of jsonRows) {
-        const uid = row["user_id"] || "";
-        const salary = Number(row["Lương cơ bản (VNĐ)"] || row["base_salary"] || 0);
-        if (uid && salary > 0) { newRows[uid] = salary; imported++; }
+        /* Tìm cột mã hệ thống — hỗ trợ nhiều tên header phổ biến */
+        const code = String(row["MÃ HT"] || row["MÃ HỆ THỐNG"] || row["Mã hệ thống"] || row["Mã HT"] || row["employee_code"] || "").trim().toUpperCase();
+        if (!code) continue;
+
+        /* Tìm cột lương — ưu tiên "LƯƠNG THEO NGÀY CÔNG THỰC TẾ", fallback các tên khác */
+        const salary = Number(
+          row["LƯƠNG THEO NGÀY CÔNG THỰC TẾ"] ?? row["LƯƠNG THEO\r\nNGÀY CÔNG\r\nTHỰC TẾ"] ??
+          row["Lương theo ngày công thực tế"] ?? row["Lương thực tế"] ??
+          row["base_salary"] ?? row["Lương cơ bản (VNĐ)"] ?? 0
+        );
+        if (salary <= 0) continue;
+
+        const user = codeToUser.get(code);
+        if (user) {
+          matched.push({ code, name: user.full_name, userId: user.id, deptId: user.dept_id, salary });
+          newRows[user.id] = salary;
+        } else {
+          unmatched.push({ code, salary });
+        }
       }
+
       setRows(newRows);
-      toast.success(`Import ${imported} bản ghi`);
+      setExcelPreview({ matched, unmatched });
+      toast.success(`Đọc ${matched.length} nhân sự khớp mã, ${unmatched.length} không khớp`);
     };
     reader.readAsArrayBuffer(file);
     e.target.value = "";
   };
 
-  const effectiveRows = users.map((u) => ({
-    user_id: u.id, full_name: u.full_name,
+  /* ── Tải mẫu Excel theo phòng ban ── */
+  const handleDownloadTemplate = () => {
+    if (!deptId || deptUsers.length === 0) { toast.error("Chọn PB có nhân viên trước"); return; }
+    const dept = depts.find((d) => d.id === deptId);
+    const headers = ["MÃ HT", "Họ tên", "Email", "LƯƠNG THEO NGÀY CÔNG THỰC TẾ"];
+    const dataRows = deptUsers.map((u) => [u.employee_code || "", u.full_name, u.email || "", existingMap.get(u.id)?.base_salary ?? 0]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+    ws["!cols"] = [{ wch: 14 }, { wch: 25 }, { wch: 30 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Lương tháng");
+    XLSX.writeFile(wb, `Luong_${dept?.code || "PB"}_${month.slice(0, 7)}.xlsx`);
+  };
+
+  /* ── Danh sách nhân sự hiển thị trong bảng (chế độ nhập tay) ── */
+  const effectiveRows = deptUsers.map((u) => ({
+    user_id: u.id, full_name: u.full_name, employee_code: u.employee_code,
+    hasCode: !!u.employee_code,
     current: existingMap.get(u.id)?.base_salary ?? 0,
     deduction: existingMap.get(u.id)?.deduction_applied ?? 0,
     net: existingMap.get(u.id)?.net_salary ?? 0,
     input: rows[u.id] ?? (existingMap.get(u.id)?.base_salary ?? 0),
   }));
 
+  /* ── Lưu lương — gộp cả 2 chế độ ── */
   const handleSave = async () => {
-    const records = effectiveRows.filter((r) => r.input > 0).map((r) => ({
-      user_id: r.user_id, dept_id: deptId || undefined, month, base_salary: r.input,
-    }));
-    if (records.length === 0) { toast.error("Không có dữ liệu"); return; }
-    try { await createBatch.mutateAsync(records); toast.success(`Lưu ${records.length} NV`); }
-    catch (e: any) { toast.error(e.message); }
+    let records: { user_id: string; dept_id?: string; month: string; base_salary: number }[];
+
+    if (inputMode === "excel" && excelPreview) {
+      /* Chế độ Excel: lưu tất cả dòng đã match */
+      records = excelPreview.matched.map((r) => ({
+        user_id: r.userId, dept_id: r.deptId || undefined, month, base_salary: r.salary,
+      }));
+    } else {
+      /* Chế độ nhập tay: chỉ lưu user có mã hệ thống */
+      records = effectiveRows
+        .filter((r) => r.hasCode && r.input > 0)
+        .map((r) => ({ user_id: r.user_id, dept_id: deptId || undefined, month, base_salary: r.input }));
+    }
+
+    if (records.length === 0) { toast.error("Không có dữ liệu lương để lưu"); return; }
+    try {
+      await createBatch.mutateAsync(records);
+      toast.success(`Lưu lương ${records.length} nhân sự`);
+      if (inputMode === "excel") setExcelPreview(null);
+    } catch (e: any) { toast.error(e.message); }
   };
 
   return (
     <div className="space-y-4">
+      {/* Chọn chế độ nhập */}
+      <div className="flex items-center gap-1">
+        {([
+          { key: "manual" as const, label: "Nhập từng nhân sự" },
+          { key: "excel" as const, label: "Nhập từ Excel" },
+        ]).map(v => (
+          <button key={v.key} onClick={() => { setInputMode(v.key); setExcelPreview(null); setRows({}); }}
+            className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${inputMode === v.key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Bộ lọc + hành động */}
       <div className="flex items-center gap-3">
         <div>
           <label className="text-xs text-muted-foreground font-medium">Tháng</label>
           <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")}
             className="mt-1 block h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
         </div>
-        <div className="w-48">
-          <label className="text-xs text-muted-foreground font-medium">Phòng ban</label>
-          <SearchSelect value={deptId} onChange={setDeptId}
-            options={[{ value: "", label: "— Chọn PB —" }, ...depts.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))]}
-            className="mt-1" />
-        </div>
-        {canManage && deptId && (
+        {inputMode === "manual" && (
+          <div className="w-48">
+            <label className="text-xs text-muted-foreground font-medium">Phòng ban</label>
+            <SearchSelect value={deptId} onChange={setDeptId}
+              options={[{ value: "", label: "— Chọn PB —" }, ...depts.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))]}
+              className="mt-1" />
+          </div>
+        )}
+        {canManage && (
           <div className="self-end flex items-center gap-2">
-            <button onClick={handleDownloadTemplate} className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors"><Download size={13} /> Tải mẫu</button>
-            <button onClick={() => fileRef.current?.click()} className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors"><Upload size={13} /> Import</button>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
-            <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>{createBatch.isPending ? "Đang lưu..." : "Lưu lương"}</Button>
+            {inputMode === "manual" && deptId && (
+              <button onClick={handleDownloadTemplate} className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors">
+                <Download size={13} /> Tải mẫu
+              </button>
+            )}
+            {inputMode === "excel" && (
+              <>
+                <button onClick={() => fileRef.current?.click()} className="h-9 px-3 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 text-xs flex items-center gap-1 transition-colors text-primary font-medium">
+                  <Upload size={13} /> Chọn file Excel
+                </button>
+                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
+              </>
+            )}
+            {((inputMode === "manual" && deptId) || (inputMode === "excel" && excelPreview)) && (
+              <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>
+                {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
+              </Button>
+            )}
           </div>
         )}
       </div>
-      {!deptId ? (
-        <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chọn phòng ban" subtitle="Chọn 1 PB để nhập lương hàng loạt" />
-      ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-xs">
-            <thead><tr className="border-b border-border text-muted-foreground">
-              {["Nhân viên", "Lương hiện tại", "Đã khấu trừ", "Thực nhận", "Lương mới"].map(h => (
-                <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
-              ))}
-            </tr></thead>
-            <tbody className="divide-y divide-border/30">
-              {effectiveRows.map((r) => (
-                <tr key={r.user_id} className="hover:bg-secondary/20 transition-colors">
-                  <td className="px-4 py-2.5 font-medium">{r.full_name}</td>
-                  <td className="px-4 py-2.5 font-mono">{formatVND(r.current)}</td>
-                  <td className="px-4 py-2.5 font-mono text-red-400">{r.deduction > 0 ? `-${formatVND(r.deduction)}` : "—"}</td>
-                  <td className="px-4 py-2.5 font-mono text-green-500">{formatVND(r.net)}</td>
-                  <td className="px-4 py-2.5">
-                    {canManage ? (
-                      <input type="number" min={0} value={r.input || ""} onChange={(e) => setRows({ ...rows, [r.user_id]: +e.target.value })}
-                        className="w-32 h-7 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
-                    ) : <span className="font-mono">{formatVND(r.input)}</span>}
-                  </td>
-                </tr>
-              ))}
-              {effectiveRows.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Không có NV trong PB</td></tr>}
-            </tbody>
-          </table>
+
+      {/* ── Chế độ nhập tay: bảng nhân sự theo PB ── */}
+      {inputMode === "manual" && (
+        !deptId ? (
+          <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chọn phòng ban" subtitle="Chọn phòng ban để nhập lương từng nhân sự" />
+        ) : (
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <table className="w-full text-xs">
+              <thead><tr className="border-b border-border text-muted-foreground">
+                {["Mã HT", "Nhân viên", "Lương hiện tại", "Đã khấu trừ", "Thực nhận", "Lương mới"].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
+                ))}
+              </tr></thead>
+              <tbody className="divide-y divide-border/30">
+                {effectiveRows.map((r) => (
+                  <tr key={r.user_id} className={`transition-colors ${r.hasCode ? "hover:bg-secondary/20" : "opacity-40"}`}>
+                    <td className="px-4 py-2.5 font-mono text-xs">{r.employee_code || <span className="text-muted-foreground italic">Chưa có</span>}</td>
+                    <td className="px-4 py-2.5 font-medium">{r.full_name}</td>
+                    <td className="px-4 py-2.5 font-mono">{formatVND(r.current)}</td>
+                    <td className="px-4 py-2.5 font-mono text-red-400">{r.deduction > 0 ? `-${formatVND(r.deduction)}` : "—"}</td>
+                    <td className="px-4 py-2.5 font-mono text-green-500">{formatVND(r.net)}</td>
+                    <td className="px-4 py-2.5">
+                      {canManage && r.hasCode ? (
+                        <input type="number" min={0} value={r.input || ""} onChange={(e) => setRows({ ...rows, [r.user_id]: +e.target.value })}
+                          className="w-32 h-7 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
+                      ) : r.hasCode ? (
+                        <span className="font-mono">{formatVND(r.input)}</span>
+                      ) : (
+                        <span className="text-muted-foreground italic text-[10px]">Cần Mã HT</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {effectiveRows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Không có nhân viên trong phòng ban</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+
+      {/* ── Chế độ Excel: hướng dẫn + preview kết quả ── */}
+      {inputMode === "excel" && !excelPreview && (
+        <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center space-y-3">
+          <Upload size={36} strokeWidth={1.2} className="mx-auto text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium">Nhập lương từ bảng lương Excel</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              File Excel cần có cột <strong>MÃ HT</strong> (Mã hệ thống) và cột <strong>LƯƠNG THEO NGÀY CÔNG THỰC TẾ</strong>.
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Hệ thống sẽ khớp mã hệ thống để gán lương. Tài khoản không có mã sẽ bị bỏ qua.
+            </p>
+          </div>
+          <button onClick={() => fileRef.current?.click()} className="mx-auto h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5">
+            <Upload size={13} /> Chọn file Excel
+          </button>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
+        </div>
+      )}
+
+      {inputMode === "excel" && excelPreview && (
+        <div className="space-y-3">
+          {/* Tóm tắt kết quả đọc */}
+          <div className="flex items-center gap-3">
+            <div className="bg-green-500/10 text-green-600 px-3 py-1.5 rounded-lg text-xs font-medium">
+              {excelPreview.matched.length} nhân sự khớp mã
+            </div>
+            {excelPreview.unmatched.length > 0 && (
+              <div className="bg-yellow-500/10 text-yellow-600 px-3 py-1.5 rounded-lg text-xs font-medium">
+                {excelPreview.unmatched.length} mã không tìm thấy
+              </div>
+            )}
+          </div>
+
+          {/* Bảng preview dòng đã khớp */}
+          {excelPreview.matched.length > 0 && (
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <table className="w-full text-xs">
+                <thead><tr className="border-b border-border text-muted-foreground">
+                  {["Mã HT", "Nhân viên", "Lương theo ngày công thực tế"].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody className="divide-y divide-border/30">
+                  {excelPreview.matched.map((r) => (
+                    <tr key={r.userId} className="hover:bg-secondary/20 transition-colors">
+                      <td className="px-4 py-2.5 font-mono">{r.code}</td>
+                      <td className="px-4 py-2.5 font-medium">{r.name}</td>
+                      <td className="px-4 py-2.5 font-mono font-semibold text-primary">{formatVND(r.salary)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot><tr className="border-t border-border bg-secondary/20">
+                  <td colSpan={2} className="px-4 py-2 font-bold">Tổng</td>
+                  <td className="px-4 py-2 font-mono font-bold text-primary">{formatVND(excelPreview.matched.reduce((s, r) => s + r.salary, 0))}</td>
+                </tr></tfoot>
+              </table>
+            </div>
+          )}
+
+          {/* Bảng mã không khớp */}
+          {excelPreview.unmatched.length > 0 && (
+            <details className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl overflow-hidden">
+              <summary className="px-4 py-2.5 text-xs font-medium text-yellow-600 cursor-pointer">
+                {excelPreview.unmatched.length} mã hệ thống không tìm thấy trong hệ thống
+              </summary>
+              <table className="w-full text-xs">
+                <tbody className="divide-y divide-yellow-500/10">
+                  {excelPreview.unmatched.map((r, i) => (
+                    <tr key={i}>
+                      <td className="px-4 py-2 font-mono">{r.code}</td>
+                      <td className="px-4 py-2 font-mono text-right">{formatVND(r.salary)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          )}
         </div>
       )}
     </div>
