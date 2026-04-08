@@ -10,6 +10,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const { id: _id, org_id: _org, created_at: _ca, email: _email, department: _dept, team: _team, custom_role: _cr, ...updates } = body;
 
   // Clean empty strings → null for UUID FK columns
+  if (updates.center_id === "") updates.center_id = null;
+  if (updates.dept_id === "") updates.dept_id = null;
   if (updates.team_id === "") updates.team_id = null;
   if (updates.custom_role_id === "") updates.custom_role_id = null;
 
