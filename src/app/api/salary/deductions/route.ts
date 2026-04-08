@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     .from("salary_deductions")
     .select(`
       *,
-      user:users(id, full_name, email, dept_id),
+      user:users(id, full_name, email, dept_id, employee_code),
       period:allocation_periods(id, name, period_start, period_end)
     `, { count: "exact" })
     .order("created_at", { ascending: false })

@@ -33,18 +33,21 @@ export function AllocationTable({
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-secondary/50">
-            {["#", "Nhân viên", "Tasks", "Điểm E", "Điểm A", "Chênh lệch", "Tỷ lệ", "Số tiền"].map((h) => (
+            {["#", "Mã HT", "Nhân viên", "Tasks", "Điểm KPI", "Tỷ lệ", "Sản lượng", "Lương đã ứng", "Thưởng khoán"].map((h) => (
               <th key={h} className="text-left px-3 py-2 text-[11px] font-semibold uppercase text-muted-foreground border-b border-border">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {sorted.map((r, i) => {
-            const eScore = (r.breakdown?.expect_score as number) ?? 0;
-            const variance = r.weighted_score - eScore;
+            const bonus = Number(r.bonus_amount ?? 0);
+            const salary = Number(r.total_salary_paid ?? 0);
+            const hasDeduction = !!r.deduction_id;
+            const bonusDisplay = hasDeduction ? -(salary - r.allocated_amount) : bonus;
             return (
               <tr key={r.id} className="border-b border-border/30 hover:bg-secondary/20">
                 <td className="px-3 py-2 font-mono text-sm text-muted-foreground">#{i + 1}</td>
+                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{(r.user as any)?.employee_code || "—"}</td>
                 <td className="px-3 py-2">
                   {r.user ? (
                     <div className="flex items-center gap-2">
@@ -54,13 +57,13 @@ export function AllocationTable({
                   ) : <span className="text-sm text-muted-foreground">—</span>}
                 </td>
                 <td className="px-3 py-2 font-mono text-sm">{r.task_count}</td>
-                <td className="px-3 py-2 font-mono text-sm text-primary">{Math.round(eScore)}</td>
-                <td className="px-3 py-2 font-mono text-sm font-bold" style={{ color: variance >= 0 ? "#10b981" : "#ef4444" }}>{Math.round(r.weighted_score)}</td>
-                <td className="px-3 py-2 font-mono text-sm" style={{ color: variance >= 0 ? "#10b981" : "#ef4444" }}>
-                  {variance >= 0 ? "+" : ""}{Math.round(variance)}
-                </td>
+                <td className="px-3 py-2 font-mono text-sm font-bold">{Math.round(r.weighted_score)}</td>
                 <td className="px-3 py-2 font-mono text-sm text-muted-foreground">{(r.share_percentage * 100).toFixed(1)}%</td>
                 <td className="px-3 py-2 font-mono text-sm font-bold text-amber-400">{formatVND(r.allocated_amount)}</td>
+                <td className="px-3 py-2 font-mono text-sm text-yellow-500">{salary > 0 ? formatVND(salary) : "—"}</td>
+                <td className={`px-3 py-2 font-mono text-sm font-bold ${hasDeduction ? "text-red-500" : bonus > 0 ? "text-green-500" : "text-muted-foreground"}`}>
+                  {salary > 0 ? (bonusDisplay >= 0 ? `+${formatVND(bonusDisplay)}` : formatVND(bonusDisplay)) : "—"}
+                </td>
               </tr>
             );
           })}
@@ -68,8 +71,9 @@ export function AllocationTable({
         <tfoot>
           <tr className="bg-secondary/50 font-semibold">
             <td colSpan={6} className="px-3 py-2 text-sm text-right">Tổng</td>
-            <td className="px-3 py-2 font-mono text-sm">100%</td>
             <td className="px-3 py-2 font-mono text-sm text-amber-400">{formatVND(period.total_fund)}</td>
+            <td className="px-3 py-2 font-mono text-sm text-yellow-500">{formatVND(sorted.reduce((s, r) => s + Number(r.total_salary_paid ?? 0), 0))}</td>
+            <td className="px-3 py-2 font-mono text-sm text-green-500">{formatVND(sorted.reduce((s, r) => s + Number(r.bonus_amount ?? 0), 0))}</td>
           </tr>
         </tfoot>
       </table>

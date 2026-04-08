@@ -454,6 +454,31 @@ export function useSalaryDeductions() {
   });
 }
 
+/* ───── Preview Fund (Xem trước quỹ khoán từ nghiệm thu) ──────── */
+
+/** Preview quỹ khoán: tổng NT theo dự án cho TT trong khoảng ngày */
+export function usePreviewFund(params: { center_id?: string; start_date?: string; end_date?: string; project_id?: string }) {
+  const hasParams = !!(params.center_id && params.start_date && params.end_date);
+  return useQuery({
+    queryKey: [...kpiKeys.all, "preview-fund", params],
+    enabled: hasParams,
+    queryFn: async () => {
+      const sp = new URLSearchParams();
+      if (params.center_id) sp.set("center_id", params.center_id);
+      if (params.start_date) sp.set("start_date", params.start_date);
+      if (params.end_date) sp.set("end_date", params.end_date);
+      if (params.project_id) sp.set("project_id", params.project_id);
+      const res = await fetch(`/api/kpi/allocation/preview-fund?${sp}`);
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json() as Promise<{
+        project_id: string; project_code: string; project_name: string;
+        allocations: { id: string; allocation_code: string; allocated_amount: number; accepted_in_period: number }[];
+        total_accepted: number;
+      }[]>;
+    },
+  });
+}
+
 /* ───── Acceptance Rounds (Nghiệm thu giao khoán) ─────────────── */
 
 /** Batch fetch đợt nghiệm thu cho danh sách giao khoán */

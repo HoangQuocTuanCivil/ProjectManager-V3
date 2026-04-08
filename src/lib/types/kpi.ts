@@ -102,5 +102,8 @@ export interface AllocationResult {
   allocated_amount: number;
   task_count: number;
   breakdown: Record<string, Json | undefined>;
+  total_salary_paid: number;
+  bonus_amount: number;
+  deduction_id: string | null;
   user?: User;
 }

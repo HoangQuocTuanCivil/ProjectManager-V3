@@ -861,14 +861,20 @@ function DeductionsInner() {
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <table className="w-full text-xs">
         <thead><tr className="border-b border-border text-muted-foreground">
-          {["Nhân viên", "Đợt khoán", "Tổng nợ", "Còn lại", "Trừ/tháng", "Trạng thái"].map(h => (
+          {["Mã HT", "Nhân viên", "Thời gian", "Đợt khoán", "Công nợ khoán", "Còn lại", "Trừ/tháng", "Trạng thái"].map(h => (
             <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
           ))}
         </tr></thead>
         <tbody className="divide-y divide-border/30">
           {deductions.map((d: any) => (
             <tr key={d.id} className="hover:bg-secondary/20 transition-colors">
+              <td className="px-4 py-2.5 font-mono text-xs">{d.user?.employee_code || "—"}</td>
               <td className="px-4 py-2.5 font-medium">{d.user?.full_name ?? "—"}</td>
+              <td className="px-4 py-2.5 text-muted-foreground">
+                {d.period?.period_start && d.period?.period_end
+                  ? `${formatDate(d.period.period_start)} — ${formatDate(d.period.period_end)}`
+                  : "—"}
+              </td>
               <td className="px-4 py-2.5 text-muted-foreground">{d.period?.name ?? "—"}</td>
               <td className="px-4 py-2.5 font-mono text-red-400">{formatVND(d.total_amount)}</td>
               <td className="px-4 py-2.5 font-mono font-bold text-red-500">{formatVND(d.remaining_amount)}</td>

@@ -4,8 +4,8 @@ import { useState, useMemo } from "react";
 import {
   useAllocationPeriods, useCreateAllocationPeriod, useCalculateAllocation,
   useApproveAllocation, useDeleteAllocationPeriod,
-  useFundSummary, useEmployeeBonus, useCalculateBonus,
-} from "@/lib/hooks/use-kpi";
+  useFundSummary, useEmployeeBonus, useCalculateBonus, usePreviewFund,
+} from "@/features/kpi";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { useAuthStore } from "@/lib/stores";
 import { Section, Button, EmptyState } from "@/components/shared";
@@ -181,7 +181,7 @@ export default function AllocationPage() {
         <PeriodsSection
           periods={periods} selectedPeriod={selectedPeriod}
           showForm={showForm} setShowForm={setShowForm}
-          canManage={canManage} />
+          canManage={canManage} centers={centers} />
       )}
 
       {/* ═══ Phần 4: Thưởng cá nhân ═══ */}
@@ -257,9 +257,10 @@ function FundSummarySection({ data }: { data: any[] }) {
 
 /* ─── Phần 3: Đợt khoán (giữ logic cũ, gọn lại) ────────────────── */
 
-function PeriodsSection({ periods, selectedPeriod, showForm, setShowForm, canManage }: {
+function PeriodsSection({ periods, selectedPeriod, showForm, setShowForm, canManage, centers }: {
   periods: AllocationPeriod[]; selectedPeriod: string;
   showForm: boolean; setShowForm: (v: boolean) => void; canManage: boolean;
+  centers: { id: string; name: string; code: string | null }[];
 }) {
   const { t } = useI18n();
   const { data: projects = [] } = useProjects();
@@ -269,19 +270,63 @@ function PeriodsSection({ periods, selectedPeriod, showForm, setShowForm, canMan
   const deletePeriod = useDeleteAllocationPeriod();
   const { user } = useAuthStore();
 
-  const [newPeriod, setNewPeriod] = useState({
-    name: "", total_fund: 0, project_id: "", period_start: "", period_end: "", mode: "per_project" as AllocationMode,
+  /* ── Form state ── */
+  const [form, setForm] = useState({
+    name: "", center_id: "", project_id: "",
+    period_start: "", period_end: "",
+  });
+  const [factors, setFactors] = useState<Record<string, number>>({});
+
+  /* Preview quỹ khoán từ nghiệm thu */
+  const { data: preview = [] } = usePreviewFund({
+    center_id: form.center_id || undefined,
+    start_date: form.period_start || undefined,
+    end_date: form.period_end || undefined,
+    project_id: form.project_id || undefined,
   });
 
+  /* Tính total_fund = SUM(NT × hệ số) */
+  const totalFund = useMemo(() => {
+    return preview.reduce((s, p) => {
+      const factor = factors[p.project_id] ?? 1.0;
+      return s + p.total_accepted * factor;
+    }, 0);
+  }, [preview, factors]);
+
   const handleCreate = async () => {
-    if (!newPeriod.name || !newPeriod.total_fund) { toast.error("Nhập tên và quỹ khoán"); return; }
+    if (!form.name) { toast.error("Nhập tên đợt"); return; }
+    if (!form.center_id) { toast.error("Chọn trung tâm"); return; }
+    if (!form.period_start || !form.period_end) { toast.error("Nhập ngày bắt đầu và kết thúc"); return; }
+    if (totalFund <= 0) { toast.error("Quỹ khoán phải > 0 (cần có nghiệm thu trong kỳ)"); return; }
     try {
-      const submitData = { ...newPeriod, project_id: newPeriod.project_id || undefined };
-      await createPeriod.mutateAsync(submitData as any);
+      const submitData: any = {
+        name: form.name,
+        center_id: form.center_id,
+        project_id: form.project_id || undefined,
+        period_start: form.period_start,
+        period_end: form.period_end,
+        total_fund: Math.round(totalFund),
+        mode: form.project_id ? "per_project" : "global",
+      };
+      const period = await createPeriod.mutateAsync(submitData);
+      /* Lưu hệ số dự án cho đợt khoán vừa tạo */
+      if (period?.id && preview.length > 0) {
+        const rows = preview
+          .filter((p) => (factors[p.project_id] ?? 1.0) !== 1.0)
+          .map((p) => ({ period_id: period.id, project_id: p.project_id, difficulty_factor: factors[p.project_id] }));
+        if (rows.length > 0) {
+          const supabase = createClient();
+          await supabase.from("period_project_factors" as any).insert(rows);
+        }
+      }
       toast.success("Tạo đợt khoán thành công!");
       setShowForm(false);
+      setForm({ name: "", center_id: "", project_id: "", period_start: "", period_end: "" });
+      setFactors({});
     } catch (e: any) { toast.error(e.message); }
   };
+
+  const inputClass = "mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none";
 
   const filtered = selectedPeriod ? periods.filter((p) => p.id === selectedPeriod) : periods;
 
@@ -290,46 +335,92 @@ function PeriodsSection({ periods, selectedPeriod, showForm, setShowForm, canMan
       {/* Modal tạo đợt khoán */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setShowForm(false)}>
-          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            {/* Tiêu đề */}
+          <div className="bg-card border border-border rounded-2xl w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h3 className="text-base font-bold text-primary">{t.kpi.createPeriodTitle}</h3>
               <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
             </div>
 
-            {/* Nội dung form */}
-            <div className="p-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Hàng 1: Tên đợt */}
+              <div>
+                <label className="text-xs text-muted-foreground font-medium">{t.kpi.periodName}</label>
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="VD: Khoán Q1-2026 TT Thiết kế" className={inputClass} />
+              </div>
+
+              {/* Hàng 2: Bắt đầu + Kết thúc */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="text-xs text-muted-foreground font-medium">{t.kpi.periodName}</label>
-                  <input value={newPeriod.name} onChange={(e) => setNewPeriod({ ...newPeriod, name: e.target.value })}
-                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground font-medium">Quỹ khoán</label>
-                  <input type="number" value={newPeriod.total_fund || ""} onChange={(e) => setNewPeriod({ ...newPeriod, total_fund: +e.target.value })}
-                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm font-mono focus:border-primary focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground font-medium">Dự án</label>
-                  <SearchSelect value={newPeriod.project_id} onChange={(v) => setNewPeriod({ ...newPeriod, project_id: v })}
-                    options={[{ value: "", label: "— Tổng hợp —" }, ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))]}
-                    className="mt-1" />
-                </div>
                 <div>
                   <label className="text-xs text-muted-foreground font-medium">{t.kpi.startDate}</label>
-                  <input type="date" value={newPeriod.period_start} onChange={(e) => setNewPeriod({ ...newPeriod, period_start: e.target.value })}
-                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+                  <input type="date" value={form.period_start} onChange={(e) => setForm({ ...form, period_start: e.target.value })} className={inputClass} />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground font-medium">{t.kpi.endDate}</label>
-                  <input type="date" value={newPeriod.period_end} onChange={(e) => setNewPeriod({ ...newPeriod, period_end: e.target.value })}
-                    className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+                  <input type="date" value={form.period_end} onChange={(e) => setForm({ ...form, period_end: e.target.value })} className={inputClass} />
                 </div>
               </div>
+
+              {/* Hàng 3: Trung tâm + Dự án */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium">Trung tâm *</label>
+                  <SearchSelect value={form.center_id} onChange={(v) => setForm({ ...form, center_id: v })}
+                    options={centers.map((c) => ({ value: c.id, label: `${c.code || ""} — ${c.name}` }))}
+                    placeholder="Chọn trung tâm" className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground font-medium">Dự án</label>
+                  <SearchSelect value={form.project_id} onChange={(v) => setForm({ ...form, project_id: v })}
+                    options={[{ value: "", label: "— Tổng hợp —" }, ...projects.map((p: any) => ({ value: p.id, label: `${p.code} — ${p.name}` }))]}
+                    className="mt-1" />
+                </div>
+              </div>
+
+              {/* Bảng preview nghiệm thu → quỹ khoán */}
+              {form.center_id && form.period_start && form.period_end && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Nghiệm thu trong kỳ → Quỹ khoán</p>
+                  {preview.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic py-4 text-center">Không có nghiệm thu nào trong khoảng thời gian này</p>
+                  ) : (
+                    <div className="bg-secondary/30 rounded-xl overflow-hidden border border-border/50">
+                      <table className="w-full text-xs">
+                        <thead><tr className="border-b border-border/50 text-muted-foreground">
+                          <th className="text-left px-3 py-2 font-medium">Dự án</th>
+                          <th className="text-left px-3 py-2 font-medium">HĐ Giao khoán</th>
+                          <th className="text-right px-3 py-2 font-medium">Tổng NT trong kỳ</th>
+                          <th className="text-center px-3 py-2 font-medium w-20">Hệ số</th>
+                          <th className="text-right px-3 py-2 font-medium">Quỹ (NT×HS)</th>
+                        </tr></thead>
+                        <tbody className="divide-y divide-border/30">
+                          {preview.map((p) => {
+                            const factor = factors[p.project_id] ?? 1.0;
+                            return (
+                              <tr key={p.project_id} className="hover:bg-secondary/20">
+                                <td className="px-3 py-2 font-medium">{p.project_code} — {p.project_name}</td>
+                                <td className="px-3 py-2 text-muted-foreground">{p.allocations.map((a) => a.allocation_code || "—").join(", ")}</td>
+                                <td className="px-3 py-2 text-right font-mono">{formatVND(p.total_accepted)}</td>
+                                <td className="px-3 py-2 text-center">
+                                  <input type="number" step="0.1" min="0.1" value={factor}
+                                    onChange={(e) => setFactors({ ...factors, [p.project_id]: parseFloat(e.target.value) || 1.0 })}
+                                    className="w-16 h-6 px-1.5 rounded border border-border bg-card text-xs font-mono text-center focus:border-primary focus:outline-none" />
+                                </td>
+                                <td className="px-3 py-2 text-right font-mono font-semibold text-primary">{formatVND(p.total_accepted * factor)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot><tr className="border-t border-border bg-secondary/30">
+                          <td colSpan={4} className="px-3 py-2 font-bold">Tổng quỹ khoán</td>
+                          <td className="px-3 py-2 text-right font-mono font-bold text-primary">{formatVND(totalFund)}</td>
+                        </tr></tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Footer */}
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
               <Button onClick={() => setShowForm(false)}>{t.common.cancel}</Button>
               <Button variant="primary" onClick={handleCreate} disabled={createPeriod.isPending}>

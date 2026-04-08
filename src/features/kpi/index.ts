@@ -18,6 +18,7 @@ export {
   useSalaryRecords,
   useCreateSalaryBatch,
   useSalaryDeductions,
+  usePreviewFund,
   useAcceptanceRounds,
   useUpsertAcceptanceRound,
   useDeleteAcceptanceRound,
