@@ -100,7 +100,8 @@ export default function CostsPage() {
 function CostsSection({ canManage }: { canManage: boolean }) {
   const { t } = useI18n();
   const { data: projects = [] } = useProjects();
-  const { data: contracts = [] } = useContracts();
+  /* Chỉ hiện hợp đồng đầu ra (doanh thu), không bao gồm HĐ giao khoán */
+  const { data: contracts = [] } = useContracts({ type: "outgoing" });
   const { data: departments = [] } = useDepartments();
 
   const [filterProjectId, setFilterProjectId] = useState<string>("");
