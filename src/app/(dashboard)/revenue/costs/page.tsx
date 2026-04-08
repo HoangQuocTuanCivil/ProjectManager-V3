@@ -362,8 +362,8 @@ function SalarySection({ canManage }: { canManage: boolean }) {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7) + "-01");
   const [centerId, setCenterId] = useState("");
   const [deptId, setDeptId] = useState("");
-  const [salaryTab, setSalaryTab] = useState<"view" | "deductions" | "input-manual" | "input-excel">("view");
-  const isInputMode = salaryTab === "input-manual" || salaryTab === "input-excel";
+  const [salaryTab, setSalaryTab] = useState<"view" | "deductions" | "input-excel">("view");
+  const [showManualPopup, setShowManualPopup] = useState(false);
 
   /* Dropdown "Nhập lương" */
   const [inputMenuOpen, setInputMenuOpen] = useState(false);
@@ -393,15 +393,15 @@ function SalarySection({ canManage }: { canManage: boolean }) {
           <div className="relative" ref={inputMenuRef}>
             <button
               onClick={() => setInputMenuOpen((o) => !o)}
-              className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors inline-flex items-center gap-1 ${isInputMode ? "bg-primary text-primary-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}
+              className="px-2.5 py-1 rounded text-[11px] font-medium transition-colors inline-flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Nhập lương <ChevronDown size={12} className={`transition-transform ${inputMenuOpen ? "rotate-180" : ""}`} />
             </button>
             {inputMenuOpen && (
               <div className="absolute left-0 top-full mt-1 w-48 bg-card border border-border rounded-xl shadow-lg z-50 py-1 animate-in fade-in-0 zoom-in-95 duration-100">
                 <button
-                  onClick={() => { setSalaryTab("input-manual"); setInputMenuOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${salaryTab === "input-manual" ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-secondary"}`}
+                  onClick={() => { setShowManualPopup(true); setInputMenuOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-secondary transition-colors"
                 >
                   <Wallet size={13} className="text-muted-foreground" /> Nhập thủ công
                 </button>
@@ -418,8 +418,10 @@ function SalarySection({ canManage }: { canManage: boolean }) {
       </div>
       {salaryTab === "view" && <SalaryViewInner month={month} setMonth={setMonth} centerId={centerId} setCenterId={setCenterId} deptId={deptId} setDeptId={setDeptId} depts={departments} centers={allCenters as any[]} />}
       {salaryTab === "deductions" && <DeductionsInner />}
-      {salaryTab === "input-manual" && <SalaryManualInput month={month} setMonth={setMonth} centerId={centerId} setCenterId={setCenterId} deptId={deptId} setDeptId={setDeptId} depts={departments} centers={allCenters as any[]} />}
       {salaryTab === "input-excel" && <SalaryExcelInput month={month} setMonth={setMonth} />}
+
+      {/* Popup nhập lương thủ công */}
+      {showManualPopup && <SalaryManualPopup month={month} setMonth={setMonth} depts={departments} centers={allCenters as any[]} onClose={() => setShowManualPopup(false)} />}
     </div>
   );
 }
@@ -531,61 +533,46 @@ function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDe
   );
 }
 
-/* ── Nhập lương thủ công: lọc theo Trung tâm / Phòng ban → nhập từng nhân sự ── */
-function SalaryManualInput({ month, setMonth, centerId, setCenterId, deptId, setDeptId, depts, centers }: {
+/* ── Popup nhập lương thủ công: lọc TT/PB → nhập từng nhân sự ── */
+function SalaryManualPopup({ month, setMonth, depts, centers, onClose }: {
   month: string; setMonth: (v: string) => void;
-  centerId: string; setCenterId: (v: string) => void;
-  deptId: string; setDeptId: (v: string) => void;
   depts: { id: string; name: string; code: string; center_id?: string }[];
   centers: { id: string; name: string; code?: string; is_active?: boolean }[];
+  onClose: () => void;
 }) {
   const { data: allUsers = [] } = useAllActiveUsers();
   const { data: existing } = useSalaryRecords({ month });
   const createBatch = useCreateSalaryBatch();
   const existingMap = new Map((existing?.data ?? []).map((r: any) => [r.user_id, r]));
   const [rows, setRows] = useState<Record<string, number>>({});
+  const [popupCenter, setPopupCenter] = useState("");
+  const [popupDept, setPopupDept] = useState("");
 
-  /* PB theo TT đã chọn */
   const filteredDepts = useMemo(() => {
-    if (!centerId) return depts;
-    return depts.filter((d: any) => d.center_id === centerId);
-  }, [depts, centerId]);
+    if (!popupCenter) return depts;
+    return depts.filter((d: any) => d.center_id === popupCenter);
+  }, [depts, popupCenter]);
 
-  /* Lọc nhân sự theo TT + PB */
   const visibleUsers = useMemo(() => {
     let list = allUsers;
-    if (deptId) {
-      list = list.filter((u) => u.dept_id === deptId);
-    } else if (centerId) {
+    if (popupDept) {
+      list = list.filter((u) => u.dept_id === popupDept);
+    } else if (popupCenter) {
       const deptIds = new Set(filteredDepts.map((d) => d.id));
       list = list.filter((u) => u.dept_id && deptIds.has(u.dept_id));
     }
     return list;
-  }, [allUsers, deptId, centerId, filteredDepts]);
+  }, [allUsers, popupDept, popupCenter, filteredDepts]);
 
-  const hasFilter = !!(centerId || deptId);
+  const hasFilter = !!(popupCenter || popupDept);
 
   const effectiveRows = visibleUsers.map((u) => ({
     user_id: u.id, full_name: u.full_name, employee_code: u.employee_code,
     dept_id: u.dept_id,
     hasCode: !!u.employee_code,
     current: existingMap.get(u.id)?.base_salary ?? 0,
-    deduction: existingMap.get(u.id)?.deduction_applied ?? 0,
-    net: existingMap.get(u.id)?.net_salary ?? 0,
     input: rows[u.id] ?? (existingMap.get(u.id)?.base_salary ?? 0),
   }));
-
-  /* Tải mẫu Excel cho nhân sự đang hiển thị */
-  const handleDownloadTemplate = () => {
-    if (visibleUsers.length === 0) { toast.error("Không có nhân viên để xuất"); return; }
-    const headers = ["MÃ HT", "Họ tên", "Email", "LƯƠNG THEO NGÀY CÔNG THỰC TẾ"];
-    const dataRows = visibleUsers.map((u) => [u.employee_code || "", u.full_name, u.email || "", existingMap.get(u.id)?.base_salary ?? 0]);
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-    ws["!cols"] = [{ wch: 14 }, { wch: 25 }, { wch: 30 }, { wch: 30 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Lương tháng");
-    XLSX.writeFile(wb, `Luong_${month.slice(0, 7)}.xlsx`);
-  };
 
   const handleSave = async () => {
     const records = effectiveRows
@@ -595,80 +582,85 @@ function SalaryManualInput({ month, setMonth, centerId, setCenterId, deptId, set
     try {
       await createBatch.mutateAsync(records);
       toast.success(`Lưu lương ${records.length} nhân sự`);
+      onClose();
     } catch (e: any) { toast.error(e.message); }
   };
 
+  const inputClass = "w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none";
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">Tháng</label>
-          <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")}
-            className="mt-1 block h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-3xl shadow-2xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="text-base font-bold">Nhập lương thủ công</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
         </div>
-        <div className="w-48">
-          <label className="text-xs text-muted-foreground font-medium">Trung tâm</label>
-          <select
-            value={centerId}
-            onChange={(e) => { setCenterId(e.target.value); setDeptId(""); }}
-            className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none"
-          >
-            <option value="">Tất cả Trung tâm</option>
-            {centers.filter((c) => c.is_active !== false).map((c) => (
-              <option key={c.id} value={c.id}>{c.code ? `${c.code} — ${c.name}` : c.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="w-48">
-          <label className="text-xs text-muted-foreground font-medium">Phòng ban</label>
-          <SearchSelect value={deptId} onChange={setDeptId}
-            options={[{ value: "", label: "Tất cả Phòng ban" }, ...filteredDepts.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))]}
-            className="mt-1" />
-        </div>
-        {hasFilter && (
-          <div className="self-end flex items-center gap-2">
-            <button onClick={handleDownloadTemplate} className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors">
-              <Download size={13} /> Tải mẫu
-            </button>
-            <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>
-              {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
-            </Button>
+
+        {/* Bộ lọc */}
+        <div className="px-5 pt-4 pb-2 flex items-center gap-3 flex-wrap">
+          <div className="w-36">
+            <label className="text-xs text-muted-foreground font-medium">Tháng</label>
+            <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")} className={"mt-1 " + inputClass} />
           </div>
-        )}
-      </div>
-      {!hasFilter ? (
-        <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chọn trung tâm hoặc phòng ban" subtitle="Lọc theo trung tâm hoặc phòng ban để nhập lương" />
-      ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-xs">
-            <thead><tr className="border-b border-border text-muted-foreground">
-              {["Mã HT", "Nhân viên", "Lương hiện tại", "Đã khấu trừ", "Thực nhận", "Lương mới"].map(h => (
-                <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
+          <div className="w-44">
+            <label className="text-xs text-muted-foreground font-medium">Trung tâm</label>
+            <select value={popupCenter} onChange={(e) => { setPopupCenter(e.target.value); setPopupDept(""); }} className={"mt-1 " + inputClass}>
+              <option value="">Tất cả Trung tâm</option>
+              {centers.filter((c) => c.is_active !== false).map((c) => (
+                <option key={c.id} value={c.id}>{c.code ? `${c.code} — ${c.name}` : c.name}</option>
               ))}
-            </tr></thead>
-            <tbody className="divide-y divide-border/30">
-              {effectiveRows.map((r) => (
-                <tr key={r.user_id} className={`transition-colors ${r.hasCode ? "hover:bg-secondary/20" : "opacity-40"}`}>
-                  <td className="px-4 py-2.5 font-mono text-xs">{r.employee_code || <span className="text-muted-foreground italic">Chưa có</span>}</td>
-                  <td className="px-4 py-2.5 font-medium">{r.full_name}</td>
-                  <td className="px-4 py-2.5 font-mono">{formatVND(r.current)}</td>
-                  <td className="px-4 py-2.5 font-mono text-red-400">{r.deduction > 0 ? `-${formatVND(r.deduction)}` : "—"}</td>
-                  <td className="px-4 py-2.5 font-mono text-green-500">{formatVND(r.net)}</td>
-                  <td className="px-4 py-2.5">
-                    {r.hasCode ? (
-                      <input type="number" min={0} value={r.input || ""} onChange={(e) => setRows({ ...rows, [r.user_id]: +e.target.value })}
-                        className="w-32 h-7 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
-                    ) : (
-                      <span className="text-muted-foreground italic text-[10px]">Cần Mã HT</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {effectiveRows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Không có nhân viên</td></tr>}
-            </tbody>
-          </table>
+            </select>
+          </div>
+          <div className="w-44">
+            <label className="text-xs text-muted-foreground font-medium">Phòng ban</label>
+            <SearchSelect value={popupDept} onChange={setPopupDept}
+              options={[{ value: "", label: "Tất cả PB" }, ...filteredDepts.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))]}
+              className="mt-1" />
+          </div>
         </div>
-      )}
+
+        {/* Bảng nhập lương */}
+        <div className="flex-1 overflow-y-auto px-5 pb-2">
+          {!hasFilter ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">Chọn trung tâm hoặc phòng ban để nhập lương</div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-card z-10"><tr className="border-b border-border text-muted-foreground">
+                {["Mã HT", "Nhân viên", "Lương hiện tại", "Lương mới"].map(h => (
+                  <th key={h} className="text-left px-3 py-2.5 font-medium">{h}</th>
+                ))}
+              </tr></thead>
+              <tbody className="divide-y divide-border/30">
+                {effectiveRows.map((r) => (
+                  <tr key={r.user_id} className={`transition-colors ${r.hasCode ? "hover:bg-secondary/20" : "opacity-40"}`}>
+                    <td className="px-3 py-2 font-mono text-xs">{r.employee_code || <span className="text-muted-foreground italic">—</span>}</td>
+                    <td className="px-3 py-2 font-medium">{r.full_name}</td>
+                    <td className="px-3 py-2 font-mono">{formatVND(r.current)}</td>
+                    <td className="px-3 py-2">
+                      {r.hasCode ? (
+                        <input type="number" min={0} value={r.input || ""} onChange={(e) => setRows({ ...rows, [r.user_id]: +e.target.value })}
+                          className="w-32 h-7 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
+                      ) : (
+                        <span className="text-muted-foreground italic text-[10px]">Cần Mã HT</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {effectiveRows.length === 0 && <tr><td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">Không có nhân viên</td></tr>}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+          <Button onClick={onClose}>Hủy</Button>
+          <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending || !hasFilter}>
+            {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
