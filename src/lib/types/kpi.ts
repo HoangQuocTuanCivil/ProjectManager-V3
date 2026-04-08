@@ -69,6 +69,22 @@ export interface DeptBudgetAllocation {
   department?: Pick<Department, 'id' | 'name' | 'code'>;
   center?: { id: string; name: string; code: string };
   creator?: Pick<User, 'id' | 'full_name'>;
+  acceptance_rounds?: AcceptanceRound[];
+}
+
+/** Đợt nghiệm thu nội bộ gắn với 1 giao khoán */
+export interface AcceptanceRound {
+  id: string;
+  allocation_id: string;
+  org_id: string;
+  round_name: string;
+  amount: number;
+  round_date: string | null;
+  note: string | null;
+  sort_order: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AllocationResult {

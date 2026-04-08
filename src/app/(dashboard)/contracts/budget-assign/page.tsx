@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, Fragment } from "react";
 import { useContracts } from "@/lib/hooks/use-contracts";
-import { useDeptBudgetAllocations, useUpsertDeptBudgetAllocation, useDeleteDeptBudgetAllocation } from "@/lib/hooks/use-kpi";
+import { useDeptBudgetAllocations, useUpsertDeptBudgetAllocation, useDeleteDeptBudgetAllocation, useAcceptanceRounds, useUpsertAcceptanceRound, useDeleteAcceptanceRound } from "@/features/kpi";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
-import { Coins, FileText, Upload } from "lucide-react";
+import { Coins, FileText, Upload, ChevronRight, Plus, Pencil, Trash2 } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { formatVND } from "@/lib/utils/kpi";
 import { formatDate } from "@/lib/utils/format";
@@ -13,7 +13,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { DeptBudgetAllocation } from "@/lib/types";
+import type { DeptBudgetAllocation, AcceptanceRound } from "@/lib/types";
 
 const supabase = createClient();
 
@@ -69,6 +69,29 @@ export default function BudgetAssignPage() {
 
   const canManage = user && ["admin", "leader", "director"].includes(user.role);
   const isDeptScoped = user && !["admin", "leader", "director"].includes(user.role);
+
+  /* ─── Nghiệm thu: fetch tất cả rounds, nhóm theo allocation_id ── */
+  const allocationIds = useMemo(() => allocations.map((a) => a.id), [allocations]);
+  const { data: allRounds = [] } = useAcceptanceRounds(allocationIds);
+  const upsertRound = useUpsertAcceptanceRound();
+  const removeRound = useDeleteAcceptanceRound();
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [editingRound, setEditingRound] = useState<AcceptanceRound | null>(null);
+
+  const roundsByAllocation = useMemo(() => {
+    const map = new Map<string, AcceptanceRound[]>();
+    for (const r of allRounds) {
+      const list = map.get(r.allocation_id) || [];
+      list.push(r);
+      map.set(r.allocation_id, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => a.sort_order - b.sort_order);
+    return map;
+  }, [allRounds]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedRows((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  };
 
   /* ─── Summary: tổng giá trị HĐ + tổng giao khoán ────────────── */
   const summary = useMemo(() => {
@@ -362,6 +385,11 @@ export default function BudgetAssignPage() {
       )}
 
       {/* ─── Danh sách giao khoán — nhóm theo Trung tâm ─── */}
+      {/* Popup sửa đợt nghiệm thu */}
+      {editingRound && (
+        <EditRoundModal round={editingRound} onClose={() => setEditingRound(null)} onSave={upsertRound.mutateAsync} isPending={upsertRound.isPending} />
+      )}
+
       {groupedByCenter.length === 0 ? (
         <EmptyState icon={<Coins size={32} strokeWidth={1.5} />} title={t.kpi.noBudgetAssign} subtitle={t.kpi.noBudgetAssignSub} />
       ) : (
@@ -402,38 +430,124 @@ export default function BudgetAssignPage() {
                     {canManage && <th className="text-right px-4 py-2 font-medium w-16" />}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/30">
-                  {items.map((a) => (
-                    <tr key={a.id} className="hover:bg-secondary/20 transition-colors">
-                      <td className="px-4 py-2.5 text-muted-foreground">
-                        {a.contract ? <span className="font-mono text-xs">{a.contract.contract_no}</span> : "—"}
-                      </td>
-                      <td className="px-4 py-2.5 font-mono text-xs">{a.allocation_code || "—"}</td>
-                      <td className="px-4 py-2.5 font-medium">
-                        {a.department ? <>{a.department.code && <span className="text-muted-foreground mr-1">{a.department.code}</span>}{a.department.name}</> : "—"}
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono font-semibold">{formatVND(Number(a.allocated_amount))}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">{a.start_date ? formatDate(a.start_date) : "—"}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">{a.end_date ? formatDate(a.end_date) : "—"}</td>
-                      <td className="px-4 py-2.5">
-                        {a.task_document_url ? (
-                          <button onClick={() => handleViewDoc(a.task_document_url!)} className="text-primary hover:underline text-[11px] flex items-center gap-0.5">
-                            <FileText size={12} /> Xem
-                          </button>
-                        ) : <span className="text-muted-foreground/50">—</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[150px]">{a.note || "—"}</td>
-                      {canManage && (
-                        <td className="px-4 py-2.5 text-right">
-                          <button
-                            onClick={() => { if (confirm(t.kpi.confirmDeleteBudget.replace("{dept}", a.department?.name || ""))) remove.mutate(a.id); }}
-                            className="text-destructive hover:underline text-[11px]" disabled={remove.isPending}>
-                            {t.common.delete}
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
+                <tbody>
+                  {items.map((a) => {
+                    const rounds = roundsByAllocation.get(a.id) || [];
+                    const isExpanded = expandedRows.has(a.id);
+                    const totalAccepted = rounds.reduce((s, r) => s + Number(r.amount), 0);
+                    const colCount = canManage ? 9 : 8;
+
+                    return (
+                      <Fragment key={a.id}>
+                        {/* Dòng giao khoán chính */}
+                        <tr className="hover:bg-secondary/20 transition-colors border-b border-border/30">
+                          <td className="px-4 py-2.5 text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                              <button onClick={() => toggleExpand(a.id)} className="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors">
+                                <ChevronRight size={13} className={`transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                              </button>
+                              {a.contract ? <span className="font-mono text-xs">{a.contract.contract_no}</span> : "—"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-xs">{a.allocation_code || "—"}</td>
+                          <td className="px-4 py-2.5 font-medium">
+                            {a.department ? <>{a.department.code && <span className="text-muted-foreground mr-1">{a.department.code}</span>}{a.department.name}</> : "—"}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono font-semibold">{formatVND(Number(a.allocated_amount))}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{a.start_date ? formatDate(a.start_date) : "—"}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{a.end_date ? formatDate(a.end_date) : "—"}</td>
+                          <td className="px-4 py-2.5">
+                            {a.task_document_url ? (
+                              <button onClick={() => handleViewDoc(a.task_document_url!)} className="text-primary hover:underline text-[11px] flex items-center gap-0.5">
+                                <FileText size={12} /> Xem
+                              </button>
+                            ) : <span className="text-muted-foreground/50">—</span>}
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[150px]">{a.note || "—"}</td>
+                          {canManage && (
+                            <td className="px-4 py-2.5 text-right">
+                              <button
+                                onClick={() => { if (confirm(t.kpi.confirmDeleteBudget.replace("{dept}", a.department?.name || ""))) remove.mutate(a.id); }}
+                                className="text-destructive hover:underline text-[11px]" disabled={remove.isPending}>
+                                {t.common.delete}
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+
+                        {/* Phần mở rộng: đợt nghiệm thu */}
+                        {isExpanded && (
+                          <>
+                            {/* Sub-header */}
+                            <tr className="bg-secondary/20">
+                              <td colSpan={colCount} className="px-6 py-1.5">
+                                <div className="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  <span className="w-32">Đợt</span>
+                                  <span className="w-28 text-right">Số tiền NT</span>
+                                  <span className="w-28 text-right">Lũy kế</span>
+                                  <span className="w-28 text-right">Còn lại</span>
+                                  <span className="w-24">Ngày</span>
+                                  <span className="flex-1">Ghi chú</span>
+                                  {canManage && <span className="w-16 text-right">Thao tác</span>}
+                                </div>
+                              </td>
+                            </tr>
+                            {rounds.map((round, idx) => {
+                              const cumulative = rounds.slice(0, idx + 1).reduce((s, r) => s + Number(r.amount), 0);
+                              const remaining = Number(a.allocated_amount) - cumulative;
+                              return (
+                                <tr key={round.id} className="bg-secondary/5 border-b border-border/10 hover:bg-secondary/15 transition-colors">
+                                  <td colSpan={colCount} className="px-6 py-2">
+                                    <div className="flex items-center gap-4 text-xs">
+                                      <span className="w-32 font-medium">{round.round_name}</span>
+                                      <span className="w-28 text-right font-mono">{formatVND(Number(round.amount))}</span>
+                                      <span className="w-28 text-right font-mono text-emerald-600">{formatVND(cumulative)}</span>
+                                      <span className={`w-28 text-right font-mono ${remaining < 0 ? "text-destructive" : "text-amber-600"}`}>{formatVND(remaining)}</span>
+                                      <span className="w-24 text-muted-foreground">{round.round_date ? formatDate(round.round_date) : "—"}</span>
+                                      <span className="flex-1 text-muted-foreground truncate">{round.note || "—"}</span>
+                                      {canManage && (
+                                        <span className="w-16 flex items-center justify-end gap-1.5">
+                                          <button onClick={() => setEditingRound(round)} className="text-primary hover:text-primary/70 p-0.5"><Pencil size={12} /></button>
+                                          <button onClick={() => { if (confirm("Xóa đợt nghiệm thu này?")) removeRound.mutate(round.id); }}
+                                            className="text-destructive hover:text-destructive/70 p-0.5"><Trash2 size={12} /></button>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {rounds.length === 0 && (
+                              <tr className="bg-secondary/5"><td colSpan={colCount} className="px-6 py-3 text-center text-[11px] text-muted-foreground italic">Chưa có đợt nghiệm thu</td></tr>
+                            )}
+                            {/* Form thêm đợt nghiệm thu */}
+                            {canManage && (
+                              <tr className="bg-primary/[0.02] border-b border-border/20">
+                                <td colSpan={colCount} className="px-6 py-2">
+                                  <AddRoundInline allocationId={a.id} nextOrder={rounds.length} onSave={upsertRound.mutateAsync} isPending={upsertRound.isPending} />
+                                </td>
+                              </tr>
+                            )}
+                            {/* Tổng nghiệm thu */}
+                            {rounds.length > 0 && (
+                              <tr className="bg-secondary/20 border-b border-border/30">
+                                <td colSpan={colCount} className="px-6 py-1.5">
+                                  <div className="flex items-center gap-4 text-xs font-bold">
+                                    <span className="w-32">Tổng NT</span>
+                                    <span className="w-28 text-right font-mono">{formatVND(totalAccepted)}</span>
+                                    <span className="w-28" />
+                                    <span className={`w-28 text-right font-mono ${Number(a.allocated_amount) - totalAccepted < 0 ? "text-destructive" : "text-amber-600"}`}>
+                                      {formatVND(Number(a.allocated_amount) - totalAccepted)}
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
                 {!isDeptScoped && (
                   <tfoot>
@@ -449,6 +563,101 @@ export default function BudgetAssignPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Form inline thêm đợt nghiệm thu (hiện trong sub-row) ── */
+function AddRoundInline({ allocationId, nextOrder, onSave, isPending }: {
+  allocationId: string; nextOrder: number;
+  onSave: (input: any) => Promise<any>; isPending: boolean;
+}) {
+  const [name, setName] = useState(`Đợt ${nextOrder + 1}`);
+  const [amount, setAmount] = useState<number>(0);
+  const [date, setDate] = useState("");
+  const [note, setNote] = useState("");
+
+  const handleAdd = async () => {
+    if (!name || amount <= 0) { toast.error("Nhập tên đợt và số tiền > 0"); return; }
+    await onSave({ allocation_id: allocationId, round_name: name, amount, round_date: date || undefined, note: note || undefined, sort_order: nextOrder });
+    setName(`Đợt ${nextOrder + 2}`);
+    setAmount(0);
+    setDate("");
+    setNote("");
+  };
+
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tên đợt"
+        className="w-32 h-7 px-2 rounded border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
+      <input type="number" min={0} value={amount || ""} onChange={(e) => setAmount(+e.target.value)} placeholder="Số tiền"
+        className="w-28 h-7 px-2 rounded border border-border bg-secondary text-xs font-mono focus:border-primary focus:outline-none" />
+      <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+        className="w-28 h-7 px-2 rounded border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
+      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú"
+        className="flex-1 h-7 px-2 rounded border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
+      <button onClick={handleAdd} disabled={isPending}
+        className="h-7 px-2.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1 disabled:opacity-50">
+        <Plus size={12} /> Thêm
+      </button>
+    </div>
+  );
+}
+
+/* ── Popup sửa đợt nghiệm thu ── */
+function EditRoundModal({ round, onClose, onSave, isPending }: {
+  round: AcceptanceRound; onClose: () => void;
+  onSave: (input: any) => Promise<any>; isPending: boolean;
+}) {
+  const [name, setName] = useState(round.round_name);
+  const [amount, setAmount] = useState(Number(round.amount));
+  const [date, setDate] = useState(round.round_date || "");
+  const [note, setNote] = useState(round.note || "");
+
+  const handleSave = async () => {
+    if (!name || amount <= 0) { toast.error("Nhập tên đợt và số tiền > 0"); return; }
+    await onSave({ id: round.id, allocation_id: round.allocation_id, round_name: name, amount, round_date: date || undefined, note: note || undefined, sort_order: round.sort_order });
+    onClose();
+  };
+
+  const inputClass = "mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="text-base font-bold">Sửa đợt nghiệm thu</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded">&times;</button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm text-muted-foreground font-medium">Tên đợt</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground font-medium">Số tiền NT</label>
+              <input type="number" min={0} value={amount || ""} onChange={(e) => setAmount(+e.target.value)} className={inputClass + " font-mono"} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm text-muted-foreground font-medium">Ngày</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground font-medium">Ghi chú</label>
+              <input value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+          <Button onClick={onClose}>Hủy</Button>
+          <Button variant="primary" onClick={handleSave} disabled={isPending}>
+            {isPending ? "Đang lưu..." : "Lưu"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

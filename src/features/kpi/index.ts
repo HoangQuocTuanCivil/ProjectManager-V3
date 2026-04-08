@@ -18,5 +18,8 @@ export {
   useSalaryRecords,
   useCreateSalaryBatch,
   useSalaryDeductions,
+  useAcceptanceRounds,
+  useUpsertAcceptanceRound,
+  useDeleteAcceptanceRound,
   kpiKeys,
 } from './hooks/use-kpi';

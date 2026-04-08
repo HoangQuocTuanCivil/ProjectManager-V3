@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { AllocationPeriod, AllocationConfig, DeptBudgetAllocation } from "@/lib/types";
+import type { AllocationPeriod, AllocationConfig, DeptBudgetAllocation, AcceptanceRound } from "@/lib/types";
 import type { TablesInsert } from "@/lib/types/database";
 
 const supabase = createClient();
@@ -20,6 +20,7 @@ export const kpiKeys = {
   cycle: () => [...kpiKeys.all, "cycle"] as const,
   salary: (filters?: Record<string, string | undefined>) => [...kpiKeys.all, "salary", filters] as const,
   deductions: () => [...kpiKeys.all, "deductions"] as const,
+  acceptanceRounds: (ids?: string[]) => [...kpiKeys.all, "acceptance-rounds", ids] as const,
 };
 
 /** Lấy danh sách bản ghi KPI, có thể lọc theo user */
@@ -447,5 +448,60 @@ export function useSalaryDeductions() {
       if (!res.ok) throw new Error((await res.json()).error);
       return res.json() as Promise<{ data: any[]; count: number }>;
     },
+  });
+}
+
+/* ───── Acceptance Rounds (Nghiệm thu giao khoán) ─────────────── */
+
+/** Batch fetch đợt nghiệm thu cho danh sách giao khoán */
+export function useAcceptanceRounds(allocationIds: string[]) {
+  return useQuery({
+    queryKey: kpiKeys.acceptanceRounds(allocationIds),
+    enabled: allocationIds.length > 0,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("allocation_ids", allocationIds.join(","));
+      const res = await fetch(`/api/kpi/acceptance-rounds?${params}`);
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json() as Promise<AcceptanceRound[]>;
+    },
+  });
+}
+
+/** Tạo hoặc cập nhật đợt nghiệm thu */
+export function useUpsertAcceptanceRound() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id?: string;
+      allocation_id: string;
+      round_name: string;
+      amount: number;
+      round_date?: string;
+      note?: string;
+      sort_order?: number;
+    }) => {
+      const method = input.id ? "PATCH" : "POST";
+      const res = await fetch("/api/kpi/acceptance-rounds", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...kpiKeys.all, "acceptance-rounds"] }),
+  });
+}
+
+/** Xóa đợt nghiệm thu */
+export function useDeleteAcceptanceRound() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/kpi/acceptance-rounds?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...kpiKeys.all, "acceptance-rounds"] }),
   });
 }
