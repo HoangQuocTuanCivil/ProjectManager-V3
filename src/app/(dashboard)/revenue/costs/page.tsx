@@ -695,7 +695,9 @@ function SalaryExcelInput({ month, setMonth }: {
     unmatched: { code: string; salary: number }[];
   } | null>(null);
 
-  /* Đọc file Excel, khớp cột MÃ HT với employee_code trong DB */
+  /* Đọc bảng lương Excel theo vị trí cột cố định:
+     - Cột B (index 1): Mã hệ thống — chỉ lấy dòng bắt đầu bằng "DC" hoặc "A2Z"
+     - Cột S (index 18): Lương theo ngày công thực tế */
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -703,29 +705,28 @@ function SalaryExcelInput({ month, setMonth }: {
     reader.onload = (evt) => {
       const wb = XLSX.read(evt.target?.result, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const jsonRows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
+      /* Đọc toàn bộ sheet dạng mảng 2 chiều (không phụ thuộc header) */
+      const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
       const matched: NonNullable<typeof excelPreview>["matched"] = [];
       const unmatched: { code: string; salary: number }[] = [];
 
-      for (const row of jsonRows) {
-        /* Tìm cột mã hệ thống — hỗ trợ nhiều tên header phổ biến */
-        const code = String(row["MÃ HT"] || row["MÃ HỆ THỐNG"] || row["Mã hệ thống"] || row["Mã HT"] || row["employee_code"] || "").trim().toUpperCase();
-        if (!code) continue;
+      for (const row of rawRows) {
+        /* Cột B (index 1): mã hệ thống */
+        const rawCode = String(row[1] ?? "").trim().toUpperCase();
+        if (!rawCode) continue;
+        /* Chỉ lấy mã bắt đầu bằng DC hoặc A2Z */
+        if (!rawCode.startsWith("DC") && !rawCode.startsWith("A2Z")) continue;
 
-        /* Tìm cột lương — ưu tiên "LƯƠNG THEO NGÀY CÔNG THỰC TẾ", fallback các tên khác */
-        const salary = Number(
-          row["LƯƠNG THEO NGÀY CÔNG THỰC TẾ"] ?? row["LƯƠNG THEO\r\nNGÀY CÔNG\r\nTHỰC TẾ"] ??
-          row["Lương theo ngày công thực tế"] ?? row["Lương thực tế"] ??
-          row["base_salary"] ?? row["Lương cơ bản (VNĐ)"] ?? 0
-        );
+        /* Cột S (index 18): lương theo ngày công thực tế */
+        const salary = Number(row[18] ?? 0);
         if (salary <= 0) continue;
 
-        const user = codeToUser.get(code);
+        const user = codeToUser.get(rawCode);
         if (user) {
-          matched.push({ code, name: user.full_name, userId: user.id, deptId: user.dept_id, salary });
+          matched.push({ code: rawCode, name: user.full_name, userId: user.id, deptId: user.dept_id, salary });
         } else {
-          unmatched.push({ code, salary });
+          unmatched.push({ code: rawCode, salary });
         }
       }
 
@@ -777,10 +778,10 @@ function SalaryExcelInput({ month, setMonth }: {
           <div>
             <p className="text-sm font-medium">Nhập lương từ bảng lương Excel</p>
             <p className="text-xs text-muted-foreground mt-1">
-              File Excel cần có cột <strong>MÃ HT</strong> (Mã hệ thống) và cột <strong>LƯƠNG THEO NGÀY CÔNG THỰC TẾ</strong>.
+              Đọc <strong>cột B</strong> (Mã hệ thống, bắt đầu bằng DC hoặc A2Z) và <strong>cột S</strong> (Lương theo ngày công thực tế).
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Hệ thống sẽ khớp mã hệ thống để gán lương. Tài khoản không có mã sẽ bị bỏ qua.
+              Tên nhân sự tự động lấy từ tài khoản khớp mã. Mã không có trong hệ thống sẽ được báo riêng.
             </p>
           </div>
         </div>
