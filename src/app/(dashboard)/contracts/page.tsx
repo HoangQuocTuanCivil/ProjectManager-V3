@@ -113,39 +113,57 @@ export default function ContractsPage() {
    Dashboard Overview
    ═══════════════════════════════════════════════════════════════════ */
 
-function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incoming: Contract[] }) {
-  const stats = useMemo(() => {
-    // Tổng giá trị HĐ = chỉ HĐ đầu ra (doanh thu), không gồm đầu vào (chi phí)
-    const totalContractValue = outgoing.reduce((s, c) => s + Number(c.contract_value), 0);
+/** Loại popup đang mở, tương ứng với từng thẻ tổng quan */
+type StatsPopupKey = "total" | "accepted" | "pending" | "payable" | "paid";
 
-    // Nghiệm thu và thanh toán chỉ tính trên HĐ đầu ra
+function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incoming: Contract[] }) {
+  // Popup đang mở: null = đóng, string = tên KPI được chọn
+  const [activePopup, setActivePopup] = useState<StatsPopupKey | null>(null);
+
+  const stats = useMemo(() => {
+    // Tổng giá trị HĐ đầu ra (doanh thu), bao gồm cả phụ lục hợp đồng
+    const totalContractValue = outgoing.reduce((s, c) => {
+      const addendumSum = (c.addendums || []).reduce((a, ad) => a + Number(ad.value_change), 0);
+      return s + Number(c.contract_value) + addendumSum;
+    }, 0);
+
+    // Tập hợp tất cả các đợt nghiệm thu từ HĐ đầu ra
     const allMilestones = outgoing.flatMap((c) => c.milestones || []);
 
-    // Đã nghiệm thu = tổng giá trị các đợt đã nghiệm thu (invoiced hoặc paid)
+    // Đã nghiệm thu = tổng giá trị các đợt có trạng thái invoiced hoặc paid
     const acceptedValue = allMilestones
       .filter((m) => m.status === "invoiced" || m.status === "paid")
       .reduce((s, m) => s + Number(m.amount), 0);
 
-    // Chưa thực hiện = tổng giá trị HĐ − giá trị đã nghiệm thu
+    // Chưa thực hiện = Tổng giá trị HĐ − Lũy kế đã nghiệm thu
     const pendingValue = totalContractValue - acceptedValue;
 
-    // Được thanh toán = tổng payable_amount từ tab Nghiệm thu
+    // Được thanh toán = tổng payable_amount (số tiền được phép thanh toán)
     const payableValue = allMilestones
-      .reduce((s, m) => s + Number((m as any).payable_amount || 0), 0);
+      .reduce((s, m) => s + Number(m.payable_amount || 0), 0);
 
-    // Đã thanh toán = tổng paid_amount từ tab Nghiệm thu
+    // Đã thanh toán = tổng paid_amount (số tiền đã thực nhận)
     const paidValue = allMilestones
-      .reduce((s, m) => s + Number((m as any).paid_amount || 0), 0);
+      .reduce((s, m) => s + Number(m.paid_amount || 0), 0);
 
-    // Phần trăm tiến độ nghiệm thu và thanh toán
+    // Tỷ lệ phần trăm tiến độ nghiệm thu và thanh toán
     const acceptedPct = totalContractValue > 0 ? Math.round((acceptedValue / totalContractValue) * 100) : 0;
     const paidPct = payableValue > 0 ? Math.round((paidValue / payableValue) * 100) : 0;
 
     return { totalContractValue, acceptedValue, pendingValue, payableValue, paidValue, acceptedPct, paidPct };
   }, [outgoing]);
 
-  const cards: { label: string; value: number; color: string; icon: React.ReactNode; sub?: string }[] = [
+  // Cấu hình từng thẻ: key KPI, nhãn hiển thị, giá trị tổng, màu sắc và icon
+  const cards: {
+    key: StatsPopupKey;
+    label: string;
+    value: number;
+    color: string;
+    icon: React.ReactNode;
+    sub?: string;
+  }[] = [
     {
+      key: "total",
       label: "Tổng giá trị HĐ",
       value: stats.totalContractValue,
       color: "text-primary",
@@ -153,6 +171,7 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
       sub: `${outgoing.length} hợp đồng đầu ra`,
     },
     {
+      key: "accepted",
       label: "Đã nghiệm thu",
       value: stats.acceptedValue,
       color: "text-emerald-500",
@@ -160,6 +179,7 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
       sub: `${stats.acceptedPct}% giá trị HĐ`,
     },
     {
+      key: "pending",
       label: "Chưa thực hiện",
       value: stats.pendingValue,
       color: "text-amber-500",
@@ -167,6 +187,7 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
       sub: `${100 - stats.acceptedPct}% giá trị HĐ`,
     },
     {
+      key: "payable",
       label: "Được thanh toán",
       value: stats.payableValue,
       color: "text-blue-500",
@@ -174,6 +195,7 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
       sub: "Đã nghiệm thu & xuất HĐ",
     },
     {
+      key: "paid",
       label: "Đã thanh toán",
       value: stats.paidValue,
       color: "text-green-600",
@@ -184,17 +206,30 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
 
   return (
     <div className="space-y-4">
-      {/* 5 thẻ tổng quan giá trị */}
+      {/* 5 thẻ tổng quan — mỗi thẻ là nút bấm mở popup chi tiết */}
       <div className="grid grid-cols-5 gap-3">
-        {cards.map((c, i) => (
-          <div key={i} className="bg-card border border-border rounded-xl p-4">
+        {cards.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => setActivePopup(c.key)}
+            className="bg-card border border-border rounded-xl p-4 text-left
+                       hover:border-primary/50 hover:shadow-sm transition-all group cursor-pointer"
+            title="Nhấn để xem chi tiết"
+          >
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center">{c.icon}</div>
+              <div className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                {c.icon}
+              </div>
               <span className="text-[11px] font-medium text-muted-foreground">{c.label}</span>
             </div>
             <p className={`text-base font-bold font-mono ${c.color}`}>{formatVND(c.value)}</p>
-            {c.sub && <p className="mt-1 text-[10px] text-muted-foreground">{c.sub}</p>}
-          </div>
+            {c.sub && (
+              <p className="mt-1 text-[10px] text-muted-foreground group-hover:text-primary/70 transition-colors">
+                {c.sub}
+              </p>
+            )}
+          </button>
         ))}
       </div>
 
@@ -230,6 +265,171 @@ function DashboardOverview({ outgoing, incoming }: { outgoing: Contract[]; incom
               <span>Chưa TT: <span className="font-mono text-foreground">{formatVND(stats.payableValue - stats.paidValue)}</span></span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Popup chi tiết hợp đồng theo KPI đang chọn */}
+      {activePopup && (
+        <ContractStatsPopup
+          popupKey={activePopup}
+          contracts={outgoing}
+          onClose={() => setActivePopup(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Contract Stats Popup
+   Hiển thị bảng danh sách hợp đồng đầu ra đóng góp vào KPI được chọn.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** Tiêu đề và cột giá trị cho từng popup */
+const POPUP_CONFIG: Record<
+  StatsPopupKey,
+  { title: string; valueLabel: string; valueColor: string }
+> = {
+  total:    { title: "Tổng giá trị hợp đồng",  valueLabel: "Giá trị HĐ (kể cả Phụ lục)", valueColor: "text-primary" },
+  accepted: { title: "Đã nghiệm thu",           valueLabel: "Giá trị đã nghiệm thu", valueColor: "text-emerald-500" },
+  pending:  { title: "Chưa thực hiện",          valueLabel: "Giá trị chưa thực hiện",valueColor: "text-amber-500" },
+  payable:  { title: "Được thanh toán",         valueLabel: "Giá trị được thanh toán",valueColor: "text-blue-500" },
+  paid:     { title: "Đã thanh toán",           valueLabel: "Giá trị đã thanh toán",  valueColor: "text-green-600" },
+};
+
+/** Tính giá trị KPI của một hợp đồng theo loại popup */
+function computeContractKpiValue(contract: Contract, key: StatsPopupKey): number {
+  const baseValue = Number(contract.contract_value);
+  const addendumSum = (contract.addendums || []).reduce(
+    (s, a) => s + Number(a.value_change), 0
+  );
+  const totalValue = baseValue + addendumSum;
+  const milestones = contract.milestones || [];
+
+  switch (key) {
+    case "total":
+      // Giá trị hợp đồng bao gồm tất cả phụ lục điều chỉnh giá trị
+      return totalValue;
+
+    case "accepted":
+      // Tổng giá trị các đợt nghiệm thu đã lập hoá đơn hoặc đã thanh toán
+      return milestones
+        .filter((m) => m.status === "invoiced" || m.status === "paid")
+        .reduce((s, m) => s + Number(m.amount), 0);
+
+    case "pending":
+      // Phần giá trị hợp đồng chưa được nghiệm thu (= tổng HĐ − lũy kế)
+      const accumulated = milestones
+        .filter((m) => m.status === "invoiced" || m.status === "paid")
+        .reduce((s, m) => s + Number(m.amount), 0);
+      return totalValue - accumulated;
+
+    case "payable":
+      // Tổng số tiền được phép thanh toán theo các đợt nghiệm thu
+      return milestones.reduce((s, m) => s + Number(m.payable_amount || 0), 0);
+
+    case "paid":
+      // Tổng số tiền đã thực sự thanh toán cho từng đợt
+      return milestones.reduce((s, m) => s + Number(m.paid_amount || 0), 0);
+
+    default:
+      return 0;
+  }
+}
+
+function ContractStatsPopup({
+  popupKey,
+  contracts,
+  onClose,
+}: {
+  popupKey: StatsPopupKey;
+  contracts: Contract[];
+  onClose: () => void;
+}) {
+  const config = POPUP_CONFIG[popupKey];
+
+  // Tính giá trị KPI từng hợp đồng và loại bỏ những hợp đồng có giá trị = 0
+  const rows = contracts
+    .map((c) => ({ contract: c, kpiValue: computeContractKpiValue(c, popupKey) }))
+    .filter((r) => r.kpiValue !== 0);
+
+  const grandTotal = rows.reduce((s, r) => s + r.kpiValue, 0);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.55)" }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border rounded-2xl shadow-2xl
+                   w-full max-w-4xl max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header popup */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card rounded-t-2xl">
+          <div>
+            <h3 className="text-sm font-bold text-foreground">{config.title}</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Danh sách hợp đồng đầu ra (Doanh thu) · {rows.length} hợp đồng
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground text-xl p-1 rounded leading-none"
+            aria-label="Đóng popup"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Bảng danh sách hợp đồng */}
+        <div className="overflow-y-auto flex-1">
+          {rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-12">Không có dữ liệu</p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-secondary/80 backdrop-blur-sm">
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-semibold text-muted-foreground w-8">#</th>
+                  <th className="px-4 py-2.5 text-left font-semibold text-muted-foreground">Dự án</th>
+                  <th className="px-4 py-2.5 text-left font-semibold text-muted-foreground">Gói thầu</th>
+                  <th className="px-4 py-2.5 text-left font-semibold text-muted-foreground">Mã hợp đồng</th>
+                  <th className="px-4 py-2.5 text-left font-semibold text-muted-foreground">Tên hợp đồng</th>
+                  <th className="px-4 py-2.5 text-right font-semibold text-muted-foreground">{config.valueLabel}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map(({ contract: c, kpiValue }, idx) => (
+                  <tr key={c.id} className="hover:bg-secondary/30 transition-colors">
+                    <td className="px-4 py-3 text-muted-foreground">{idx + 1}</td>
+                    <td className="px-4 py-3">
+                      {c.project ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="font-mono font-medium text-primary">{c.project.code}</span>
+                          <span className="text-muted-foreground hidden xl:inline">— {c.project.name}</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{c.bid_package || "—"}</td>
+                    <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">{c.contract_no}</td>
+                    <td className="px-4 py-3 font-medium max-w-[220px] truncate" title={c.title}>{c.title}</td>
+                    <td className={`px-4 py-3 text-right font-mono font-semibold ${config.valueColor}`}>
+                      {formatVND(kpiValue)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Footer: tổng cộng */}
+        <div className="px-6 py-3 border-t border-border bg-secondary/30 rounded-b-2xl flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Tổng cộng</span>
+          <span className={`font-mono font-bold text-sm ${config.valueColor}`}>{formatVND(grandTotal)}</span>
         </div>
       </div>
     </div>
