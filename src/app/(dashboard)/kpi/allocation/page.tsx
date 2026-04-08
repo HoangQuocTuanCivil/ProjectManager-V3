@@ -55,9 +55,17 @@ export default function AllocationPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
   const [selectedCenter, setSelectedCenter] = useState<string>("all");
   const [showForm, setShowForm] = useState(false);
+  const [fundStartDate, setFundStartDate] = useState("");
+  const [fundEndDate, setFundEndDate] = useState("");
 
   const { data: periods = [] } = useAllocationPeriods();
-  const { data: fundSummaryAll = [] } = useFundSummary();
+  const fundFilters = useMemo(() => {
+    const f: { start_date?: string; end_date?: string } = {};
+    if (fundStartDate) f.start_date = fundStartDate;
+    if (fundEndDate) f.end_date = fundEndDate;
+    return Object.keys(f).length > 0 ? f : undefined;
+  }, [fundStartDate, fundEndDate]);
+  const { data: fundSummaryAll = [] } = useFundSummary(fundFilters);
   const { data: bonusData = [] } = useEmployeeBonus(selectedPeriod || undefined);
   const { data: centers = [] } = useCenters();
   const { data: departments = [] } = useDepartments();
@@ -105,7 +113,24 @@ export default function AllocationPage() {
           ))}
         </div>
         <div className="flex items-center gap-2">
-          {/* Lọc theo trung tâm — chỉ admin/LĐ thấy dropdown, NV thường tự lọc theo TT mình */}
+          {/* Lọc ngày + trung tâm cho tab Quỹ phòng ban */}
+          {tab === "fund" && (
+            <div className="flex items-center gap-2">
+              <input type="date" value={fundStartDate} onChange={(e) => setFundStartDate(e.target.value)}
+                className="h-9 px-2.5 rounded-lg border border-border bg-card text-xs focus:border-primary focus:outline-none"
+                title="Từ ngày" />
+              <span className="text-xs text-muted-foreground">—</span>
+              <input type="date" value={fundEndDate} onChange={(e) => setFundEndDate(e.target.value)}
+                className="h-9 px-2.5 rounded-lg border border-border bg-card text-xs focus:border-primary focus:outline-none"
+                title="Đến ngày" />
+              {(fundStartDate || fundEndDate) && (
+                <button onClick={() => { setFundStartDate(""); setFundEndDate(""); }}
+                  className="h-9 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                  Xóa
+                </button>
+              )}
+            </div>
+          )}
           {tab === "fund" && canViewAll && centers.length > 0 && (
             <div className="w-52">
               <SearchSelect value={selectedCenter} onChange={setSelectedCenter}

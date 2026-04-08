@@ -15,7 +15,7 @@ export const kpiKeys = {
   period: (id: string) => [...kpiKeys.all, "period", id] as const,
   config: () => [...kpiKeys.all, "config"] as const,
   budgetAllocations: (projectId?: string) => [...kpiKeys.all, "budget-alloc", projectId] as const,
-  fundSummary: () => [...kpiKeys.all, "fund-summary"] as const,
+  fundSummary: (filters?: { start_date?: string; end_date?: string }) => [...kpiKeys.all, "fund-summary", filters] as const,
   employeeBonus: (periodId?: string) => [...kpiKeys.all, "employee-bonus", periodId] as const,
   cycle: () => [...kpiKeys.all, "cycle"] as const,
   salary: (filters?: Record<string, string | undefined>) => [...kpiKeys.all, "salary", filters] as const,
@@ -315,12 +315,15 @@ export function useDeleteDeptBudgetAllocation() {
 
 /* ───── Fund Summary, Bonus, Cycle, Salary ──────────────────────── */
 
-/** Bảng tổng hợp quỹ PB: dự kiến / thực tế / chi phí / lương / còn lại */
-export function useFundSummary() {
+/** Tổng hợp quỹ PB, hỗ trợ lọc theo khoảng ngày (start_date, end_date) */
+export function useFundSummary(filters?: { start_date?: string; end_date?: string }) {
   return useQuery({
-    queryKey: kpiKeys.fundSummary(),
+    queryKey: kpiKeys.fundSummary(filters),
     queryFn: async () => {
-      const res = await fetch("/api/kpi/allocation/fund-summary");
+      const params = new URLSearchParams();
+      if (filters?.start_date) params.set("start_date", filters.start_date);
+      if (filters?.end_date) params.set("end_date", filters.end_date);
+      const res = await fetch(`/api/kpi/allocation/fund-summary?${params}`);
       if (!res.ok) throw new Error((await res.json()).error);
       return res.json() as Promise<{
         dept_id: string; org_id: string; dept_name: string; dept_code: string;
