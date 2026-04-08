@@ -362,8 +362,9 @@ function SalarySection({ canManage }: { canManage: boolean }) {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7) + "-01");
   const [centerId, setCenterId] = useState("");
   const [deptId, setDeptId] = useState("");
-  const [salaryTab, setSalaryTab] = useState<"view" | "deductions" | "input-excel">("view");
+  const [salaryTab, setSalaryTab] = useState<"view" | "deductions">("view");
   const [showManualPopup, setShowManualPopup] = useState(false);
+  const [showExcelPopup, setShowExcelPopup] = useState(false);
 
   /* Dropdown "Nhập lương" */
   const [inputMenuOpen, setInputMenuOpen] = useState(false);
@@ -406,8 +407,8 @@ function SalarySection({ canManage }: { canManage: boolean }) {
                   <Wallet size={13} className="text-muted-foreground" /> Nhập thủ công
                 </button>
                 <button
-                  onClick={() => { setSalaryTab("input-excel"); setInputMenuOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${salaryTab === "input-excel" ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-secondary"}`}
+                  onClick={() => { setShowExcelPopup(true); setInputMenuOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-secondary transition-colors"
                 >
                   <Upload size={13} className="text-muted-foreground" /> Chèn từ Excel
                 </button>
@@ -418,10 +419,11 @@ function SalarySection({ canManage }: { canManage: boolean }) {
       </div>
       {salaryTab === "view" && <SalaryViewInner month={month} setMonth={setMonth} centerId={centerId} setCenterId={setCenterId} deptId={deptId} setDeptId={setDeptId} depts={departments} centers={allCenters as any[]} />}
       {salaryTab === "deductions" && <DeductionsInner />}
-      {salaryTab === "input-excel" && <SalaryExcelInput month={month} setMonth={setMonth} />}
 
       {/* Popup nhập lương thủ công */}
       {showManualPopup && <SalaryManualPopup month={month} setMonth={setMonth} depts={departments} centers={allCenters as any[]} onClose={() => setShowManualPopup(false)} />}
+      {/* Popup chèn lương từ Excel */}
+      {showExcelPopup && <SalaryExcelPopup month={month} setMonth={setMonth} onClose={() => setShowExcelPopup(false)} />}
     </div>
   );
 }
@@ -665,9 +667,10 @@ function SalaryManualPopup({ month, setMonth, depts, centers, onClose }: {
   );
 }
 
-/* ── Nhập lương từ Excel: khớp mã hệ thống, preview trước khi lưu ── */
-function SalaryExcelInput({ month, setMonth }: {
+/* ── Popup chèn lương từ Excel: đọc cột B (mã) + cột S (lương), preview, lưu ── */
+function SalaryExcelPopup({ month, setMonth, onClose }: {
   month: string; setMonth: (v: string) => void;
+  onClose: () => void;
 }) {
   const { data: allUsers = [] } = useAllActiveUsers();
   const createBatch = useCreateSalaryBatch();
@@ -697,20 +700,16 @@ function SalaryExcelInput({ month, setMonth }: {
     reader.onload = (evt) => {
       const wb = XLSX.read(evt.target?.result, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      /* Đọc toàn bộ sheet dạng mảng 2 chiều (không phụ thuộc header) */
       const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
       const matched: NonNullable<typeof excelPreview>["matched"] = [];
       const unmatched: { code: string; salary: number }[] = [];
 
       for (const row of rawRows) {
-        /* Cột B (index 1): mã hệ thống */
         const rawCode = String(row[1] ?? "").trim().toUpperCase();
         if (!rawCode) continue;
-        /* Chỉ lấy mã bắt đầu bằng DC hoặc A2Z */
         if (!rawCode.startsWith("DC") && !rawCode.startsWith("A2Z")) continue;
 
-        /* Cột S (index 18): lương theo ngày công thực tế */
         const salary = Number(row[18] ?? 0);
         if (salary <= 0) continue;
 
@@ -737,106 +736,109 @@ function SalaryExcelInput({ month, setMonth }: {
     try {
       await createBatch.mutateAsync(records);
       toast.success(`Lưu lương ${records.length} nhân sự`);
-      setExcelPreview(null);
+      onClose();
     } catch (e: any) { toast.error(e.message); }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Chọn tháng + nút chọn file */}
-      <div className="flex items-center gap-3">
-        <div>
-          <label className="text-xs text-muted-foreground font-medium">Tháng</label>
-          <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")}
-            className="mt-1 block h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="text-base font-bold">Chèn lương từ Excel</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded focus-ring" aria-label="Đóng">&times;</button>
         </div>
-        <div className="self-end flex items-center gap-2">
-          <button onClick={() => fileRef.current?.click()} className="h-9 px-3 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 text-xs flex items-center gap-1 transition-colors text-primary font-medium">
-            <Upload size={13} /> Chọn file Excel
-          </button>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
-          {excelPreview && excelPreview.matched.length > 0 && (
-            <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending}>
-              {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
-            </Button>
+
+        {/* Bộ lọc tháng + chọn file */}
+        <div className="px-5 pt-4 pb-2 flex items-center gap-3">
+          <div className="w-36">
+            <label className="text-xs text-muted-foreground font-medium">Tháng</label>
+            <input type="month" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")}
+              className="mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none" />
+          </div>
+          <div className="self-end">
+            <button onClick={() => fileRef.current?.click()} className="h-9 px-3 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 text-xs flex items-center gap-1 transition-colors text-primary font-medium">
+              <Upload size={13} /> Chọn file Excel
+            </button>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
+          </div>
+        </div>
+
+        {/* Nội dung: hướng dẫn hoặc preview */}
+        <div className="flex-1 overflow-y-auto px-5 pb-2">
+          {!excelPreview ? (
+            <div className="py-10 text-center space-y-2">
+              <Upload size={32} strokeWidth={1.2} className="mx-auto text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">
+                Đọc <strong>cột B</strong> (Mã HT, bắt đầu bằng DC hoặc A2Z) và <strong>cột S</strong> (Lương theo ngày công thực tế).
+              </p>
+              <p className="text-xs text-muted-foreground">Tên nhân sự tự động lấy từ tài khoản khớp mã.</p>
+            </div>
+          ) : (
+            <div className="space-y-3 py-2">
+              <div className="flex items-center gap-3">
+                <div className="bg-green-500/10 text-green-600 px-3 py-1.5 rounded-lg text-xs font-medium">
+                  {excelPreview.matched.length} nhân sự khớp mã
+                </div>
+                {excelPreview.unmatched.length > 0 && (
+                  <div className="bg-yellow-500/10 text-yellow-600 px-3 py-1.5 rounded-lg text-xs font-medium">
+                    {excelPreview.unmatched.length} mã không tìm thấy
+                  </div>
+                )}
+              </div>
+
+              {excelPreview.matched.length > 0 && (
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-border text-muted-foreground">
+                    {["Mã HT", "Nhân viên", "Lương theo ngày công thực tế"].map(h => (
+                      <th key={h} className="text-left px-3 py-2.5 font-medium">{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody className="divide-y divide-border/30">
+                    {excelPreview.matched.map((r) => (
+                      <tr key={r.userId} className="hover:bg-secondary/20 transition-colors">
+                        <td className="px-3 py-2 font-mono">{r.code}</td>
+                        <td className="px-3 py-2 font-medium">{r.name}</td>
+                        <td className="px-3 py-2 font-mono font-semibold text-primary">{formatVND(r.salary)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot><tr className="border-t border-border bg-secondary/20">
+                    <td colSpan={2} className="px-3 py-2 font-bold">Tổng</td>
+                    <td className="px-3 py-2 font-mono font-bold text-primary">{formatVND(excelPreview.matched.reduce((s, r) => s + r.salary, 0))}</td>
+                  </tr></tfoot>
+                </table>
+              )}
+
+              {excelPreview.unmatched.length > 0 && (
+                <details className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl overflow-hidden">
+                  <summary className="px-3 py-2 text-xs font-medium text-yellow-600 cursor-pointer">
+                    {excelPreview.unmatched.length} mã không tìm thấy trong hệ thống
+                  </summary>
+                  <table className="w-full text-xs">
+                    <tbody className="divide-y divide-yellow-500/10">
+                      {excelPreview.unmatched.map((r, i) => (
+                        <tr key={i}>
+                          <td className="px-3 py-1.5 font-mono">{r.code}</td>
+                          <td className="px-3 py-1.5 font-mono text-right">{formatVND(r.salary)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              )}
+            </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+          <Button onClick={onClose}>Hủy</Button>
+          <Button variant="primary" onClick={handleSave} disabled={createBatch.isPending || !excelPreview?.matched.length}>
+            {createBatch.isPending ? "Đang lưu..." : "Lưu lương"}
+          </Button>
         </div>
       </div>
-
-      {/* Hướng dẫn khi chưa chọn file */}
-      {!excelPreview && (
-        <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center space-y-3">
-          <Upload size={36} strokeWidth={1.2} className="mx-auto text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium">Nhập lương từ bảng lương Excel</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Đọc <strong>cột B</strong> (Mã hệ thống, bắt đầu bằng DC hoặc A2Z) và <strong>cột S</strong> (Lương theo ngày công thực tế).
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Tên nhân sự tự động lấy từ tài khoản khớp mã. Mã không có trong hệ thống sẽ được báo riêng.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Preview sau khi đọc file */}
-      {excelPreview && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-green-500/10 text-green-600 px-3 py-1.5 rounded-lg text-xs font-medium">
-              {excelPreview.matched.length} nhân sự khớp mã
-            </div>
-            {excelPreview.unmatched.length > 0 && (
-              <div className="bg-yellow-500/10 text-yellow-600 px-3 py-1.5 rounded-lg text-xs font-medium">
-                {excelPreview.unmatched.length} mã không tìm thấy
-              </div>
-            )}
-          </div>
-
-          {excelPreview.matched.length > 0 && (
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              <table className="w-full text-xs">
-                <thead><tr className="border-b border-border text-muted-foreground">
-                  {["Mã HT", "Nhân viên", "Lương theo ngày công thực tế"].map(h => (
-                    <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
-                  ))}
-                </tr></thead>
-                <tbody className="divide-y divide-border/30">
-                  {excelPreview.matched.map((r) => (
-                    <tr key={r.userId} className="hover:bg-secondary/20 transition-colors">
-                      <td className="px-4 py-2.5 font-mono">{r.code}</td>
-                      <td className="px-4 py-2.5 font-medium">{r.name}</td>
-                      <td className="px-4 py-2.5 font-mono font-semibold text-primary">{formatVND(r.salary)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot><tr className="border-t border-border bg-secondary/20">
-                  <td colSpan={2} className="px-4 py-2 font-bold">Tổng</td>
-                  <td className="px-4 py-2 font-mono font-bold text-primary">{formatVND(excelPreview.matched.reduce((s, r) => s + r.salary, 0))}</td>
-                </tr></tfoot>
-              </table>
-            </div>
-          )}
-
-          {excelPreview.unmatched.length > 0 && (
-            <details className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl overflow-hidden">
-              <summary className="px-4 py-2.5 text-xs font-medium text-yellow-600 cursor-pointer">
-                {excelPreview.unmatched.length} mã hệ thống không tìm thấy trong hệ thống
-              </summary>
-              <table className="w-full text-xs">
-                <tbody className="divide-y divide-yellow-500/10">
-                  {excelPreview.unmatched.map((r, i) => (
-                    <tr key={i}>
-                      <td className="px-4 py-2 font-mono">{r.code}</td>
-                      <td className="px-4 py-2 font-mono text-right">{formatVND(r.salary)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </details>
-          )}
-        </div>
-      )}
     </div>
   );
 }
