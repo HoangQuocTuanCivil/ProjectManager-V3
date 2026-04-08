@@ -3,419 +3,337 @@
 import { useState, useMemo } from "react";
 import {
   useBusinessReport,
-  type GroupBy,
   type BusinessRow,
   type BusinessTotals,
 } from "@/features/revenue/hooks/use-business-report";
-import { useCenters } from "@/lib/hooks";
 import { formatVND } from "@/lib/utils/format";
-import { SearchSelect } from "@/components/shared/search-select";
-import { EmptyState } from "@/components/shared";
-import { Download, FileText, TrendingUp, TrendingDown } from "lucide-react";
+import { Download, TrendingUp, TrendingDown, Building2, Landmark, Package } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { createClient } from "@/lib/supabase/client";
-import { useQuery } from "@tanstack/react-query";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 
-const supabase = createClient();
-
-const GROUP_OPTIONS: Array<{ value: GroupBy; label: string }> = [
-  { value: "company", label: "Toàn công ty" },
-  { value: "center", label: "Theo trung tâm" },
-  { value: "department", label: "Theo phòng ban" },
-  { value: "product_service", label: "Theo sản phẩm/dịch vụ" },
-];
-
-const PIE_COLORS = ["#ef4444", "#f97316", "#eab308", "#a855f7", "#3b82f6", "#06b6d4"];
-const BAR_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4"];
-
-function useDepartments(centerId?: string) {
-  return useQuery({
-    queryKey: ["departments", centerId],
-    queryFn: async () => {
-      let q = supabase.from("departments").select("id, name, code, center_id")
-        .eq("is_active", true).order("name");
-      if (centerId) q = q.eq("center_id", centerId);
-      const { data } = await q;
-      return data ?? [];
-    },
-  });
-}
+const COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4", "#84cc16"];
 
 export default function BusinessReportPage() {
-  const [groupBy, setGroupBy] = useState<GroupBy>("company");
-  const [centerId, setCenterId] = useState("");
-  const [deptId, setDeptId] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const { data: centers = [] } = useCenters();
-  const { data: departments = [] } = useDepartments(centerId || undefined);
-
-  const filters = useMemo(() => ({
-    group_by: groupBy,
-    center_id: centerId || undefined,
-    dept_id: deptId || undefined,
+  const dateFilters = useMemo(() => ({
     from: dateFrom || undefined,
     to: dateTo || undefined,
-  }), [groupBy, centerId, deptId, dateFrom, dateTo]);
+  }), [dateFrom, dateTo]);
 
-  const { data, isLoading } = useBusinessReport(filters);
-  const rows = data?.rows ?? [];
-  const totals = data?.totals ?? {
-    revenue: 0, cogs: 0, selling: 0, admin: 0, financial: 0,
-    salary: 0, incoming: 0, total_cost: 0, profit: 0, margin: 0,
-  };
+  const { data: companyData, isLoading: companyLoading } = useBusinessReport({ group_by: "company", ...dateFilters });
+  const { data: centerData, isLoading: centerLoading } = useBusinessReport({ group_by: "center", ...dateFilters });
+  const { data: psData, isLoading: psLoading } = useBusinessReport({ group_by: "product_service", ...dateFilters });
 
-  const centerOptions = useMemo(() => [
-    { value: "", label: "Tất cả trung tâm" },
-    ...(centers as any[]).map((c: any) => ({ value: c.id, label: c.name })),
-  ], [centers]);
+  const company = companyData?.totals ?? empty();
+  const centerRows = centerData?.rows ?? [];
+  const centerTotals = centerData?.totals ?? empty();
+  const psRows = psData?.rows ?? [];
+  const psTotals = psData?.totals ?? empty();
 
-  const deptOptions = useMemo(() => [
-    { value: "", label: "Tất cả phòng ban" },
-    ...departments.map((d: any) => ({ value: d.id, label: d.name })),
-  ], [departments]);
-
-  const handleCenterChange = (v: string) => { setCenterId(v); setDeptId(""); };
-  const handleGroupByChange = (v: string) => {
-    setGroupBy(v as GroupBy);
-    if (v === "company" || v === "product_service") { setCenterId(""); setDeptId(""); }
-    if (v === "center") setDeptId("");
-  };
-
-  const isCenter = groupBy === "center";
+  const isLoading = companyLoading || centerLoading || psLoading;
 
   const handleExport = () => {
-    if (!rows.length) return;
-    const sheet = isCenter
-      ? rows.map((r) => ({
-          "Mã": r.code, "Tên": r.name,
-          "Doanh thu": r.revenue, "Lương": r.salary,
-          "Lợi nhuận": r.profit, "Tỷ suất LN (%)": r.margin,
-        }))
-      : rows.map((r) => ({
-          "Mã": r.code, "Tên": r.name,
-          "Doanh thu": r.revenue, "Giá vốn": r.cogs,
-          "CP bán hàng": r.selling, "CP quản lý": r.admin,
-          "CP tài chính": r.financial, "Lương": r.salary,
-          "HĐ giao khoán": r.incoming, "Tổng chi phí": r.total_cost,
-          "Lợi nhuận": r.profit, "Tỷ suất LN (%)": r.margin,
-        }));
-
-    const totalRow = isCenter
-      ? { "Mã": "", "Tên": "TỔNG CỘNG", "Doanh thu": totals.revenue, "Lương": totals.salary, "Lợi nhuận": totals.profit, "Tỷ suất LN (%)": totals.margin }
-      : { "Mã": "", "Tên": "TỔNG CỘNG", "Doanh thu": totals.revenue, "Giá vốn": totals.cogs, "CP bán hàng": totals.selling, "CP quản lý": totals.admin, "CP tài chính": totals.financial, "Lương": totals.salary, "HĐ giao khoán": totals.incoming, "Tổng chi phí": totals.total_cost, "Lợi nhuận": totals.profit, "Tỷ suất LN (%)": totals.margin };
-
-    sheet.push(totalRow as any);
-    const ws = XLSX.utils.json_to_sheet(sheet);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Báo cáo kinh doanh");
-    XLSX.writeFile(wb, `BC_Kinh_Doanh_${groupBy}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    const companySheet = [
+      { "Chỉ tiêu": "Doanh thu", "Giá trị": company.revenue },
+      { "Chỉ tiêu": "Giá vốn", "Giá trị": company.cogs },
+      { "Chỉ tiêu": "CP bán hàng", "Giá trị": company.selling },
+      { "Chỉ tiêu": "CP quản lý", "Giá trị": company.admin },
+      { "Chỉ tiêu": "CP tài chính", "Giá trị": company.financial },
+      { "Chỉ tiêu": "Lương", "Giá trị": company.salary },
+      { "Chỉ tiêu": "HĐ giao khoán", "Giá trị": company.incoming },
+      { "Chỉ tiêu": "Tổng chi phí", "Giá trị": company.total_cost },
+      { "Chỉ tiêu": "Lợi nhuận", "Giá trị": company.profit },
+      { "Chỉ tiêu": "Tỷ suất LN (%)", "Giá trị": company.margin },
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(companySheet), "Toàn công ty");
+
+    const centerSheet = centerRows.map((r) => ({
+      "Mã": r.code, "Trung tâm": r.name,
+      "Doanh thu": r.revenue, "Lương": r.salary,
+      "Lợi nhuận": r.profit, "Tỷ suất (%)": r.margin,
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(centerSheet), "Trung tâm");
+
+    const psSheet = psRows.map((r) => ({
+      "Mã": r.code, "Sản phẩm DV": r.name,
+      "Doanh thu": r.revenue, "Chi phí": r.total_cost - r.incoming,
+      "HĐ giao khoán": r.incoming, "Lợi nhuận": r.profit, "Tỷ suất (%)": r.margin,
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(psSheet), "Sản phẩm DV");
+
+    XLSX.writeFile(wb, `BC_Kinh_Doanh_${new Date().toISOString().slice(0, 10)}.xlsx`);
     toast.success("Đã tải báo cáo Excel");
   };
 
-  const showCenterFilter = groupBy === "center" || groupBy === "department";
-  const showDeptFilter = groupBy === "department";
-  const groupLabel = GROUP_OPTIONS.find((o) => o.value === groupBy)?.label ?? "";
-
   return (
-    <div className="space-y-5 animate-fade-in">
-      <p className="text-sm text-muted-foreground">
-        {isCenter
-          ? "Doanh thu − Lương = Lợi nhuận · Theo trung tâm"
-          : `Doanh thu − Chi phí − Giao khoán = Lợi nhuận · ${groupLabel}`}
-      </p>
-
-      <SummaryCards totals={totals} isCenter={isCenter} />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="w-48">
-          <SearchSelect value={groupBy} onChange={handleGroupByChange}
-            options={GROUP_OPTIONS} placeholder="Nhóm theo" />
-        </div>
-        {showCenterFilter && (
-          <div className="w-44">
-            <SearchSelect value={centerId} onChange={handleCenterChange}
-              options={centerOptions} placeholder="Trung tâm" />
-          </div>
-        )}
-        {showDeptFilter && (
-          <div className="w-44">
-            <SearchSelect value={deptId} onChange={setDeptId}
-              options={deptOptions} placeholder="Phòng ban" />
-          </div>
-        )}
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Tổng quan hoạt động sản xuất kinh doanh
+        </p>
         <div className="flex items-center gap-2">
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
             className="h-9 px-2 rounded-lg border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
           <span className="text-xs text-muted-foreground">→</span>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
             className="h-9 px-2 rounded-lg border border-border bg-secondary text-xs focus:border-primary focus:outline-none" />
+          <button onClick={handleExport} disabled={isLoading}
+            className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors disabled:opacity-40">
+            <Download size={13} /> Xuất Excel
+          </button>
         </div>
-        <div className="flex-1" />
-        <button onClick={handleExport} disabled={!rows.length}
-          className="h-9 px-3 rounded-lg border border-border hover:bg-secondary text-xs flex items-center gap-1 transition-colors disabled:opacity-40">
-          <Download size={13} /> Xuất Excel
-        </button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-sm text-muted-foreground">Đang tải dữ liệu...</div>
-      ) : rows.length === 0 ? (
-        <EmptyState icon={<FileText size={32} strokeWidth={1.5} />}
-          title="Chưa có dữ liệu" subtitle="Cần có doanh thu hoặc chi phí đã ghi nhận" />
+        <div className="text-center py-16 text-sm text-muted-foreground">Đang tải dữ liệu...</div>
       ) : (
         <>
-          <Charts rows={rows} totals={totals} groupBy={groupBy} />
-          {isCenter
-            ? <CenterTable rows={rows} totals={totals} />
-            : <FullTable rows={rows} totals={totals} groupBy={groupBy} />}
+          <CompanySection totals={company} />
+          <CompanyCharts totals={company} centerRows={centerRows} />
+          <CenterSection rows={centerRows} totals={centerTotals} />
+          <ProductServiceSection rows={psRows} totals={psTotals} />
         </>
       )}
     </div>
   );
 }
 
-function SummaryCards({ totals, isCenter }: { totals: BusinessTotals; isCenter: boolean }) {
-  const items: Array<{ label: string; value: number; color: string; pct?: boolean }> = isCenter
-    ? [
-        { label: "Doanh thu", value: totals.revenue, color: "text-green-500" },
-        { label: "Lương", value: totals.salary, color: "text-blue-500" },
-        { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500" },
-        { label: "Tỷ suất LN", value: totals.margin, color: totals.margin >= 0 ? "text-green-500" : "text-red-500", pct: true },
-      ]
-    : [
-        { label: "Doanh thu", value: totals.revenue, color: "text-green-500" },
-        { label: "Tổng chi phí", value: totals.total_cost, color: "text-orange-500" },
-        { label: "HĐ giao khoán", value: totals.incoming, color: "text-cyan-500" },
-        { label: "Lương", value: totals.salary, color: "text-blue-500" },
-        { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500" },
-        { label: "Tỷ suất LN", value: totals.margin, color: totals.margin >= 0 ? "text-green-500" : "text-red-500", pct: true },
-      ];
+function CompanySection({ totals }: { totals: BusinessTotals }) {
+  const cards = [
+    { label: "Doanh thu", value: totals.revenue, color: "text-green-500" },
+    { label: "Chi phí", value: totals.cogs + totals.selling + totals.admin + totals.financial, color: "text-red-400" },
+    { label: "Lương", value: totals.salary, color: "text-blue-500" },
+    { label: "HĐ giao khoán", value: totals.incoming, color: "text-cyan-500" },
+    { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500" },
+    { label: "Tỷ suất LN", value: totals.margin, color: totals.margin >= 0 ? "text-green-500" : "text-red-500", pct: true },
+  ];
 
   return (
-    <div className={`grid grid-cols-2 gap-3 ${isCenter ? "sm:grid-cols-4" : "sm:grid-cols-3 lg:grid-cols-6"}`}>
-      {items.map((item, i) => (
-        <div key={i} className="bg-card border border-border rounded-xl p-3">
-          <p className="text-[10px] text-muted-foreground mb-1">{item.label}</p>
-          <p className={`text-base font-bold font-mono ${item.color}`}>
-            {item.pct ? `${item.value}%` : formatVND(item.value)}
-          </p>
-        </div>
-      ))}
+    <div>
+      <SectionHeader icon={<Building2 size={15} />} title="Toàn công ty" subtitle="DT − Chi phí − Giao khoán = LN" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-3">
+        {cards.map((c, i) => (
+          <div key={i} className="bg-card border border-border rounded-xl p-3">
+            <p className="text-[10px] text-muted-foreground mb-1">{c.label}</p>
+            <p className={`text-base font-bold font-mono ${c.color}`}>
+              {c.pct ? `${c.value}%` : formatVND(c.value)}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-function Charts({ rows, totals, groupBy }: {
-  rows: BusinessRow[];
-  totals: BusinessTotals;
-  groupBy: GroupBy;
-}) {
-  const isCenter = groupBy === "center";
+function CompanyCharts({ totals, centerRows }: { totals: BusinessTotals; centerRows: BusinessRow[] }) {
+  const costPie = useMemo(() => [
+    { name: "Giá vốn", value: totals.cogs },
+    { name: "CP bán hàng", value: totals.selling },
+    { name: "CP quản lý", value: totals.admin },
+    { name: "CP tài chính", value: totals.financial },
+    { name: "Lương", value: totals.salary },
+    { name: "HĐ giao khoán", value: totals.incoming },
+  ].filter((i) => i.value > 0), [totals]);
 
-  const barData = useMemo(() => {
-    if (groupBy === "company") return [];
-    return rows.slice(0, 10).map((r) => {
-      const base: any = {
-        name: r.code || r.name.slice(0, 12),
-        "Doanh thu": r.revenue,
-        "Lợi nhuận": r.profit,
-      };
-      if (isCenter) base["Lương"] = r.salary;
-      else base["Chi phí"] = r.total_cost;
-      return base;
-    });
-  }, [rows, groupBy, isCenter]);
+  const centerBar = useMemo(() =>
+    centerRows.slice(0, 10).map((r) => ({
+      name: r.code || r.name.slice(0, 12),
+      "Doanh thu": r.revenue,
+      "Lương": r.salary,
+      "Lợi nhuận": r.profit,
+    })),
+  [centerRows]);
 
-  const pieData = useMemo(() => {
-    if (isCenter) {
-      return rows.map((r) => ({ name: r.name, value: r.revenue })).filter((i) => i.value > 0);
-    }
-    return [
-      { name: "Giá vốn", value: totals.cogs },
-      { name: "CP bán hàng", value: totals.selling },
-      { name: "CP quản lý", value: totals.admin },
-      { name: "CP tài chính", value: totals.financial },
-      { name: "Lương", value: totals.salary },
-      { name: "HĐ giao khoán", value: totals.incoming },
-    ].filter((i) => i.value > 0);
-  }, [totals, rows, isCenter]);
-
-  const showBar = barData.length > 1;
-  const colors = isCenter ? BAR_COLORS : PIE_COLORS;
+  if (!costPie.length && !centerBar.length) return null;
 
   return (
-    <div className={`grid gap-4 ${showBar ? "grid-cols-1 lg:grid-cols-5" : "grid-cols-1 lg:grid-cols-2"}`}>
-      {showBar && (
-        <div className="lg:col-span-3 bg-card border border-border rounded-xl p-4">
-          <p className="text-xs font-medium text-muted-foreground mb-3">
-            {isCenter ? "Doanh thu · Lương · Lợi nhuận theo trung tâm" : "Doanh thu · Chi phí · Lợi nhuận"}
-          </p>
-          <ResponsiveContainer width="100%" height={280}>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {costPie.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs font-medium text-muted-foreground mb-3">Cơ cấu chi phí toàn công ty</p>
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart>
+              <Pie data={costPie} dataKey="value" nameKey="name"
+                cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={2}
+                label={({ percent }: { percent: number }) => `${(percent * 100).toFixed(1)}%`}>
+                {costPie.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              </Pie>
+              <Tooltip formatter={(v: number) => formatVND(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {centerBar.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs font-medium text-muted-foreground mb-3">SXKD theo trung tâm</p>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={centerBar}>
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
+              <Tooltip formatter={(v: number) => formatVND(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="Doanh thu" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Lương" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Lợi nhuận" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CenterSection({ rows, totals }: { rows: BusinessRow[]; totals: BusinessTotals }) {
+  if (!rows.length) return null;
+
+  return (
+    <div>
+      <SectionHeader icon={<Landmark size={15} />} title="Lợi nhuận theo trung tâm" subtitle="DT phân bổ − Lương = LN" />
+      <div className="bg-card border border-border rounded-xl overflow-x-auto mt-3">
+        <table className="w-full text-xs whitespace-nowrap">
+          <thead>
+            <tr className="border-b border-border text-muted-foreground">
+              {["Trung tâm", "Doanh thu", "Lương", "Lợi nhuận", "Tỷ suất"].map((h) => (
+                <th key={h} className="text-left px-3 py-2.5 font-medium">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/30">
+            {rows.map((r) => (
+              <tr key={r.id} className={`hover:bg-secondary/20 transition-colors ${r.profit < 0 ? "bg-red-500/5" : ""}`}>
+                <td className="px-3 py-2.5 font-medium">
+                  {r.name}
+                  {r.code && <span className="ml-1.5 text-muted-foreground text-[10px]">{r.code}</span>}
+                </td>
+                <MoneyTd value={r.revenue} color="text-green-500" />
+                <MoneyTd value={r.salary} color="text-blue-500" />
+                <td className={`px-3 py-2.5 font-mono font-bold ${r.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
+                  {r.profit >= 0 ? "+" : ""}{formatVND(r.profit)}
+                </td>
+                <td className="px-3 py-2.5"><MarginBadge value={r.margin} /></td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-border bg-secondary/30 font-bold">
+              <td className="px-3 py-2.5">TỔNG CỘNG</td>
+              <MoneyTd value={totals.revenue} color="text-green-500" />
+              <MoneyTd value={totals.salary} color="text-blue-500" />
+              <td className={`px-3 py-2.5 font-mono ${totals.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
+                {totals.profit >= 0 ? "+" : ""}{formatVND(totals.profit)}
+              </td>
+              <td className="px-3 py-2.5"><MarginBadge value={totals.margin} /></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ProductServiceSection({ rows, totals: psTotals }: { rows: BusinessRow[]; totals: BusinessTotals }) {
+  if (!rows.length) return null;
+
+  const barData = useMemo(() =>
+    rows.slice(0, 8).map((r) => ({
+      name: r.code || r.name.slice(0, 12),
+      "Doanh thu": r.revenue,
+      "Chi phí + GK": r.total_cost,
+      "Lợi nhuận": r.profit,
+    })),
+  [rows]);
+
+  return (
+    <div>
+      <SectionHeader icon={<Package size={15} />} title="Lợi nhuận theo sản phẩm / dịch vụ" subtitle="DT HĐ − CP − HĐ giao khoán = LN" />
+
+      {barData.length > 1 && (
+        <div className="bg-card border border-border rounded-xl p-4 mt-3">
+          <ResponsiveContainer width="100%" height={260}>
             <BarChart data={barData}>
               <XAxis dataKey="name" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`} />
               <Tooltip formatter={(v: number) => formatVND(v)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="Doanh thu" fill="#22c55e" radius={[4, 4, 0, 0]} />
-              {isCenter
-                ? <Bar dataKey="Lương" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                : <Bar dataKey="Chi phí" fill="#f97316" radius={[4, 4, 0, 0]} />}
+              <Bar dataKey="Chi phí + GK" fill="#f97316" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Lợi nhuận" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {pieData.length > 0 && (
-        <div className={showBar ? "lg:col-span-2" : ""}>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <p className="text-xs font-medium text-muted-foreground mb-3">
-              {isCenter ? "Tỷ trọng doanh thu" : "Cơ cấu chi phí"}
-            </p>
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name"
-                  cx="50%" cy="50%" innerRadius={60} outerRadius={95} paddingAngle={2}
-                  label={({ percent }: { percent: number }) => `${(percent * 100).toFixed(1)}%`}>
-                  {pieData.map((_, i) => (
-                    <Cell key={i} fill={colors[i % colors.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v: number) => formatVND(v)} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CenterTable({ rows, totals }: { rows: BusinessRow[]; totals: BusinessTotals }) {
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-x-auto">
-      <table className="w-full text-xs whitespace-nowrap">
-        <thead>
-          <tr className="border-b border-border text-muted-foreground">
-            {["Trung tâm", "Doanh thu", "Lương", "Lợi nhuận", "Tỷ suất"].map((h) => (
-              <th key={h} className="text-left px-3 py-2.5 font-medium">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/30">
-          {rows.map((r) => (
-            <tr key={r.id} className={`hover:bg-secondary/20 transition-colors ${r.profit < 0 ? "bg-red-500/5" : ""}`}>
-              <td className="px-3 py-2.5 font-medium">
-                {r.name}
-                {r.code && <span className="ml-1.5 text-muted-foreground text-[10px]">{r.code}</span>}
-              </td>
-              <CurrencyCell value={r.revenue} color="text-green-500" />
-              <CurrencyCell value={r.salary} color="text-blue-500" />
-              <td className={`px-3 py-2.5 font-mono font-bold ${r.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
-                {r.profit >= 0 ? "+" : ""}{formatVND(r.profit)}
-              </td>
-              <td className="px-3 py-2.5"><MarginBadge value={r.margin} /></td>
+      <div className="bg-card border border-border rounded-xl overflow-x-auto mt-3">
+        <table className="w-full text-xs whitespace-nowrap">
+          <thead>
+            <tr className="border-b border-border text-muted-foreground">
+              {["Sản phẩm/DV", "Doanh thu", "Chi phí", "HĐ giao khoán", "Tổng CP", "Lợi nhuận", "Tỷ suất"].map((h) => (
+                <th key={h} className="text-left px-3 py-2.5 font-medium">{h}</th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-border bg-secondary/30 font-bold">
-            <td className="px-3 py-2.5">TỔNG CỘNG</td>
-            <CurrencyCell value={totals.revenue} color="text-green-500" />
-            <CurrencyCell value={totals.salary} color="text-blue-500" />
-            <td className={`px-3 py-2.5 font-mono ${totals.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
-              {totals.profit >= 0 ? "+" : ""}{formatVND(totals.profit)}
-            </td>
-            <td className="px-3 py-2.5"><MarginBadge value={totals.margin} /></td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  );
-}
-
-function FullTable({ rows, totals, groupBy }: {
-  rows: BusinessRow[];
-  totals: BusinessTotals;
-  groupBy: GroupBy;
-}) {
-  const nameHeader = groupBy === "department" ? "Phòng ban"
-    : groupBy === "product_service" ? "Sản phẩm/DV"
-    : "Đơn vị";
-
-  const headers = [
-    nameHeader, "Doanh thu", "Giá vốn", "CP BH", "CP QLDN",
-    "CP tài chính", "Lương", "HĐ giao khoán", "Tổng CP", "Lợi nhuận", "Tỷ suất",
-  ];
-
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-x-auto">
-      <table className="w-full text-xs whitespace-nowrap">
-        <thead>
-          <tr className="border-b border-border text-muted-foreground">
-            {headers.map((h) => (
-              <th key={h} className="text-left px-3 py-2.5 font-medium">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/30">
-          {rows.map((r) => (
-            <tr key={r.id} className={`hover:bg-secondary/20 transition-colors ${r.profit < 0 ? "bg-red-500/5" : ""}`}>
-              <td className="px-3 py-2.5 font-medium">
-                {r.name}
-                {r.code && <span className="ml-1.5 text-muted-foreground text-[10px]">{r.code}</span>}
+          </thead>
+          <tbody className="divide-y divide-border/30">
+            {rows.map((r) => {
+              const directCost = r.cogs + r.selling + r.admin + r.financial;
+              return (
+                <tr key={r.id} className={`hover:bg-secondary/20 transition-colors ${r.profit < 0 ? "bg-red-500/5" : ""}`}>
+                  <td className="px-3 py-2.5 font-medium">
+                    {r.name}
+                    {r.code && <span className="ml-1.5 text-muted-foreground text-[10px]">{r.code}</span>}
+                  </td>
+                  <MoneyTd value={r.revenue} color="text-green-500" />
+                  <MoneyTd value={directCost} color="text-red-400" />
+                  <MoneyTd value={r.incoming} color="text-cyan-500" />
+                  <MoneyTd value={r.total_cost} color="text-orange-500" bold />
+                  <td className={`px-3 py-2.5 font-mono font-bold ${r.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
+                    {r.profit >= 0 ? "+" : ""}{formatVND(r.profit)}
+                  </td>
+                  <td className="px-3 py-2.5"><MarginBadge value={r.margin} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-border bg-secondary/30 font-bold">
+              <td className="px-3 py-2.5">TỔNG CỘNG</td>
+              <MoneyTd value={psTotals.revenue} color="text-green-500" />
+              <MoneyTd value={psTotals.cogs + psTotals.selling + psTotals.admin + psTotals.financial} color="text-red-400" />
+              <MoneyTd value={psTotals.incoming} color="text-cyan-500" />
+              <MoneyTd value={psTotals.total_cost} color="text-orange-500" />
+              <td className={`px-3 py-2.5 font-mono ${psTotals.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
+                {psTotals.profit >= 0 ? "+" : ""}{formatVND(psTotals.profit)}
               </td>
-              <CurrencyCell value={r.revenue} color="text-green-500" />
-              <CurrencyCell value={r.cogs} color="text-red-400" />
-              <CurrencyCell value={r.selling} color="text-orange-400" />
-              <CurrencyCell value={r.admin} color="text-yellow-500" />
-              <CurrencyCell value={r.financial} color="text-purple-500" />
-              <CurrencyCell value={r.salary} color="text-blue-500" />
-              <CurrencyCell value={r.incoming} color="text-cyan-500" />
-              <CurrencyCell value={r.total_cost} color="text-orange-500" bold />
-              <td className={`px-3 py-2.5 font-mono font-bold ${r.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
-                {r.profit >= 0 ? "+" : ""}{formatVND(r.profit)}
-              </td>
-              <td className="px-3 py-2.5"><MarginBadge value={r.margin} /></td>
+              <td className="px-3 py-2.5"><MarginBadge value={psTotals.margin} /></td>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-border bg-secondary/30 font-bold">
-            <td className="px-3 py-2.5">TỔNG CỘNG</td>
-            <CurrencyCell value={totals.revenue} color="text-green-500" />
-            <CurrencyCell value={totals.cogs} color="text-red-400" />
-            <CurrencyCell value={totals.selling} color="text-orange-400" />
-            <CurrencyCell value={totals.admin} color="text-yellow-500" />
-            <CurrencyCell value={totals.financial} color="text-purple-500" />
-            <CurrencyCell value={totals.salary} color="text-blue-500" />
-            <CurrencyCell value={totals.incoming} color="text-cyan-500" />
-            <CurrencyCell value={totals.total_cost} color="text-orange-500" />
-            <td className={`px-3 py-2.5 font-mono ${totals.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
-              {totals.profit >= 0 ? "+" : ""}{formatVND(totals.profit)}
-            </td>
-            <td className="px-3 py-2.5"><MarginBadge value={totals.margin} /></td>
-          </tr>
-        </tfoot>
-      </table>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }
 
-function CurrencyCell({ value, color, bold }: { value: number; color: string; bold?: boolean }) {
+function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
   return (
-    <td className={`px-3 py-2.5 font-mono ${color} ${bold ? "font-semibold" : ""}`}>
-      {formatVND(value)}
-    </td>
+    <div className="flex items-center gap-2">
+      <span className="text-muted-foreground">{icon}</span>
+      <h3 className="text-sm font-bold">{title}</h3>
+      <span className="text-[10px] text-muted-foreground">({subtitle})</span>
+    </div>
   );
+}
+
+function MoneyTd({ value, color, bold }: { value: number; color: string; bold?: boolean }) {
+  return <td className={`px-3 py-2.5 font-mono ${color} ${bold ? "font-semibold" : ""}`}>{formatVND(value)}</td>;
 }
 
 function MarginBadge({ value }: { value: number }) {
@@ -428,4 +346,8 @@ function MarginBadge({ value }: { value: number }) {
       {value}%
     </span>
   );
+}
+
+function empty(): BusinessTotals {
+  return { revenue: 0, cogs: 0, selling: 0, admin: 0, financial: 0, salary: 0, incoming: 0, total_cost: 0, profit: 0, margin: 0 };
 }

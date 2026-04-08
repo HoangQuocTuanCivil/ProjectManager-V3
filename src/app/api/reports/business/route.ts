@@ -29,9 +29,7 @@ export async function GET(req: NextRequest) {
   };
   const orgId = profile.org_id;
 
-  if (groupBy === "center") {
-    return buildCenterReport(admin, orgId, filters);
-  }
+  if (groupBy === "center") return buildCenterReport(admin, orgId, filters);
 
   const [revenueMap, costsMap, salaryMap, incomingMap, centersRes, deptsRes, psRes] =
     await Promise.all([
@@ -82,8 +80,7 @@ async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
       .not("center_id", "is", null),
     admin.from("contracts")
       .select("id, project_id, contract_value, status")
-      .eq("org_id", orgId)
-      .eq("contract_type", "outgoing")
+      .eq("org_id", orgId).eq("contract_type", "outgoing")
       .in("status", ["active", "completed"]),
     fetchSalary(admin, orgId, "center", f),
   ]);
@@ -158,14 +155,10 @@ async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
 function sumTotals(rows: any[]) {
   const t = rows.reduce(
     (acc, r) => ({
-      revenue: acc.revenue + r.revenue,
-      cogs: acc.cogs + r.cogs,
-      selling: acc.selling + r.selling,
-      admin: acc.admin + r.admin,
-      financial: acc.financial + r.financial,
-      salary: acc.salary + r.salary,
-      incoming: acc.incoming + r.incoming,
-      total_cost: acc.total_cost + r.total_cost,
+      revenue: acc.revenue + r.revenue, cogs: acc.cogs + r.cogs,
+      selling: acc.selling + r.selling, admin: acc.admin + r.admin,
+      financial: acc.financial + r.financial, salary: acc.salary + r.salary,
+      incoming: acc.incoming + r.incoming, total_cost: acc.total_cost + r.total_cost,
       profit: acc.profit + r.profit,
     }),
     { revenue: 0, cogs: 0, selling: 0, admin: 0, financial: 0, salary: 0, incoming: 0, total_cost: 0, profit: 0 },
@@ -178,15 +171,16 @@ async function fetchRevenue(admin: Admin, orgId: string, groupBy: GroupBy, f: Fi
   const map = new Map<string, number>();
 
   if (groupBy === "product_service") {
-    let q = admin.from("revenue_entries")
-      .select("product_service_id, amount")
-      .eq("org_id", orgId).eq("status", "confirmed")
+    let q = admin.from("contracts")
+      .select("product_service_id, contract_value")
+      .eq("org_id", orgId).eq("contract_type", "outgoing")
+      .in("status", ["active", "completed"])
       .not("product_service_id", "is", null);
-    if (f.from) q = q.gte("recognition_date", f.from);
-    if (f.to) q = q.lte("recognition_date", f.to);
+    if (f.from) q = q.gte("signed_date", f.from);
+    if (f.to) q = q.lte("signed_date", f.to);
     const { data } = await q;
     for (const r of data ?? []) {
-      map.set(r.product_service_id, (map.get(r.product_service_id) ?? 0) + Number(r.amount));
+      map.set(r.product_service_id, (map.get(r.product_service_id) ?? 0) + Number(r.contract_value));
     }
     return map;
   }
@@ -224,7 +218,7 @@ async function fetchCosts(admin: Admin, orgId: string, groupBy: GroupBy, f: Filt
   const empty = (): CostBucket => ({ cogs: 0, selling: 0, admin: 0, financial: 0 });
 
   let q = admin.from("cost_entries")
-    .select("dept_id, contract_id, category, amount, project_id")
+    .select("dept_id, contract_id, category, amount")
     .eq("org_id", orgId);
   if (f.from) q = q.gte("period_start", f.from);
   if (f.to) q = q.lte("period_end", f.to);
@@ -241,23 +235,22 @@ async function fetchCosts(admin: Admin, orgId: string, groupBy: GroupBy, f: Filt
   }
 
   if (groupBy === "product_service") {
+    const contractIds = [...new Set((data ?? []).map((r) => r.contract_id).filter(Boolean))];
+    if (!contractIds.length) return map;
     const { data: contracts } = await admin.from("contracts")
-      .select("id, project:projects(product_service_ids)").eq("org_id", orgId);
-    const cps = new Map<string, string[]>();
-    for (const c of contracts ?? []) {
-      const proj = c.project as any;
-      if (proj?.product_service_ids?.length) cps.set(c.id, proj.product_service_ids);
-    }
+      .select("id, product_service_id").in("id", contractIds)
+      .not("product_service_id", "is", null);
+    const contractPsMap = new Map<string, string>();
+    for (const c of contracts ?? []) contractPsMap.set(c.id, c.product_service_id);
+
     for (const r of data ?? []) {
+      if (!r.contract_id) continue;
+      const psId = contractPsMap.get(r.contract_id);
+      if (!psId) continue;
       const cat = r.category as keyof CostBucket;
-      const psIds = (r.contract_id && cps.get(r.contract_id)) || [];
-      if (!psIds.length) continue;
-      const share = Number(r.amount) / psIds.length;
-      for (const psId of psIds) {
-        const bucket = map.get(psId) ?? empty();
-        if (cat in bucket) bucket[cat] += share;
-        map.set(psId, bucket);
-      }
+      const bucket = map.get(psId) ?? empty();
+      if (cat in bucket) bucket[cat] += Number(r.amount);
+      map.set(psId, bucket);
     }
     return map;
   }
@@ -316,34 +309,44 @@ async function fetchIncomingContracts(admin: Admin, orgId: string, groupBy: Grou
   const map = new Map<string, number>();
 
   let q = admin.from("contracts")
-    .select("id, contract_value, project_id, project:projects(product_service_ids)")
-    .eq("org_id", orgId)
-    .eq("contract_type", "incoming")
+    .select("id, contract_value, project_id")
+    .eq("org_id", orgId).eq("contract_type", "incoming")
     .in("status", ["active", "completed"]);
   if (f.from) q = q.gte("signed_date", f.from);
   if (f.to) q = q.lte("signed_date", f.to);
 
-  const { data: contracts } = await q;
-  if (!contracts?.length) return map;
+  const { data: incoming } = await q;
+  if (!incoming?.length) return map;
 
   if (groupBy === "company") {
     let total = 0;
-    for (const c of contracts) total += Number(c.contract_value);
+    for (const c of incoming) total += Number(c.contract_value);
     map.set(orgId, total);
     return map;
   }
 
   if (groupBy === "product_service") {
-    for (const c of contracts) {
-      const psIds: string[] = (c.project as any)?.product_service_ids ?? [];
-      if (!psIds.length) continue;
-      const share = Number(c.contract_value) / psIds.length;
-      for (const psId of psIds) map.set(psId, (map.get(psId) ?? 0) + share);
+    const projectIds = [...new Set(incoming.map((c) => c.project_id))];
+    const { data: outgoing } = await admin.from("contracts")
+      .select("project_id, product_service_id")
+      .eq("org_id", orgId).eq("contract_type", "outgoing")
+      .in("project_id", projectIds)
+      .not("product_service_id", "is", null);
+
+    const projectPsMap = new Map<string, string>();
+    for (const c of outgoing ?? []) {
+      if (!projectPsMap.has(c.project_id)) projectPsMap.set(c.project_id, c.product_service_id);
+    }
+
+    for (const c of incoming) {
+      const psId = projectPsMap.get(c.project_id);
+      if (!psId) continue;
+      map.set(psId, (map.get(psId) ?? 0) + Number(c.contract_value));
     }
     return map;
   }
 
-  const contractIds = contracts.map((c) => c.id);
+  const contractIds = incoming.map((c) => c.id);
   const { data: allocs } = await admin.from("dept_budget_allocations")
     .select("contract_id, dept_id, center_id")
     .in("contract_id", contractIds);
@@ -354,16 +357,12 @@ async function fetchIncomingContracts(admin: Admin, orgId: string, groupBy: Grou
   }
 
   const deptCenter = await buildDeptCenterMap(admin, orgId);
-  for (const c of contracts) {
+  for (const c of incoming) {
     const alloc = allocMap.get(c.id);
-    if (!alloc) continue;
-    const amount = Number(c.contract_value);
-    const deptId = alloc.dept_id;
-    if (deptId) {
-      const key = resolveGroupKey(deptId, deptCenter, f);
-      if (!key) continue;
-      map.set(key, (map.get(key) ?? 0) + amount);
-    }
+    if (!alloc?.dept_id) continue;
+    const key = resolveGroupKey(alloc.dept_id, deptCenter, f);
+    if (!key) continue;
+    map.set(key, (map.get(key) ?? 0) + Number(c.contract_value));
   }
   return map;
 }
