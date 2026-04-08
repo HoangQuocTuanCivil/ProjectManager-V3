@@ -242,46 +242,58 @@ async function fetchSalary(admin: Admin, orgId: string, groupBy: GroupBy, f: Fil
 async function fetchIncomingContracts(admin: Admin, orgId: string, groupBy: GroupBy, f: Filters) {
   const map = new Map<string, number>();
 
-  const { data: allocs } = await admin.from("dept_budget_allocations")
-    .select("dept_id, center_id, allocated_amount, project_id, contract:contracts(contract_type, status, signed_date, project:projects(product_service_ids))")
-    .eq("org_id", orgId);
+  let q = admin.from("contracts")
+    .select("id, contract_value, project_id, project:projects(product_service_ids)")
+    .eq("org_id", orgId)
+    .eq("contract_type", "incoming")
+    .in("status", ["active", "completed"]);
+  if (f.from) q = q.gte("signed_date", f.from);
+  if (f.to) q = q.lte("signed_date", f.to);
 
-  for (const row of allocs ?? []) {
-    const contract = row.contract as any;
-    if (!contract || contract.contract_type !== "incoming") continue;
-    if (!["active", "completed"].includes(contract.status)) continue;
-    if (f.from && contract.signed_date && contract.signed_date < f.from) continue;
-    if (f.to && contract.signed_date && contract.signed_date > f.to) continue;
+  const { data: contracts } = await q;
+  if (!contracts?.length) return map;
 
-    const amount = Number(row.allocated_amount);
+  if (groupBy === "company") {
+    let total = 0;
+    for (const c of contracts) total += Number(c.contract_value);
+    map.set(orgId, total);
+    return map;
+  }
 
-    if (groupBy === "company") {
-      map.set(orgId, (map.get(orgId) ?? 0) + amount);
-      continue;
-    }
-
-    if (groupBy === "product_service") {
-      const psIds: string[] = contract.project?.product_service_ids ?? [];
+  if (groupBy === "product_service") {
+    for (const c of contracts) {
+      const psIds: string[] = (c.project as any)?.product_service_ids ?? [];
       if (!psIds.length) continue;
-      const share = amount / psIds.length;
-      for (const psId of psIds) {
-        map.set(psId, (map.get(psId) ?? 0) + share);
-      }
-      continue;
+      const share = Number(c.contract_value) / psIds.length;
+      for (const psId of psIds) map.set(psId, (map.get(psId) ?? 0) + share);
     }
+    return map;
+  }
+
+  const contractIds = contracts.map((c) => c.id);
+  const { data: allocs } = await admin.from("dept_budget_allocations")
+    .select("contract_id, dept_id, center_id")
+    .in("contract_id", contractIds);
+
+  const allocMap = new Map<string, { dept_id: string | null; center_id: string | null }>();
+  for (const a of allocs ?? []) {
+    if (a.contract_id) allocMap.set(a.contract_id, { dept_id: a.dept_id, center_id: a.center_id });
+  }
+
+  for (const c of contracts) {
+    const alloc = allocMap.get(c.id);
+    if (!alloc) continue;
+    const amount = Number(c.contract_value);
 
     if (groupBy === "center") {
-      const cid = row.center_id;
+      const cid = alloc.center_id;
       if (!cid) continue;
       if (f.centerId && cid !== f.centerId) continue;
       map.set(cid, (map.get(cid) ?? 0) + amount);
-      continue;
-    }
-
-    if (groupBy === "department") {
-      if (f.centerId && row.center_id !== f.centerId) continue;
-      if (f.deptId && row.dept_id !== f.deptId) continue;
-      const key = row.dept_id || row.center_id;
+    } else {
+      if (f.centerId && alloc.center_id !== f.centerId) continue;
+      if (f.deptId && alloc.dept_id !== f.deptId) continue;
+      const key = alloc.dept_id || alloc.center_id;
       if (!key) continue;
       map.set(key, (map.get(key) ?? 0) + amount);
     }
