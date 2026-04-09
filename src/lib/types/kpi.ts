@@ -22,6 +22,7 @@ export interface AllocationConfig {
   id: string;
   org_id: string;
   name: string;
+  center_id: string | null;
   weight_volume: number;
   weight_quality: number;
   weight_difficulty: number;
