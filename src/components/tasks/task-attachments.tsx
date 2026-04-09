@@ -185,7 +185,18 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
         ) : (
           <div className="divide-y divide-border">
             {attachments.map((att) => (
-              <div key={att.id} className="px-4 py-2.5 flex items-center gap-3 hover:bg-secondary/30 transition-colors group">
+              <div
+                key={att.id}
+                className={`px-4 py-2.5 flex items-center gap-3 hover:bg-secondary/30 transition-colors group ${
+                  att.mime_type?.includes("pdf") ? "cursor-pointer" : ""
+                }`}
+                onClick={() => {
+                  /* Click vào file PDF → mở xem ở tab mới */
+                  if (att.mime_type?.includes("pdf")) {
+                    window.open(att.file_url, "_blank", "noopener,noreferrer");
+                  }
+                }}
+              >
                 {/* Icon */}
                 <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                   {getFileIcon(att.mime_type)}
@@ -193,7 +204,12 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate" title={att.file_name}>{att.file_name}</p>
+                  <p className="text-sm font-medium truncate" title={att.file_name}>
+                    {att.file_name}
+                    {att.mime_type?.includes("pdf") && (
+                      <span className="ml-1.5 text-[10px] text-red-500 font-normal">PDF — nhấn để xem</span>
+                    )}
+                  </p>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     <span>{formatFileSize(att.file_size)}</span>
                     <span>•</span>

@@ -7,9 +7,20 @@ import { useAuthStore } from "@/lib/stores";
 import { UserAvatar, Button } from "@/components/shared";
 import { ROLE_CONFIG, formatRelativeDate } from "@/lib/utils/kpi";
 import { toast } from "sonner";
-import { Send, AtSign, Slash } from "lucide-react";
+import { Send, AtSign, Slash, ImageIcon, X } from "lucide-react";
 
 const supabase = createClient();
+const BUCKET = "task-files";
+
+/** Upload hình ảnh từ clipboard vào Supabase Storage, trả về public URL */
+async function uploadPastedImage(taskId: string, file: File): Promise<string> {
+  const ext = file.type.split("/")[1] || "png";
+  const path = `${taskId}/chat_${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, { cacheControl: "3600" });
+  if (error) throw error;
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
 
 interface Comment {
   id: string;
@@ -138,6 +149,8 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
   const [mentionQuery, setMentionQuery] = useState("");
   const [taskQuery, setTaskQuery] = useState("");
   const { data: searchedTasks = [] } = useSearchTasks(taskQuery);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -255,13 +268,49 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
     }
   };
 
-  // Render content with @mentions highlighted
+  /** Xử lý dán hình ảnh từ clipboard: upload lên Storage rồi gửi URL trong tin nhắn */
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items || !user) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (!file) return;
+        setIsUploadingImage(true);
+        try {
+          const url = await uploadPastedImage(taskId, file);
+          await addComment.mutateAsync({ taskId, userId: user.id, content: `[img:${url}]` });
+          toast.success("Đã gửi hình ảnh");
+        } catch (err: any) {
+          toast.error(err.message || "Lỗi tải hình ảnh");
+        } finally {
+          setIsUploadingImage(false);
+        }
+        return;
+      }
+    }
+  };
+
+  /** Render nội dung tin nhắn: highlight @mention, [task ref], và hiển thị hình ảnh inline */
   const renderContent = (content: string) => {
-    // Highlight @mentions and [TASK_CODE: title] references
     const parts = content.split(/(@\S+|\[[^\]]+\])/g);
     return parts.map((part, i) => {
       if (part.startsWith("@")) {
         return <span key={i} className="text-primary font-semibold bg-primary/10 rounded px-0.5">{part}</span>;
+      }
+      /* Hình ảnh dán từ clipboard: [img:URL] → hiển thị thumbnail, click mở popup xem ảnh */
+      if (part.startsWith("[img:") && part.endsWith("]")) {
+        const url = part.slice(5, -1);
+        return (
+          <img
+            key={i}
+            src={url}
+            alt="Hình đính kèm"
+            className="max-w-[200px] max-h-[150px] rounded-lg mt-1 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={(e) => { e.stopPropagation(); setPreviewImage(url); }}
+          />
+        );
       }
       if (part.startsWith("[") && part.endsWith("]")) {
         return <span key={i} className="text-blue-600 dark:text-blue-400 font-medium bg-blue-500/10 rounded px-0.5 cursor-pointer hover:underline">{part}</span>;
@@ -384,7 +433,8 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
             value={text}
             onChange={(e) => handleInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Nhắn tin... (@tag người, /tag task)"
+            onPaste={handlePaste}
+            placeholder={isUploadingImage ? "Đang tải hình ảnh..." : "Nhắn tin... (@tag người, /tag task, dán hình)"}
             rows={1}
             className="flex-1 resize-none text-sm px-3 py-2 rounded-lg border border-border bg-secondary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] max-h-[80px]"
             style={{ height: "auto", overflow: "hidden" }}
@@ -403,6 +453,28 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
           </button>
         </div>
       </div>
+      {/* Popup xem ảnh phóng to: click ngoài ảnh để đóng */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/70"
+          style={{ zIndex: 100 }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+            aria-label="Đóng"
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={previewImage}
+            alt="Xem ảnh"
+            className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
