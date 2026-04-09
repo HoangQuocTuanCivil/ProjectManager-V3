@@ -5,6 +5,7 @@ export { kpiKeys } from './hooks/kpi-keys';
 
 // Allocation (config, periods, dept budget, cycle)
 export {
+  useAllocationConfigs,
   useAllocationConfig,
   useAllocationPeriods,
   useCreateAllocationPeriod,

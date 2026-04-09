@@ -8,6 +8,22 @@ import { kpiKeys } from "./kpi-keys";
 
 const supabase = createClient();
 
+/** Lấy tất cả cấu hình khoán (toàn công ty + từng trung tâm) */
+export function useAllocationConfigs() {
+  return useQuery({
+    queryKey: kpiKeys.configs(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("allocation_configs")
+        .select("*, center:centers(id, name, code)")
+        .eq("is_active", true)
+        .order("center_id", { ascending: true, nullsFirst: true });
+      if (error) throw error;
+      return data as unknown as (AllocationConfig & { center: { id: string; name: string; code: string } | null })[];
+    },
+  });
+}
+
 /** Lấy cấu hình khoán theo trung tâm (null = toàn công ty) */
 export function useAllocationConfig(centerId?: string | null) {
   return useQuery({

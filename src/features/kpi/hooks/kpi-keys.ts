@@ -6,6 +6,7 @@ export const kpiKeys = {
   allocation: () => [...kpiKeys.all, "allocation"] as const,
   periods: () => [...kpiKeys.all, "periods"] as const,
   period: (id: string) => [...kpiKeys.all, "period", id] as const,
+  configs: () => [...kpiKeys.all, "configs"] as const,
   config: (centerId?: string | null) => [...kpiKeys.all, "config", centerId] as const,
   budgetAllocations: (projectId?: string) => [...kpiKeys.all, "budget-alloc", projectId] as const,
   fundSummary: (filters?: { start_date?: string; end_date?: string }) => [...kpiKeys.all, "fund-summary", filters] as const,
