@@ -186,13 +186,15 @@ async function fetchRevenue(admin: Admin, orgId: string, groupBy: GroupBy, f: Fi
   }
 
   if (groupBy === "company") {
-    let q = admin.from("revenue_entries")
-      .select("amount").eq("org_id", orgId).eq("status", "confirmed");
-    if (f.from) q = q.gte("recognition_date", f.from);
-    if (f.to) q = q.lte("recognition_date", f.to);
+    let q = admin.from("contracts")
+      .select("contract_value")
+      .eq("org_id", orgId).eq("contract_type", "outgoing")
+      .in("status", ["active", "completed"]);
+    if (f.from) q = q.gte("signed_date", f.from);
+    if (f.to) q = q.lte("signed_date", f.to);
     const { data } = await q;
     let total = 0;
-    for (const r of data ?? []) total += Number(r.amount);
+    for (const r of data ?? []) total += Number(r.contract_value);
     map.set(orgId, total);
     return map;
   }
