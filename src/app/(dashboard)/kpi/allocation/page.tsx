@@ -13,6 +13,7 @@ import { Coins, TrendingUp, TrendingDown, Zap, AlertTriangle } from "lucide-reac
 import { SearchSelect } from "@/components/shared/search-select";
 import { AllocationTable } from "@/components/kpi";
 import { formatVND } from "@/lib/utils/kpi";
+import { currentMonthRange } from "@/lib/utils/format";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -55,8 +56,9 @@ export default function AllocationPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
   const [selectedCenter, setSelectedCenter] = useState<string>("all");
   const [showForm, setShowForm] = useState(false);
-  const [fundStartDate, setFundStartDate] = useState("");
-  const [fundEndDate, setFundEndDate] = useState("");
+  const { start: monthStart, end: monthEnd } = currentMonthRange();
+  const [fundStartDate, setFundStartDate] = useState(monthStart);
+  const [fundEndDate, setFundEndDate] = useState(monthEnd);
 
   const { data: periods = [] } = useAllocationPeriods();
   const fundFilters = useMemo(() => {
@@ -271,9 +273,10 @@ function PeriodsSection({ periods, selectedPeriod, showForm, setShowForm, canMan
   const { user } = useAuthStore();
 
   /* ── Form state ── */
+  const defRange = currentMonthRange();
   const [form, setForm] = useState({
     name: "", center_id: "", project_id: "",
-    period_start: "", period_end: "",
+    period_start: defRange.start, period_end: defRange.end,
   });
   const [factors, setFactors] = useState<Record<string, number>>({});
 

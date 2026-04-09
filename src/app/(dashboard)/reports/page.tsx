@@ -19,6 +19,7 @@ import * as XLSX from "xlsx";
 import { Download, Printer, TrendingUp, AlertTriangle, DollarSign, CheckCircle2, BarChart3, Target, Users } from "lucide-react";
 import { Button } from "@/components/shared";
 import { useI18n } from "@/lib/i18n";
+import { currentMonthRange } from "@/lib/utils/format";
 
 const CHART_COLORS = ["#38bdf8", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#6366f1", "#ec4899", "#94a3b8"];
 
@@ -40,9 +41,9 @@ export default function ReportsPage() {
   const [showRiskPanel, setShowRiskPanel] = useState(false);
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
-  // Date range filter
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const { start: monthStart, end: monthEnd } = currentMonthRange();
+  const [dateFrom, setDateFrom] = useState(monthStart);
+  const [dateTo, setDateTo] = useState(monthEnd);
 
   const dateLocale = locale === "en" ? "en-US" : "vi-VN";
 

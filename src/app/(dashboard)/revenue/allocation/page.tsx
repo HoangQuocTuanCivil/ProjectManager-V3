@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { CenterRevenueOverview } from "@/features/revenue/components/center-revenue-overview";
+import { currentMonthRange } from "@/lib/utils/format";
 
 export default function RevenueAllocationPage() {
   const { t } = useI18n();
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const { start: monthStart, end: monthEnd } = currentMonthRange();
+  const [dateFrom, setDateFrom] = useState(monthStart);
+  const [dateTo, setDateTo] = useState(monthEnd);
 
   const from = dateFrom || undefined;
   const to = dateTo || undefined;

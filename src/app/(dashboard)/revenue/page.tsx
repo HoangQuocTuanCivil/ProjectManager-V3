@@ -17,13 +17,15 @@ import { exportRevenueExcel, exportRevenuePDF } from "@/features/revenue/utils/e
 import { toast } from "sonner";
 import { Download, Printer } from "lucide-react";
 import type { RevenueDimension, RecognitionMethod, RevenueSource } from "@/lib/types";
+import { currentMonthRange } from "@/lib/utils/format";
 
 export default function CompanyRevenuePage() {
   const { t } = useI18n();
   const { user } = useAuthStore();
   const canManage = !!user && ["admin", "leader", "director"].includes(user.role);
 
-  const [filters, setFilters] = useState<RevenueFilterValues>({});
+  const { start: monthStart, end: monthEnd } = currentMonthRange();
+  const [filters, setFilters] = useState<RevenueFilterValues>({ date_from: monthStart, date_to: monthEnd });
   const [groupBy, setGroupBy] = useState<"month" | "quarter" | "year">("month");
   const [showForm, setShowForm] = useState(false);
 

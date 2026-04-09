@@ -24,3 +24,14 @@ export function formatRelativeDate(d: string): string {
 export function daysBetween(a: string, b: string): number {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
 }
+
+/** Ngày đầu và ngày cuối của tháng hiện tại, định dạng YYYY-MM-DD */
+export function currentMonthRange(): { start: string; end: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const start = new Date(y, m, 1);
+  const end = new Date(y, m + 1, 0);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  return { start: fmt(start), end: fmt(end) };
+}

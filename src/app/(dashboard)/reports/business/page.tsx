@@ -6,7 +6,7 @@ import {
   type BusinessRow,
   type BusinessTotals,
 } from "@/features/revenue/hooks/use-business-report";
-import { formatVND } from "@/lib/utils/format";
+import { formatVND, currentMonthRange } from "@/lib/utils/format";
 import { Download, TrendingUp, TrendingDown, Building2, Landmark, Package } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -19,8 +19,9 @@ import {
 const COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#06b6d4", "#84cc16"];
 
 export default function BusinessReportPage() {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const { start: monthStart, end: monthEnd } = currentMonthRange();
+  const [dateFrom, setDateFrom] = useState(monthStart);
+  const [dateTo, setDateTo] = useState(monthEnd);
   const [drilldown, setDrilldown] = useState<DrilldownType>(null);
 
   const dateFilters = useMemo(() => ({
