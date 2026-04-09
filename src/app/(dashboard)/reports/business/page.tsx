@@ -218,9 +218,9 @@ function CompanyCharts({ totals, centerRows, allCenters }: { totals: BusinessTot
 function CenterSection({ rows, totals }: { rows: BusinessRow[]; totals: BusinessTotals }) {
   if (!rows.length) return null;
 
-  /* Tỷ suất khoán = Lương tạm ứng / DT nhận khoán × 100 */
-  const koanMargin = (salary: number, incoming: number) =>
-    incoming > 0 ? Math.round((salary / incoming) * 1000) / 10 : 0;
+  /* Tỷ suất khoán = Lương tạm ứng / DT nhận khoán (hệ số, không nhân 100%) */
+  const koanRatio = (salary: number, incoming: number) =>
+    incoming > 0 ? Math.round((salary / incoming) * 100) / 100 : 0;
 
   return (
     <div>
@@ -252,7 +252,7 @@ function CenterSection({ rows, totals }: { rows: BusinessRow[]; totals: Business
                 <td className="px-3 py-2.5"><MarginBadge value={r.margin} /></td>
                 <MoneyTd value={r.incoming} color="text-cyan-500" />
                 <MoneyTd value={r.salary} color="text-blue-500" />
-                <td className="px-3 py-2.5"><MarginBadge value={koanMargin(r.salary, r.incoming)} /></td>
+                <td className="px-3 py-2.5 font-mono">{koanRatio(r.salary, r.incoming)}</td>
               </tr>
             ))}
           </tbody>
@@ -267,7 +267,7 @@ function CenterSection({ rows, totals }: { rows: BusinessRow[]; totals: Business
               <td className="px-3 py-2.5"><MarginBadge value={totals.margin} /></td>
               <MoneyTd value={totals.incoming} color="text-cyan-500" />
               <MoneyTd value={totals.salary} color="text-blue-500" />
-              <td className="px-3 py-2.5"><MarginBadge value={koanMargin(totals.salary, totals.incoming)} /></td>
+              <td className="px-3 py-2.5 font-mono font-bold">{koanRatio(totals.salary, totals.incoming)}</td>
             </tr>
           </tfoot>
         </table>
