@@ -54,7 +54,7 @@ export default function AllocationPage() {
 
   const [tab, setTab] = useState<ActiveTab>("fund");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
-  const [selectedCenter, setSelectedCenter] = useState<string>("all");
+  const [selectedCenter, setSelectedCenter] = useState<string>(user?.center_id ?? "all");
   const [showForm, setShowForm] = useState(false);
   const { start: monthStart, end: monthEnd } = currentMonthRange();
   const [fundStartDate, setFundStartDate] = useState(monthStart);
@@ -93,7 +93,7 @@ export default function AllocationPage() {
 
   const tabs: { key: ActiveTab; label: string }[] = [
     { key: "fund", label: "Quỹ phòng ban" },
-    { key: "periods", label: "Đợt khoán" },
+    ...(canManage ? [{ key: "periods" as const, label: "Đợt khoán" }] : []),
     { key: "bonus", label: "Thưởng cá nhân" },
   ];
 
