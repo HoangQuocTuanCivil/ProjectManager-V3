@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useTasks } from "@/lib/hooks/use-tasks";
-import { useProjects } from "@/lib/hooks/use-projects";
+import { useTasks } from "@/features/tasks";
+import { useProjects } from "@/features/projects";
 import {
   Search, ClipboardList, Building2, Target, Rocket, Zap,
   BarChart3, Settings, Bell, X,
@@ -141,7 +141,7 @@ export function CommandPalette({
         >
           {/* Search input */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-            <Search size={18} className="text-muted-foreground flex-shrink-0" />
+            <Search size={18} className="text-foreground flex-shrink-0" />
             <input
               autoFocus
               value={query}

@@ -3,7 +3,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore, useNotifStore } from "@/lib/stores";
-import { useSignOut } from "@/lib/hooks/use-users";
+import { useSignOut } from "@/features/organization";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { Search, Bell, Menu, Settings, LogOut, User, KeyRound, Building2, Users, Building, UsersRound, ShieldCheck, Target, FileText, Landmark, Package } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -155,7 +155,7 @@ export function Topbar({
           className="hidden md:flex w-52 h-10 pl-3 pr-3 rounded-lg border border-border bg-secondary text-sm text-muted-foreground items-center gap-2 hover:border-primary/50 transition-colors"
           aria-label={`Tìm kiếm (${shortcutLabel})`}
         >
-          <Search size={14} />
+          <Search size={14} className="text-foreground" />
           <span>Tìm kiếm... ({shortcutLabel})</span>
         </button>
         <button
@@ -163,7 +163,7 @@ export function Topbar({
           className="md:hidden w-8 h-10 rounded-lg border border-border flex items-center justify-center hover:bg-secondary transition-colors"
           aria-label="Tìm kiếm"
         >
-          <Search size={18} />
+          <Search size={18} className="text-foreground" />
         </button>
         <LanguageSwitcher />
         <ThemeToggle />
