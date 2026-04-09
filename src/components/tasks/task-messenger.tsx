@@ -150,6 +150,8 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
   const [taskQuery, setTaskQuery] = useState("");
   const { data: searchedTasks = [] } = useSearchTasks(taskQuery);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -221,37 +223,53 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
     textareaRef.current?.focus();
   };
 
-  // Send message + notify mentioned users
   const handleSend = async () => {
-    const content = text.trim();
-    if (!content || !user) return;
+    const hasText = text.trim().length > 0;
+    const hasImage = !!pendingImage;
+    if ((!hasText && !hasImage) || !user) return;
+
     try {
-      await addComment.mutateAsync({ taskId, userId: user.id, content });
+      /* Upload hình ảnh trước (nếu có), sau đó gửi tin nhắn text */
+      if (hasImage && pendingImage) {
+        setIsUploadingImage(true);
+        try {
+          const url = await uploadPastedImage(taskId, pendingImage);
+          await addComment.mutateAsync({ taskId, userId: user.id, content: `[img:${url}]` });
+        } finally {
+          setIsUploadingImage(false);
+          clearPendingImage();
+        }
+      }
+      const content = text.trim();
+      if (content) {
+        await addComment.mutateAsync({ taskId, userId: user.id, content });
+
+        // Parse @mentions and send notifications
+        const mentionMatches = content.match(/@(\S+)/g);
+        if (mentionMatches && mentionMatches.length > 0) {
+          const mentionedNames = mentionMatches.map((m) => m.slice(1).replace(/_/g, " ").toLowerCase());
+          const mentionedUsers = projectMembers.filter((u: any) =>
+            u.id !== user.id && mentionedNames.includes(u.full_name?.toLowerCase())
+          );
+          if (mentionedUsers.length > 0) {
+            const excerpt = content.length > 100 ? content.slice(0, 100) + "..." : content;
+            await supabase.from("notifications").insert(
+              mentionedUsers.map((mu: any) => ({
+                org_id: user.org_id,
+                user_id: mu.id,
+                title: `${user.full_name} đã nhắc đến bạn`,
+                body: excerpt,
+                type: "mention",
+                data: { task_id: taskId },
+              })) as any
+            );
+          }
+        }
+      }
+
       setText("");
       setShowMentionPopup(false);
       setShowTaskPopup(false);
-
-      // Parse @mentions and send notifications
-      const mentionMatches = content.match(/@(\S+)/g);
-      if (mentionMatches && mentionMatches.length > 0) {
-        const mentionedNames = mentionMatches.map((m) => m.slice(1).replace(/_/g, " ").toLowerCase());
-        const mentionedUsers = projectMembers.filter((u: any) =>
-          u.id !== user.id && mentionedNames.includes(u.full_name?.toLowerCase())
-        );
-        if (mentionedUsers.length > 0) {
-          const excerpt = content.length > 100 ? content.slice(0, 100) + "..." : content;
-          await supabase.from("notifications").insert(
-            mentionedUsers.map((mu: any) => ({
-              org_id: user.org_id,
-              user_id: mu.id,
-              title: `${user.full_name} đã nhắc đến bạn`,
-              body: excerpt,
-              type: "mention",
-              data: { task_id: taskId },
-            })) as any
-          );
-        }
-      }
     } catch (err: any) {
       toast.error(err.message || "Lỗi gửi tin nhắn");
     }
@@ -268,28 +286,27 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
     }
   };
 
-  /** Xử lý dán hình ảnh từ clipboard: upload lên Storage rồi gửi URL trong tin nhắn */
-  const handlePaste = async (e: React.ClipboardEvent) => {
+  /** Dán hình từ clipboard: lưu tạm và hiện preview, chờ người dùng bấm Gửi */
+  const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
-    if (!items || !user) return;
+    if (!items) return;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.startsWith("image/")) {
         e.preventDefault();
         const file = items[i].getAsFile();
         if (!file) return;
-        setIsUploadingImage(true);
-        try {
-          const url = await uploadPastedImage(taskId, file);
-          await addComment.mutateAsync({ taskId, userId: user.id, content: `[img:${url}]` });
-          toast.success("Đã gửi hình ảnh");
-        } catch (err: any) {
-          toast.error(err.message || "Lỗi tải hình ảnh");
-        } finally {
-          setIsUploadingImage(false);
-        }
+        setPendingImage(file);
+        setPendingImagePreview(URL.createObjectURL(file));
         return;
       }
     }
+  };
+
+  /** Hủy hình ảnh đang chờ gửi */
+  const clearPendingImage = () => {
+    if (pendingImagePreview) URL.revokeObjectURL(pendingImagePreview);
+    setPendingImage(null);
+    setPendingImagePreview(null);
   };
 
   /** Render nội dung tin nhắn: highlight @mention, [task ref], và hiển thị hình ảnh inline */
@@ -320,7 +337,7 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
   };
 
   return (
-    <div className="border border-border rounded-xl bg-card overflow-hidden flex flex-col" style={{ maxHeight: 420 }}>
+    <div className="border border-border rounded-xl bg-card overflow-hidden flex flex-col" style={{ maxHeight: 560 }}>
       {/* Header */}
       <div className="px-4 py-2.5 border-b border-border bg-secondary/30 flex items-center justify-between">
         <h4 className="text-sm font-bold flex items-center gap-1.5">
@@ -335,7 +352,7 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[120px] max-h-[260px]">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[120px] max-h-[400px]">
         {isLoading ? (
           <p className="text-sm text-muted-foreground text-center py-4">Đang tải...</p>
         ) : comments.length === 0 ? (
@@ -426,6 +443,15 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
           </div>
         )}
 
+        {/* Preview hình ảnh đang chờ gửi */}
+        {pendingImagePreview && (
+          <div className="px-3 pt-2 flex items-center gap-2">
+            <img src={pendingImagePreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg border border-border" />
+            <div className="flex-1 text-xs text-muted-foreground">Hình ảnh sẵn sàng — bấm Gửi</div>
+            <button onClick={clearPendingImage} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-secondary text-muted-foreground"><X size={14} /></button>
+          </div>
+        )}
+
         {/* Input */}
         <div className="flex items-end gap-2 p-3">
           <textarea
@@ -445,7 +471,7 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
           />
           <button
             onClick={handleSend}
-            disabled={addComment.isPending || !text.trim()}
+            disabled={addComment.isPending || isUploadingImage || (!text.trim() && !pendingImage)}
             className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
             aria-label="Gửi"
           >

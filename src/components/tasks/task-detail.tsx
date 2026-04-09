@@ -87,7 +87,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
     return (
       <>
         <div className="fixed inset-0" style={{ zIndex: overlayZ, background: transparentOverlay ? "transparent" : "rgba(0,0,0,0.5)" }} onClick={onClose} />
-        <div className="fixed top-0 right-0 h-full w-[560px] bg-card border-l border-border flex flex-col items-center justify-center gap-3" style={{ zIndex: panelZ }}>
+        <div className="fixed top-0 right-0 h-full w-[680px] bg-card border-l border-border flex flex-col items-center justify-center gap-3" style={{ zIndex: panelZ }}>
           <p className="text-4xl">😔</p>
           <p className="text-base font-semibold">Không thể tải công việc</p>
           <p className="text-sm text-muted-foreground text-center px-8">Công việc không tồn tại hoặc bạn không có quyền xem.</p>
@@ -103,7 +103,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
     return (
       <>
         <div className="fixed inset-0" style={{ zIndex: overlayZ, background: transparentOverlay ? "transparent" : "rgba(0,0,0,0.5)" }} />
-        <div className="fixed top-0 right-0 h-full w-[560px] bg-card border-l border-border flex items-center justify-center" style={{ zIndex: panelZ }}>
+        <div className="fixed top-0 right-0 h-full w-[680px] bg-card border-l border-border flex items-center justify-center" style={{ zIndex: panelZ }}>
           <p className="text-muted-foreground text-base">Đang tải...</p>
         </div>
       </>
@@ -134,7 +134,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
   return (
     <>
     <div className="fixed inset-0" style={{ zIndex: overlayZ, background: transparentOverlay ? "transparent" : "rgba(0,0,0,0.5)" }} onClick={onClose} />
-    <div className="fixed top-0 right-0 h-full w-[560px] bg-card border-l border-border overflow-y-auto" style={{ zIndex: panelZ }}>
+    <div className="fixed top-0 right-0 h-full w-[680px] bg-card border-l border-border overflow-y-auto" style={{ zIndex: panelZ }}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-border sticky top-0 bg-card z-10 flex items-center justify-between">
           <div className="flex items-center gap-2">
