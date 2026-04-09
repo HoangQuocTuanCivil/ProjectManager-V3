@@ -4,7 +4,7 @@ import { getAuthProfile, getServerSupabase, getUntypedAdmin, jsonResponse, error
 const SALARY_SELECT = `
   *,
   user:users!salary_records_user_id_fkey(id, full_name, email, employee_code, center_id),
-  department:departments(id, name, code),
+  department:departments(id, name, code, center_id, center:centers(id, name, code)),
   creator:users!salary_records_created_by_fkey(id, full_name)
 `;
 

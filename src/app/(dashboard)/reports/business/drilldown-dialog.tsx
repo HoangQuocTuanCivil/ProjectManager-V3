@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent } from "@/components/shared/dialog";
@@ -72,7 +73,19 @@ interface SalaryRow {
   month: string;
   base_salary: number;
   user: { full_name: string } | null;
-  department: { name: string; code: string } | null;
+  department: {
+    name: string; code: string;
+    center?: { id: string; name: string; code: string } | null;
+  } | null;
+}
+
+/** Cấu trúc phân cấp: Trung tâm → Phòng ban → tổng lương */
+interface CenterGroup {
+  id: string;
+  name: string;
+  code: string;
+  total: number;
+  depts: { name: string; code: string; total: number }[];
 }
 
 interface IncomingRow {
@@ -282,51 +295,92 @@ function SalaryDetail({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: string
     queryKey: ["drilldown", "salary", dateFrom, dateTo],
     queryFn: async () => {
       const params = new URLSearchParams({ per_page: "500" });
-      /* API /api/salary hỗ trợ filter theo month (1 giá trị).
-         Để lọc khoảng ngày, lấy toàn bộ rồi filter client-side. */
       const res = await fetch(`/api/salary?${params}`);
       if (!res.ok) throw new Error("Không tải được dữ liệu lương");
       const json = await res.json();
-      let rows = (json.data ?? []) as Array<{
-        id: string; month: string; base_salary: number;
-        user?: { full_name: string } | null;
-        department?: { name: string; code: string } | null;
-      }>;
+      let rows = (json.data ?? []) as SalaryRow[];
       if (dateFrom) rows = rows.filter((r) => r.month >= dateFrom);
       if (dateTo) rows = rows.filter((r) => r.month <= dateTo);
-      return rows as SalaryRow[];
+      return rows;
     },
   });
 
   if (isLoading) return <LoadingState />;
   if (!data?.length) return <EmptyState />;
 
+  /* Nhóm bản ghi lương theo Trung tâm → Phòng ban */
+  const groups = useMemo(() => {
+    const centerMap = new Map<string, CenterGroup>();
+    const NO_CENTER = "__none__";
+
+    for (const r of data) {
+      const center = r.department?.center;
+      const cId = center?.id ?? NO_CENTER;
+      const cName = center?.name ?? "Khác";
+      const cCode = center?.code ?? "";
+      const dName = r.department?.name ?? "Chưa phân bổ";
+      const dCode = r.department?.code ?? "";
+      const dKey = `${cId}:${dCode || dName}`;
+
+      if (!centerMap.has(cId)) {
+        centerMap.set(cId, { id: cId, name: cName, code: cCode, total: 0, depts: [] });
+      }
+      const group = centerMap.get(cId)!;
+      const salary = Number(r.base_salary);
+      group.total += salary;
+
+      let dept = group.depts.find((d) => `${cId}:${d.code || d.name}` === dKey);
+      if (!dept) {
+        dept = { name: dName, code: dCode, total: 0 };
+        group.depts.push(dept);
+      }
+      dept.total += salary;
+    }
+
+    /* Sắp xếp: trung tâm theo tổng lương giảm dần, phòng ban trong mỗi TT cũng vậy */
+    const result = Array.from(centerMap.values()).sort((a, b) => b.total - a.total);
+    for (const g of result) g.depts.sort((a, b) => b.total - a.total);
+    return result;
+  }, [data]);
+
   const total = data.reduce((s, r) => s + Number(r.base_salary), 0);
 
   return (
-    <table className="w-full text-xs whitespace-nowrap">
+    <table className="w-full text-xs">
       <thead>
         <tr className="border-b border-border text-muted-foreground">
-          <th className="text-left px-3 py-2 font-medium">Tháng</th>
-          <th className="text-left px-3 py-2 font-medium">Nhân viên</th>
-          <th className="text-left px-3 py-2 font-medium">Phòng ban</th>
-          <th className="text-right px-3 py-2 font-medium">Lương cơ bản</th>
+          <th className="text-left px-3 py-2 font-medium">Trung tâm / Phòng ban</th>
+          <th className="text-right px-3 py-2 font-medium">Tổng lương</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-border/30">
-        {data.map((r) => (
-          <tr key={r.id} className="hover:bg-secondary/20 transition-colors">
-            <td className="px-3 py-2">{r.month}</td>
-            <td className="px-3 py-2">{r.user?.full_name || "—"}</td>
-            <td className="px-3 py-2">{r.department?.name || "—"}</td>
-            <td className="px-3 py-2 text-right font-mono text-blue-500">{formatVND(r.base_salary)}</td>
-          </tr>
+      <tbody>
+        {groups.map((g) => (
+          <Fragment key={g.id}>
+            {/* Dòng trung tâm: tổng lương của tất cả phòng ban thuộc trung tâm */}
+            <tr className="bg-secondary/30 border-t border-border">
+              <td className="px-3 py-2.5 font-bold">
+                {g.name}
+                {g.code && <span className="ml-1.5 text-muted-foreground text-[10px] font-normal">{g.code}</span>}
+              </td>
+              <td className="px-3 py-2.5 text-right font-mono font-bold text-blue-500">{formatVND(g.total)}</td>
+            </tr>
+            {/* Dòng phòng ban: chi tiết lương từng phòng thuộc trung tâm */}
+            {g.depts.map((d) => (
+              <tr key={`${g.id}-${d.code || d.name}`} className="hover:bg-secondary/10 transition-colors border-b border-border/20">
+                <td className="px-3 py-2 pl-8 text-muted-foreground">
+                  {d.name}
+                  {d.code && <span className="ml-1.5 text-[10px]">{d.code}</span>}
+                </td>
+                <td className="px-3 py-2 text-right font-mono text-blue-400">{formatVND(d.total)}</td>
+              </tr>
+            ))}
+          </Fragment>
         ))}
       </tbody>
       <tfoot>
         <tr className="border-t-2 border-border bg-secondary/30 font-bold">
-          <td className="px-3 py-2" colSpan={3}>TỔNG ({data.length} bản ghi)</td>
-          <td className="px-3 py-2 text-right font-mono text-blue-500">{formatVND(total)}</td>
+          <td className="px-3 py-2.5">TỔNG CỘNG</td>
+          <td className="px-3 py-2.5 text-right font-mono text-blue-500">{formatVND(total)}</td>
         </tr>
       </tfoot>
     </table>
