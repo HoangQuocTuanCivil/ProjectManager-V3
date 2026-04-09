@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { useAllocationConfig } from "@/lib/hooks/use-kpi";
 import { useUpdateSetting } from "@/lib/hooks/use-org-settings";
+import { useCenters } from "@/lib/hooks/use-teams";
 import { Section, Button, KPIRing, KPIScoreBar } from "@/components/shared";
+import { SearchSelect } from "@/components/shared/search-select";
 import { KPI_WEIGHTS, calcKPIScore } from "@/lib/utils/kpi";
 
 export default function KPISettingsPage() {
   const { data: config } = useAllocationConfig();
   const updateSetting = useUpdateSetting();
+
+  const { data: centers = [] } = useCenters();
+  const [scopeCenter, setScopeCenter] = useState("all");
 
   const [weights, setWeights] = useState({
     volume: config?.weight_volume ?? KPI_WEIGHTS.volume,
@@ -17,8 +22,10 @@ export default function KPISettingsPage() {
     ahead: config?.weight_ahead ?? KPI_WEIGHTS.ahead,
   });
 
-  const total = Math.round((weights.volume + weights.quality + weights.difficulty + weights.ahead) * 100);
-  const isValid = total === 100;
+  /* KL + CL + ĐK = 100% (cơ bản). VTĐ là bonus thêm, không tính vào tổng cơ bản. */
+  const baseTotal = Math.round((weights.volume + weights.quality + weights.difficulty) * 100);
+  const bonusPercent = Math.round(weights.ahead * 100);
+  const isValid = baseTotal === 100;
 
   // Example score calculation
   const exampleE = calcKPIScore(100, 80, 60, 50);
@@ -28,7 +35,7 @@ export default function KPISettingsPage() {
     { key: "volume" as const, label: "Khối lượng (KL)", color: "#38bdf8", desc: "Số lượng công việc hoàn thành, mặc định = 100" },
     { key: "quality" as const, label: "Chất lượng (CL)", color: "#10b981", desc: "Đánh giá chất lượng sản phẩm đầu ra" },
     { key: "difficulty" as const, label: "Độ khó (ĐK)", color: "#f59e0b", desc: "Mức độ phức tạp, kỹ thuật của công việc" },
-    { key: "ahead" as const, label: "Vượt tiến độ (VTĐ)", color: "#8b5cf6", desc: "Hoàn thành sớm hơn deadline" },
+    { key: "ahead" as const, label: "Vượt tiến độ (VTĐ) — Bonus", color: "#8b5cf6", desc: "Đúng hạn = 100%. Vượt hạn = thưởng thêm tối đa điểm bonus" },
   ];
 
   return (
@@ -37,6 +44,23 @@ export default function KPISettingsPage() {
         <h2 className="text-lg font-bold">Cấu hình KPI</h2>
         <p className="text-base text-muted-foreground mt-0.5">Thiết lập trọng số và công thức tính KPI</p>
       </div>
+
+      {/* Phạm vi áp dụng */}
+      <Section title="Phạm vi áp dụng">
+        <div className="p-5">
+          <p className="text-sm text-muted-foreground mb-3">Cấu hình KPI áp dụng cho trung tâm cụ thể hoặc toàn công ty</p>
+          <SearchSelect
+            value={scopeCenter}
+            onChange={setScopeCenter}
+            options={[
+              { value: "all", label: "Toàn công ty (mặc định)" },
+              ...(centers as any[]).map((c: any) => ({ value: c.id, label: c.code ? `${c.code} — ${c.name}` : c.name })),
+            ]}
+            placeholder="Chọn trung tâm..."
+            className="w-72"
+          />
+        </div>
+      </Section>
 
       {/* Weights */}
       <Section title="Trọng số KPI">
@@ -64,14 +88,23 @@ export default function KPISettingsPage() {
           ))}
 
           <div className="flex items-center justify-between pt-4 border-t border-border">
-            <span className="text-base font-bold">Tổng trọng số</span>
+            <div>
+              <span className="text-base font-bold">Trọng số cơ bản</span>
+              <span className="text-xs text-muted-foreground ml-2">(KL + CL + ĐK)</span>
+            </div>
             <span className={`font-mono text-lg font-bold ${isValid ? "text-green-500" : "text-destructive"}`}>
-              {total}%
+              {baseTotal}%
             </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm text-muted-foreground">Bonus vượt tiến độ</span>
+            </div>
+            <span className="font-mono text-sm font-bold text-purple-500">+{bonusPercent}%</span>
           </div>
 
           {!isValid && (
-            <p className="text-sm text-destructive">Tổng trọng số phải bằng 100%. Hiện tại: {total}%</p>
+            <p className="text-sm text-destructive">Tổng trọng số cơ bản (KL + CL + ĐK) phải bằng 100%. Hiện tại: {baseTotal}%</p>
           )}
         </div>
       </Section>
