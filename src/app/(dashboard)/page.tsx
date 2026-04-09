@@ -49,62 +49,69 @@ export default function DashboardPage() {
   const [kpiGroupBy, setKpiGroupBy] = useState<"center" | "department" | "team">("center");
   const [kpiFilterId, setKpiFilterId] = useState("all");
 
-  const activeTasks = tasks.filter((t) => !["completed", "cancelled"].includes(t.status));
-  const overdue = tasks.filter((t) => t.status === "overdue");
-  const review = tasks.filter((t) => t.status === "review");
-  const evaluated = tasks.filter((t) => t.kpi_evaluated_at);
-  const totalWeight = tasks.reduce((s, t) => s + t.kpi_weight, 0);
-  const avgKPI = totalWeight > 0
-    ? Math.round(tasks.reduce((s, t) => s + t.expect_score * t.kpi_weight, 0) / totalWeight)
-    : 0;
+  /* Phân quyền dữ liệu theo vai trò:
+     - admin, leader, director: toàn bộ công ty
+     - head (trưởng phòng): trung tâm mà phòng trực thuộc
+     - team_leader, staff: phòng ban trực thuộc */
+  const userCenterId = useMemo(() => {
+    if (!user) return null;
+    if (user.center_id) return user.center_id;
+    if (user.dept_id) {
+      const dept = departments.find((d: any) => d.id === user.dept_id);
+      return dept?.center_id ?? null;
+    }
+    return null;
+  }, [user, departments]);
 
-  // KPI Quick: scoped by user role
   const scopedTasks = useMemo(() => {
     if (!user) return tasks;
-    switch (user.role) {
-      case "director":
-        return user.center_id
-          ? tasks.filter((t) => t.department?.center_id === user.center_id)
-          : tasks;
-      case "head":
-        return user.dept_id
-          ? tasks.filter((t) => t.dept_id === user.dept_id)
-          : tasks;
-      case "team_leader":
-        return user.team_id
-          ? tasks.filter((t) => t.team_id === user.team_id)
-          : tasks;
-      case "staff":
-        return tasks.filter((t) => t.assignee_id === user.id);
-      default: // admin, leader
-        return tasks;
+    if (["admin", "leader", "director"].includes(user.role)) return tasks;
+    if (user.role === "head") {
+      return userCenterId ? tasks.filter((t) => (t.department as any)?.center_id === userCenterId) : tasks;
     }
-  }, [tasks, user]);
+    // team_leader, staff: phòng ban trực thuộc
+    return user.dept_id ? tasks.filter((t) => t.dept_id === user.dept_id) : tasks;
+  }, [tasks, user, userCenterId]);
 
-  const scopedEvaluated = scopedTasks.filter((t) => t.kpi_evaluated_at);
-  const scopedReview = scopedTasks.filter((t) => t.status === "review");
-  const scopedOverdue = scopedTasks.filter((t) => t.status === "overdue");
-  const scopedWeight = scopedTasks.reduce((s, t) => s + t.kpi_weight, 0);
-  const scopedAvgKPI = scopedWeight > 0
-    ? Math.round(scopedTasks.reduce((s, t) => s + t.expect_score * t.kpi_weight, 0) / scopedWeight)
+  const activeTasks = scopedTasks.filter((t) => !["completed", "cancelled"].includes(t.status));
+  const overdue = scopedTasks.filter((t) => t.status === "overdue");
+  const review = scopedTasks.filter((t) => t.status === "review");
+  const evaluated = scopedTasks.filter((t) => t.kpi_evaluated_at);
+  const totalWeight = scopedTasks.reduce((s, t) => s + t.kpi_weight, 0);
+  const avgKPI = totalWeight > 0
+    ? Math.round(scopedTasks.reduce((s, t) => s + t.expect_score * t.kpi_weight, 0) / totalWeight)
     : 0;
-  // Recent tasks: sorted by deadline ascending (nearest due first)
-  const recentTasks = [...tasks]
-    .filter((t) => t.assignee_id === user?.id || t.assigner_id === user?.id)
-    .sort((a, b) => {
-      const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
-      const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
-      return da - db;
-    })
-    .slice(0, 8);
-  // Active projects: sorted by end_date ascending (nearest due first)
-  const activeProjects = projects
-    .filter((p) => p.status === "active")
-    .sort((a, b) => {
+
+  const scopedEvaluated = evaluated;
+  const scopedReview = review;
+  const scopedOverdue = overdue;
+  const scopedAvgKPI = avgKPI;
+
+  /* Công việc gần đây: chỉ hiện task liên quan trực tiếp đến tài khoản hiện hành */
+  const recentTasks = useMemo(() =>
+    [...scopedTasks]
+      .filter((t) => t.assignee_id === user?.id || t.assigner_id === user?.id)
+      .sort((a, b) => {
+        const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+        const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+        return da - db;
+      })
+      .slice(0, 8),
+  [scopedTasks, user]);
+
+  /* Dự án đang triển khai: lọc theo phạm vi quyền hạn */
+  const activeProjects = useMemo(() => {
+    let filtered = projects.filter((p) => p.status === "active");
+    if (user && !["admin", "leader", "director"].includes(user.role)) {
+      const scopedProjectIds = new Set(scopedTasks.map((t) => t.project_id).filter(Boolean));
+      filtered = filtered.filter((p) => scopedProjectIds.has(p.id));
+    }
+    return filtered.sort((a, b) => {
       const da = a.end_date ? new Date(a.end_date).getTime() : Infinity;
       const db = b.end_date ? new Date(b.end_date).getTime() : Infinity;
       return da - db;
     });
+  }, [projects, scopedTasks, user]);
 
   // KPI ranking: aggregate weighted average score per user
   const kpiRanking = useMemo(() => {
@@ -114,7 +121,7 @@ export default function DashboardPage() {
       totalWeight: number; weightedScore: number;
     }>();
 
-    for (const task of tasks) {
+    for (const task of scopedTasks) {
       if (!task.assignee_id || !task.assignee) continue;
       const score = task.actual_score ?? task.expect_score ?? 0;
       const weight = task.kpi_weight || 0;
@@ -150,7 +157,7 @@ export default function DashboardPage() {
         return u.teamId === kpiFilterId;
       })
       .sort((a, b) => b.score - a.score);
-  }, [tasks, kpiGroupBy, kpiFilterId]);
+  }, [scopedTasks, kpiGroupBy, kpiFilterId]);
 
   // Filter options based on groupBy mode
   const kpiFilterOptions = useMemo(() => {
@@ -179,7 +186,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           label={t.dashboard.totalTasks}
-          value={tasks.length}
+          value={scopedTasks.length}
           subtitle={`${activeTasks.length} ${t.dashboard.processing}`}
           accentColor="hsl(var(--primary))"
           onClick={() => setStatPanel("total")}
@@ -187,7 +194,7 @@ export default function DashboardPage() {
         />
         <StatCard
           label={t.dashboard.inProgress}
-          value={tasks.filter((t) => t.status === "in_progress").length}
+          value={scopedTasks.filter((t) => t.status === "in_progress").length}
           subtitle={`${review.length} ${t.dashboard.pendingReview}`}
           accentColor="#3b82f6"
           onClick={() => setStatPanel("in_progress")}
@@ -203,7 +210,7 @@ export default function DashboardPage() {
         <StatCard
           label={t.dashboard.avgKpiExpected}
           value={avgKPI}
-          subtitle={`${evaluated.length}/${tasks.length} ${t.dashboard.evaluated}`}
+          subtitle={`${evaluated.length}/${scopedTasks.length} ${t.dashboard.evaluated}`}
           accentColor="#10b981"
         />
       </div>
@@ -235,7 +242,7 @@ export default function DashboardPage() {
               {recentTasks.map((task) => (
                 <div
                   key={task.id}
-                  onClick={() => router.push("/tasks")}
+                  onClick={() => router.push(`/tasks?selected=${task.id}`)}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/30 cursor-pointer transition-colors"
                 >
                   <div className="flex-1 min-w-0">
@@ -440,7 +447,7 @@ export default function DashboardPage() {
         open={statPanel !== null}
         onOpenChange={(open) => { if (!open) setStatPanel(null); }}
         panelType={statPanel}
-        tasks={tasks}
+        tasks={scopedTasks}
       />
     </div>
   );
