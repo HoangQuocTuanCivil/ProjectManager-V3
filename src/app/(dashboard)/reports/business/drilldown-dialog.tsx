@@ -35,7 +35,7 @@ const TITLES: Record<Exclude<DrilldownType, null>, string> = {
 };
 
 const DESCRIPTIONS: Record<Exclude<DrilldownType, null>, string> = {
-  revenue: "Các bút toán ghi nhận doanh thu đã xác nhận",
+  revenue: "Tổng doanh thu từ các hợp đồng đầu ra đang hoạt động hoặc hoàn thành",
   cost: "Phân bổ chi phí theo loại: giá vốn, bán hàng, quản lý, tài chính",
   salary: "Bảng lương theo phòng ban và nhân viên",
   incoming: "Hợp đồng đầu vào (giao khoán) đang hoạt động",
@@ -44,14 +44,15 @@ const DESCRIPTIONS: Record<Exclude<DrilldownType, null>, string> = {
 
 /* ── Các loại dữ liệu trả về từ Supabase ────────────────────── */
 
-interface RevenueRow {
+interface OutgoingContractRow {
   id: string;
-  amount: number;
-  description: string;
-  recognition_date: string | null;
+  contract_no: string;
+  title: string;
+  contract_value: number;
+  signed_date: string | null;
+  status: string;
   project: { code: string; name: string } | null;
-  contract: { contract_no: string; title: string } | null;
-  department: { name: string; code: string } | null;
+  product_service: { code: string; name: string } | null;
 }
 
 interface CostRow {
@@ -127,61 +128,69 @@ function EmptyState() {
   );
 }
 
-/* ── Chi tiết Doanh thu ──────────────────────────────────────── */
+/* ── Chi tiết Doanh thu = Hợp đồng đầu ra ────────────────────── */
 
 function RevenueDetail({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["drilldown", "revenue", dateFrom, dateTo],
     queryFn: async () => {
       let q = supabase
-        .from("revenue_entries")
-        .select("id, amount, description, recognition_date, project:projects(code, name), contract:contracts(contract_no, title), department:departments(name, code)")
-        .eq("status", "confirmed")
-        .order("recognition_date", { ascending: false });
-      if (dateFrom) q = q.gte("recognition_date", dateFrom);
-      if (dateTo) q = q.lte("recognition_date", dateTo);
+        .from("contracts")
+        .select("id, contract_no, title, contract_value, signed_date, status, project:projects(code, name), product_service:product_services(code, name)")
+        .eq("contract_type", "outgoing")
+        .in("status", ["active", "completed"])
+        .order("contract_value", { ascending: false });
+      if (dateFrom) q = q.gte("signed_date", dateFrom);
+      if (dateTo) q = q.lte("signed_date", dateTo);
       const { data, error } = await q;
       if (error) throw error;
-      return data as unknown as RevenueRow[];
+      return data as unknown as OutgoingContractRow[];
     },
   });
 
   if (isLoading) return <LoadingState />;
   if (!data?.length) return <EmptyState />;
 
-  const total = data.reduce((s, r) => s + Number(r.amount), 0);
+  const total = data.reduce((s, r) => s + Number(r.contract_value), 0);
+  const statusLabel: Record<string, string> = { active: "Đang thực hiện", completed: "Hoàn thành" };
 
   return (
     <table className="w-full text-xs whitespace-nowrap">
       <thead>
         <tr className="border-b border-border text-muted-foreground">
-          <th className="text-left px-3 py-2 font-medium">Ngày ghi nhận</th>
+          <th className="text-left px-3 py-2 font-medium">Số HĐ</th>
+          <th className="text-left px-3 py-2 font-medium">Tên hợp đồng</th>
           <th className="text-left px-3 py-2 font-medium">Dự án</th>
-          <th className="text-left px-3 py-2 font-medium">Hợp đồng</th>
-          <th className="text-left px-3 py-2 font-medium">Phòng ban</th>
-          <th className="text-left px-3 py-2 font-medium">Mô tả</th>
-          <th className="text-right px-3 py-2 font-medium">Số tiền</th>
+          <th className="text-left px-3 py-2 font-medium">Sản phẩm/DV</th>
+          <th className="text-left px-3 py-2 font-medium">Ngày ký</th>
+          <th className="text-left px-3 py-2 font-medium">Trạng thái</th>
+          <th className="text-right px-3 py-2 font-medium">Giá trị HĐ</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-border/30">
         {data.map((r) => (
           <tr key={r.id} className="hover:bg-secondary/20 transition-colors">
-            <td className="px-3 py-2">{formatDate(r.recognition_date)}</td>
+            <td className="px-3 py-2 font-medium">{r.contract_no}</td>
+            <td className="px-3 py-2 max-w-[200px] truncate" title={r.title}>{r.title}</td>
             <td className="px-3 py-2">{r.project?.code || "—"}</td>
-            <td className="px-3 py-2 max-w-[160px] truncate" title={r.contract?.title}>
-              {r.contract?.contract_no || "—"}
+            <td className="px-3 py-2">{r.product_service?.name || "—"}</td>
+            <td className="px-3 py-2">{formatDate(r.signed_date)}</td>
+            <td className="px-3 py-2">
+              <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                r.status === "completed"
+                  ? "bg-green-500/10 text-green-500"
+                  : "bg-blue-500/10 text-blue-500"
+              }`}>
+                {statusLabel[r.status] || r.status}
+              </span>
             </td>
-            <td className="px-3 py-2">{r.department?.name || "—"}</td>
-            <td className="px-3 py-2 max-w-[180px] truncate" title={r.description}>
-              {r.description || "—"}
-            </td>
-            <td className="px-3 py-2 text-right font-mono text-green-500">{formatVND(r.amount)}</td>
+            <td className="px-3 py-2 text-right font-mono text-green-500">{formatVND(r.contract_value)}</td>
           </tr>
         ))}
       </tbody>
       <tfoot>
         <tr className="border-t-2 border-border bg-secondary/30 font-bold">
-          <td className="px-3 py-2" colSpan={5}>TỔNG ({data.length} bút toán)</td>
+          <td className="px-3 py-2" colSpan={6}>TỔNG ({data.length} hợp đồng)</td>
           <td className="px-3 py-2 text-right font-mono text-green-500">{formatVND(total)}</td>
         </tr>
       </tfoot>
