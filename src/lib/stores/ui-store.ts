@@ -30,7 +30,7 @@ const defaultFilters: TaskFilters = {
 
 export const useUIStore = create<UIState>((set) => ({
   sidebarOpen: true,
-  taskView: 'grid',
+  taskView: 'kanban',
   settingsTab: 'accounts',
   taskFilters: defaultFilters,
   taskSort: { key: 'deadline' as TaskSortKey, dir: 'asc' as const },
