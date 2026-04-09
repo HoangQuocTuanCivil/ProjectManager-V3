@@ -60,18 +60,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       .in("team_id", teamIds);
   }
 
-  /* Xóa (vô hiệu) tất cả nhóm thuộc phòng ban */
+  /* Xóa tất cả nhóm thuộc phòng ban */
   if (teamIds.length > 0) {
-    await admin
-      .from("teams")
-      .update({ is_active: false })
-      .in("id", teamIds);
+    await admin.from("teams").delete().in("id", teamIds);
   }
 
-  /* Vô hiệu phòng ban */
+  /* Xóa phòng ban */
   const { error } = await admin
     .from("departments")
-    .update({ is_active: false })
+    .delete()
     .eq("id", deptId)
     .eq("org_id", orgId);
 
