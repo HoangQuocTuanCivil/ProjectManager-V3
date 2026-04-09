@@ -120,7 +120,7 @@ function CompanySection({ totals, onCardClick }: { totals: BusinessTotals; onCar
   const cards: { label: string; value: number; color: string; pct?: boolean; drilldown: DrilldownType }[] = [
     { label: "Doanh thu", value: totals.revenue, color: "text-green-500", drilldown: "revenue" },
     { label: "Chi phí", value: totals.cogs + totals.selling + totals.admin + totals.financial, color: "text-red-400", drilldown: "cost" },
-    { label: "Lương", value: totals.salary, color: "text-blue-500", drilldown: "salary" },
+    { label: "Lương ứng hằng tháng", value: totals.salary, color: "text-blue-500", drilldown: "salary" },
     { label: "HĐ giao khoán", value: totals.incoming, color: "text-cyan-500", drilldown: "incoming" },
     { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500", drilldown: "profit" },
     { label: "Tỷ suất LN", value: totals.margin, color: totals.margin >= 0 ? "text-green-500" : "text-red-500", pct: true, drilldown: "profit" },
