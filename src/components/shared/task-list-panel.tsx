@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Dialog, DialogContent } from "./dialog";
 import { StatusBadge, ProgressBar, UserAvatar, PriorityBadge, EmptyState } from "./index";
 import { TaskDetail } from "@/components/tasks/task-detail";
@@ -118,13 +119,15 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
       </DialogContent>
     </Dialog>
 
-    {/* Panel chi tiết task: render ngoài Dialog tree để không bị focus trap chặn tương tác */}
-    {selectedTaskId && (
+    {/* Portal TaskDetail vào document.body — đảm bảo nằm trên Radix Dialog overlay,
+       không bị focus trap hay pointer-event chặn */}
+    {selectedTaskId && typeof document !== "undefined" && createPortal(
       <TaskDetail
         taskId={selectedTaskId}
         onClose={() => setSelectedTaskId(null)}
         zIndex={60}
-      />
+      />,
+      document.body,
     )}
     </>
   );
