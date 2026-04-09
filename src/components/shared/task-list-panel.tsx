@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Dialog, DialogContent } from "./dialog";
 import { StatusBadge, ProgressBar, UserAvatar, PriorityBadge, EmptyState } from "./index";
+import { TaskDetail } from "@/components/tasks/task-detail";
 import { ClipboardList } from "lucide-react";
 import { ROLE_CONFIG, formatRelativeDate } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
@@ -20,6 +22,7 @@ interface TaskListPanelProps {
 export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskListPanelProps) {
   const { t } = useI18n();
   const router = useRouter();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const titleMap: Record<string, string> = {
     total: t.dashboard.totalTasks,
@@ -48,8 +51,7 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
     });
 
   const handleTaskClick = (taskId: string) => {
-    onOpenChange(false);
-    router.push(`/tasks?selected=${taskId}`);
+    setSelectedTaskId(taskId);
   };
 
   return (
@@ -112,6 +114,15 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
           </div>
         )}
       </DialogContent>
+
+      {/* Panel chi tiết task: hiển thị đè lên dialog danh sách, z-index cao hơn */}
+      {selectedTaskId && (
+        <TaskDetail
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+          zIndex={60}
+        />
+      )}
     </Dialog>
   );
 }

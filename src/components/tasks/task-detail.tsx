@@ -13,7 +13,7 @@ import { TaskMessenger } from "./task-messenger";
 import { TaskAttachments } from "./task-attachments";
 import { SearchSelect } from "@/components/shared/search-select";
 
-export function TaskDetail({ taskId, onClose }: { taskId: string; onClose: () => void }) {
+export function TaskDetail({ taskId, onClose, zIndex }: { taskId: string; onClose: () => void; zIndex?: number }) {
   const { data: task, isLoading, error } = useTask(taskId);
   const { user } = useAuthStore();
   const updateProgress = useUpdateProgress();
@@ -32,6 +32,9 @@ export function TaskDetail({ taskId, onClose }: { taskId: string; onClose: () =>
   const [showEditForm, setShowEditForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [localProgress, setLocalProgress] = useState<number | null>(null);
+  const overlayZ = zIndex ?? 50;
+  const overlayClass = `fixed inset-0 flex justify-end`;
+  const overlayStyle = { background: "rgba(0,0,0,0.5)", zIndex: overlayZ };
 
   const handleProgressSubmit = () => {
     const val = localProgress ?? task?.progress ?? 0;
@@ -77,7 +80,7 @@ export function TaskDetail({ taskId, onClose }: { taskId: string; onClose: () =>
 
   if (error || (!isLoading && !task)) {
     return (
-      <div className="fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+      <div className={overlayClass} style={overlayStyle} onClick={onClose}>
         <div className="w-[560px] bg-card border-l border-border h-full flex flex-col items-center justify-center gap-3" onClick={(e) => e.stopPropagation()}>
           <p className="text-4xl">😔</p>
           <p className="text-base font-semibold">Không thể tải công việc</p>
@@ -92,7 +95,7 @@ export function TaskDetail({ taskId, onClose }: { taskId: string; onClose: () =>
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <div className={overlayClass} style={overlayStyle}>
         <div className="w-[560px] bg-card border-l border-border h-full flex items-center justify-center">
           <p className="text-muted-foreground text-base">Đang tải...</p>
         </div>
@@ -122,7 +125,7 @@ export function TaskDetail({ taskId, onClose }: { taskId: string; onClose: () =>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+    <div className={overlayClass} style={overlayStyle} onClick={onClose}>
       <div className="w-[560px] bg-card border-l border-border h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-border sticky top-0 bg-card z-10 flex items-center justify-between">
