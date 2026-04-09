@@ -19,6 +19,7 @@ export { Toggle } from './toggle';
 export { CloseButton } from './close-button';
 export { TrendIndicator } from './trend-indicator';
 export { AlertCard } from './alert-card';
+export { ConfirmDialog } from './confirm-dialog';
 export { DeadlineCountdown } from './deadline-countdown';
 
 // UI primitives (merged from src/shared/ui/)

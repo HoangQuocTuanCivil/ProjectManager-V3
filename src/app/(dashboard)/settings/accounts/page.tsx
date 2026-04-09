@@ -5,7 +5,7 @@ import { useUsers, useUpdateUser, useDeleteUser, useBulkDeleteUsers, useCreateUs
 import { useMultiSelect } from "@/lib/hooks/use-multi-select";
 import { useCustomRoles } from "@/features/settings";
 import { useAllTeams, useCenters } from "@/features/organization";
-import { Section, Button, UserAvatar, RoleBadge, Toggle, EmptyState } from "@/components/shared";
+import { Section, Button, UserAvatar, RoleBadge, Toggle, EmptyState, ConfirmDialog } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";
 import type { UserRole } from "@/lib/types";
@@ -51,6 +51,8 @@ export default function AccountsSettingsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
   const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const excelRef = useRef<ExcelImportHandle>(null);
@@ -176,15 +178,16 @@ export default function AccountsSettingsPage() {
   const bulkDelete = useBulkDeleteUsers();
 
   const handleBulkDelete = async () => {
-    const ids = Array.from(selected);
-    if (!confirm(`Xác nhận XÓA VĨNH VIỄN ${ids.length} tài khoản?\n\nCác bộ phận được gán trưởng phòng/giám đốc sẽ tự động trả về None.\nHành động này không thể hoàn tác!`)) return;
     try {
+      const ids = Array.from(selected);
       const result = await bulkDelete.mutateAsync(ids);
       toast.success(`Đã xóa ${result.deleted} tài khoản`);
       if (result.errors?.length) toast.error(`${result.errors.length} tài khoản lỗi`);
       clear();
     } catch (e: any) {
       toast.error(e.message);
+    } finally {
+      setShowBulkDelete(false);
     }
   };
 
@@ -418,9 +421,9 @@ export default function AccountsSettingsPage() {
           <span className="text-sm font-medium">{selected.size} đã chọn</span>
           <div className="flex-1" />
           <button onClick={clear} className="text-sm text-muted-foreground hover:text-foreground">Bỏ chọn</button>
-          <Button size="sm" variant="primary" onClick={handleBulkDelete} disabled={bulkDelete.isPending}
+          <Button size="sm" variant="primary" onClick={() => setShowBulkDelete(true)}
             className="!bg-destructive hover:!bg-destructive/90">
-            {bulkDelete.isPending ? "Đang xóa..." : `Xóa ${selected.size} tài khoản`}
+            {`Xóa ${selected.size} tài khoản`}
           </Button>
         </div>
       )}
@@ -554,14 +557,7 @@ export default function AccountsSettingsPage() {
                           Sửa
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Xác nhận XÓA VĨNH VIỄN tài khoản "${u.full_name}"?\n\nHành động này không thể hoàn tác!`)) {
-                              deleteUser.mutate(u.id, {
-                                onSuccess: () => toast.success(`Đã xóa tài khoản "${u.full_name}"`),
-                                onError: (err: any) => toast.error(err.message || "Lỗi xóa tài khoản"),
-                              });
-                            }
-                          }}
+                          onClick={() => setDeleteTarget(u)}
                           className="text-sm text-red-500 hover:underline"
                         >
                           Xóa
@@ -575,6 +571,32 @@ export default function AccountsSettingsPage() {
           </div>
         )}
       </Section>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title={`Xóa tài khoản "${deleteTarget?.full_name}"?`}
+        description="Toàn bộ dữ liệu liên quan (task, lương, KPI, chia khoán) sẽ bị xóa vĩnh viễn.\nHành động này không thể hoàn tác!"
+        confirmLabel="Xóa vĩnh viễn"
+        loading={deleteUser.isPending}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteUser.mutate(deleteTarget.id, {
+            onSuccess: () => { toast.success(`Đã xóa tài khoản "${deleteTarget.full_name}"`); setDeleteTarget(null); },
+            onError: (err: any) => toast.error(err.message || "Lỗi xóa tài khoản"),
+          });
+        }}
+      />
+
+      <ConfirmDialog
+        open={showBulkDelete}
+        onOpenChange={setShowBulkDelete}
+        title={`Xóa ${selected.size} tài khoản?`}
+        description="Toàn bộ dữ liệu liên quan (task, lương, KPI, chia khoán) sẽ bị xóa vĩnh viễn.\nHành động này không thể hoàn tác!"
+        confirmLabel="Xóa vĩnh viễn"
+        loading={bulkDelete.isPending}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 }
