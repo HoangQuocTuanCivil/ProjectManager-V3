@@ -10,6 +10,7 @@ import { formatVND } from "@/lib/utils/format";
 import { Download, TrendingUp, TrendingDown, Building2, Landmark, Package } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { DrilldownDialog, type DrilldownType } from "./drilldown-dialog";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
@@ -20,6 +21,7 @@ const COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899"
 export default function BusinessReportPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [drilldown, setDrilldown] = useState<DrilldownType>(null);
 
   const dateFilters = useMemo(() => ({
     from: dateFrom || undefined,
@@ -96,24 +98,31 @@ export default function BusinessReportPage() {
         <div className="text-center py-16 text-sm text-muted-foreground">Đang tải dữ liệu...</div>
       ) : (
         <>
-          <CompanySection totals={company} />
+          <CompanySection totals={company} onCardClick={setDrilldown} />
           <CompanyCharts totals={company} centerRows={centerRows} />
           <CenterSection rows={centerRows} totals={centerTotals} />
           <ProductServiceSection rows={psRows} totals={psTotals} />
+          <DrilldownDialog
+            type={drilldown}
+            onClose={() => setDrilldown(null)}
+            dateFrom={dateFrom || undefined}
+            dateTo={dateTo || undefined}
+            totals={company}
+          />
         </>
       )}
     </div>
   );
 }
 
-function CompanySection({ totals }: { totals: BusinessTotals }) {
-  const cards = [
-    { label: "Doanh thu", value: totals.revenue, color: "text-green-500" },
-    { label: "Chi phí", value: totals.cogs + totals.selling + totals.admin + totals.financial, color: "text-red-400" },
-    { label: "Lương", value: totals.salary, color: "text-blue-500" },
-    { label: "HĐ giao khoán", value: totals.incoming, color: "text-cyan-500" },
-    { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500" },
-    { label: "Tỷ suất LN", value: totals.margin, color: totals.margin >= 0 ? "text-green-500" : "text-red-500", pct: true },
+function CompanySection({ totals, onCardClick }: { totals: BusinessTotals; onCardClick: (type: DrilldownType) => void }) {
+  const cards: { label: string; value: number; color: string; pct?: boolean; drilldown: DrilldownType }[] = [
+    { label: "Doanh thu", value: totals.revenue, color: "text-green-500", drilldown: "revenue" },
+    { label: "Chi phí", value: totals.cogs + totals.selling + totals.admin + totals.financial, color: "text-red-400", drilldown: "cost" },
+    { label: "Lương", value: totals.salary, color: "text-blue-500", drilldown: "salary" },
+    { label: "HĐ giao khoán", value: totals.incoming, color: "text-cyan-500", drilldown: "incoming" },
+    { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500", drilldown: "profit" },
+    { label: "Tỷ suất LN", value: totals.margin, color: totals.margin >= 0 ? "text-green-500" : "text-red-500", pct: true, drilldown: "profit" },
   ];
 
   return (
@@ -121,11 +130,16 @@ function CompanySection({ totals }: { totals: BusinessTotals }) {
       <SectionHeader icon={<Building2 size={15} />} title="Toàn công ty" />
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-3">
         {cards.map((c, i) => (
-          <div key={i} className="bg-card border border-border rounded-xl p-3">
+          <div
+            key={i}
+            onClick={() => onCardClick(c.drilldown)}
+            className="bg-card border border-border rounded-xl p-3 cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all"
+          >
             <p className="text-[10px] text-muted-foreground mb-1">{c.label}</p>
             <p className={`text-base font-bold font-mono ${c.color}`}>
               {c.pct ? `${c.value}%` : formatVND(c.value)}
             </p>
+            <p className="text-[9px] text-muted-foreground/60 mt-1">Nhấn để xem chi tiết</p>
           </div>
         ))}
       </div>
