@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
-  const [allocsRes, contractsRes, salaryMap] = await Promise.all([
+  const [allocsRes, contractsRes, salaryMap, costsMap, incomingMap] = await Promise.all([
     admin.from("dept_budget_allocations")
       .select("project_id, center_id, allocated_amount, delivery_date, start_date, end_date, created_at, center:centers(id, name, code)")
       .eq("org_id", orgId)
@@ -83,6 +83,8 @@ async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
       .eq("org_id", orgId).eq("contract_type", "outgoing")
       .in("status", ["active", "completed"]),
     fetchSalary(admin, orgId, "center", f),
+    fetchCostsByCenter(admin, orgId, f),
+    fetchIncomingByCenter(admin, orgId, f),
   ]);
 
   const allocs = (allocsRes.data ?? []).filter((a: any) => {
@@ -116,6 +118,7 @@ async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
     contractsByProject.get(c.project_id)!.push({ contract_value: Number(c.contract_value) });
   }
 
+  /* DT công ty = doanh thu HĐ đầu ra phân bổ cho trung tâm theo tỷ lệ giao khoán */
   const revenueMap = new Map<string, number>();
   for (const [projectId, centerMap] of centerAllocByProject) {
     const totalAlloc = projectTotalAlloc.get(projectId) || 0;
@@ -129,7 +132,10 @@ async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
     }
   }
 
-  const allKeys = new Set([...revenueMap.keys(), ...salaryMap.keys()]);
+  const allKeys = new Set([
+    ...revenueMap.keys(), ...salaryMap.keys(),
+    ...costsMap.keys(), ...incomingMap.keys(),
+  ]);
   const rows: any[] = [];
   for (const key of allKeys) {
     const info = centerInfo.get(key);
@@ -137,19 +143,64 @@ async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
     if (f.centerId && key !== f.centerId) continue;
 
     const revenue = revenueMap.get(key) ?? 0;
+    const costs = costsMap.get(key) ?? { cogs: 0, selling: 0, admin: 0, financial: 0 };
     const salary = salaryMap.get(key) ?? 0;
-    const profit = revenue - salary;
+    const incoming = incomingMap.get(key) ?? 0;
+    /* Chi phí = chi phí phòng ban + giao khoán; Lợi nhuận = DT công ty − Chi phí */
+    const totalCost = costs.cogs + costs.selling + costs.admin + costs.financial + incoming;
+    const profit = revenue - totalCost;
     const margin = revenue > 0 ? Math.round((profit / revenue) * 1000) / 10 : 0;
 
     rows.push({
       id: key, name: info.name, code: info.code,
-      revenue, cogs: 0, selling: 0, admin: 0, financial: 0,
-      salary, incoming: 0, total_cost: salary, profit, margin,
+      revenue, cogs: costs.cogs, selling: costs.selling, admin: costs.admin, financial: costs.financial,
+      salary, incoming, total_cost: totalCost, profit, margin,
     });
   }
 
   rows.sort((a, b) => b.revenue - a.revenue);
   return jsonResponse({ rows, totals: sumTotals(rows) });
+}
+
+/* Chi phí các phòng ban nhóm theo trung tâm */
+async function fetchCostsByCenter(admin: Admin, orgId: string, f: Filters) {
+  const map = new Map<string, CostBucket>();
+  const empty = (): CostBucket => ({ cogs: 0, selling: 0, admin: 0, financial: 0 });
+
+  let q = admin.from("cost_entries").select("dept_id, category, amount").eq("org_id", orgId);
+  if (f.from) q = q.gte("period_start", f.from);
+  if (f.to) q = q.lte("period_end", f.to);
+  const { data } = await q;
+
+  const deptCenter = await buildDeptCenterMap(admin, orgId);
+  for (const r of data ?? []) {
+    if (!r.dept_id) continue;
+    const centerId = deptCenter.get(r.dept_id);
+    if (!centerId) continue;
+    if (f.centerId && centerId !== f.centerId) continue;
+    const cat = r.category as keyof CostBucket;
+    const bucket = map.get(centerId) ?? empty();
+    if (cat in bucket) bucket[cat] += Number(r.amount);
+    map.set(centerId, bucket);
+  }
+  return map;
+}
+
+/* Tổng giá trị giao khoán (HĐ đầu vào) nhóm theo trung tâm */
+async function fetchIncomingByCenter(admin: Admin, orgId: string, f: Filters) {
+  const map = new Map<string, number>();
+  let q = admin.from("dept_budget_allocations")
+    .select("center_id, allocated_amount, created_at")
+    .eq("org_id", orgId)
+    .not("center_id", "is", null);
+  if (f.from) q = q.gte("created_at", f.from);
+  if (f.to) q = q.lte("created_at", `${f.to}T23:59:59`);
+  const { data } = await q;
+  for (const r of data ?? []) {
+    if (!r.center_id) continue;
+    map.set(r.center_id, (map.get(r.center_id) ?? 0) + Number(r.allocated_amount));
+  }
+  return map;
 }
 
 function sumTotals(rows: any[]) {

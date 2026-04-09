@@ -218,6 +218,10 @@ function CompanyCharts({ totals, centerRows, allCenters }: { totals: BusinessTot
 function CenterSection({ rows, totals }: { rows: BusinessRow[]; totals: BusinessTotals }) {
   if (!rows.length) return null;
 
+  /* Tỷ suất khoán = Lương tạm ứng / DT nhận khoán × 100 */
+  const koanMargin = (salary: number, incoming: number) =>
+    incoming > 0 ? Math.round((salary / incoming) * 1000) / 10 : 0;
+
   return (
     <div>
       <SectionHeader icon={<Landmark size={15} />} title="Lợi nhuận theo trung tâm" />
@@ -225,7 +229,10 @@ function CenterSection({ rows, totals }: { rows: BusinessRow[]; totals: Business
         <table className="w-full text-xs whitespace-nowrap">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
-              {["Trung tâm", "Doanh thu", "Lương", "Lợi nhuận", "Tỷ suất"].map((h) => (
+              {[
+                "Trung tâm", "DT công ty", "Chi phí", "LN về công ty", "Tỷ suất",
+                "DT nhận khoán", "Lương tạm ứng", "TS khoán",
+              ].map((h) => (
                 <th key={h} className="text-left px-3 py-2.5 font-medium">{h}</th>
               ))}
             </tr>
@@ -238,11 +245,14 @@ function CenterSection({ rows, totals }: { rows: BusinessRow[]; totals: Business
                   {r.code && <span className="ml-1.5 text-muted-foreground text-[10px]">{r.code}</span>}
                 </td>
                 <MoneyTd value={r.revenue} color="text-green-500" />
-                <MoneyTd value={r.salary} color="text-blue-500" />
+                <MoneyTd value={r.total_cost} color="text-red-400" />
                 <td className={`px-3 py-2.5 font-mono font-bold ${r.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
                   {r.profit >= 0 ? "+" : ""}{formatVND(r.profit)}
                 </td>
                 <td className="px-3 py-2.5"><MarginBadge value={r.margin} /></td>
+                <MoneyTd value={r.incoming} color="text-cyan-500" />
+                <MoneyTd value={r.salary} color="text-blue-500" />
+                <td className="px-3 py-2.5"><MarginBadge value={koanMargin(r.salary, r.incoming)} /></td>
               </tr>
             ))}
           </tbody>
@@ -250,11 +260,14 @@ function CenterSection({ rows, totals }: { rows: BusinessRow[]; totals: Business
             <tr className="border-t-2 border-border bg-secondary/30 font-bold">
               <td className="px-3 py-2.5">TỔNG CỘNG</td>
               <MoneyTd value={totals.revenue} color="text-green-500" />
-              <MoneyTd value={totals.salary} color="text-blue-500" />
+              <MoneyTd value={totals.total_cost} color="text-red-400" />
               <td className={`px-3 py-2.5 font-mono ${totals.profit >= 0 ? "text-green-500" : "text-red-500"}`}>
                 {totals.profit >= 0 ? "+" : ""}{formatVND(totals.profit)}
               </td>
               <td className="px-3 py-2.5"><MarginBadge value={totals.margin} /></td>
+              <MoneyTd value={totals.incoming} color="text-cyan-500" />
+              <MoneyTd value={totals.salary} color="text-blue-500" />
+              <td className="px-3 py-2.5"><MarginBadge value={koanMargin(totals.salary, totals.incoming)} /></td>
             </tr>
           </tfoot>
         </table>
