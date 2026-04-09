@@ -66,8 +66,21 @@ export default function TasksPage() {
   const { data: projects = [] } = useProjects();
   const { data: users = [] } = useUsers();
   const { data: deptTeams = [] } = useTeams(user?.dept_id || undefined);
-  const [filterCenter, setFilterCenter] = useState<string>("all");
-  const [filterDept, setFilterDept] = useState<string>("all");
+
+  /* Bộ lọc trung tâm/phòng ban/nhóm mặc định theo tài khoản đang đăng nhập */
+  const defaultCenter = user?.center_id || "all";
+  const defaultDept = user?.dept_id && !["admin", "leader", "director"].includes(user?.role || "") ? user.dept_id : "all";
+  const [filterCenter, setFilterCenter] = useState<string>(defaultCenter);
+  const [filterDept, setFilterDept] = useState<string>(defaultDept);
+  const [filtersInitialized, setFiltersInitialized] = useState(false);
+
+  useEffect(() => {
+    if (filtersInitialized || !user) return;
+    if (user.center_id) setFilterCenter(user.center_id);
+    if (user.dept_id && !["admin", "leader", "director"].includes(user.role)) setFilterDept(user.dept_id);
+    if (user.team_id && taskFilters.team_id === "all") setTaskFilters({ team_id: user.team_id });
+    setFiltersInitialized(true);
+  }, [user, filtersInitialized]);
 
   /* Đọc URL params từ popup Tổng quan: áp dụng bộ lọc trạng thái và mở chi tiết task */
   useEffect(() => {
