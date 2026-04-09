@@ -67,18 +67,30 @@ export default function TasksPage() {
   const { data: users = [] } = useUsers();
   const { data: deptTeams = [] } = useTeams(user?.dept_id || undefined);
 
-  /* Bộ lọc trung tâm/phòng ban/nhóm mặc định theo tài khoản đang đăng nhập */
-  const defaultCenter = user?.center_id || "all";
-  const defaultDept = user?.dept_id && !["admin", "leader", "director"].includes(user?.role || "") ? user.dept_id : "all";
-  const [filterCenter, setFilterCenter] = useState<string>(defaultCenter);
-  const [filterDept, setFilterDept] = useState<string>(defaultDept);
+  /* Bộ lọc mặc định theo vai trò:
+     - admin/leader/director: thấy toàn bộ, sort theo trung tâm mình
+     - head: lọc theo trung tâm mình
+     - team_leader/staff: lọc theo phòng ban mình */
+  const isGlobalRole = ["admin", "leader", "director"].includes(user?.role || "");
+  const [filterCenter, setFilterCenter] = useState<string>("all");
+  const [filterDept, setFilterDept] = useState<string>("all");
   const [filtersInitialized, setFiltersInitialized] = useState(false);
 
   useEffect(() => {
     if (filtersInitialized || !user) return;
-    if (user.center_id) setFilterCenter(user.center_id);
-    if (user.dept_id && !["admin", "leader", "director"].includes(user.role)) setFilterDept(user.dept_id);
+    if (isGlobalRole) {
+      setFilterCenter("all");
+    } else if (user.role === "head" && user.center_id) {
+      setFilterCenter(user.center_id);
+    } else if (user.center_id) {
+      setFilterCenter(user.center_id);
+    }
+    if (!isGlobalRole && user.dept_id) setFilterDept(user.dept_id);
     if (user.team_id && taskFilters.team_id === "all") setTaskFilters({ team_id: user.team_id });
+    /* Sort mặc định theo trung tâm của tài khoản */
+    if (user.center_id && taskSort.key === "deadline") {
+      setTaskSort("center", "asc");
+    }
     setFiltersInitialized(true);
   }, [user, filtersInitialized]);
 
