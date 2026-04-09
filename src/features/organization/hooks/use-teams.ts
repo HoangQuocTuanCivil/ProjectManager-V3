@@ -100,15 +100,17 @@ export function useDeleteDepartment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from("teams" as any).update({ dept_id: null }).eq("dept_id", id);
-      await supabase.from("users").update({ dept_id: null }).eq("dept_id", id);
-      const { error } = await supabase.from("departments").delete().eq("id", id);
-      if (error) throw error;
+      const res = await fetch(`/api/departments/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Lỗi xóa phòng ban");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["departments"] });
       qc.invalidateQueries({ queryKey: teamKeys.all });
       qc.invalidateQueries({ queryKey: userKeys.list() });
+      qc.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }
