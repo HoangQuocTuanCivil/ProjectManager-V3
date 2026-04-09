@@ -37,10 +37,9 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [localProgress, setLocalProgress] = useState<number | null>(null);
   const overlayZ = zIndex ?? 50;
-  /* Khi transparentOverlay = true: tách thành 2 lớp riêng biệt.
-     Lớp dưới (overlayZ) bắt click vùng trống để đóng panel.
-     Lớp trên (overlayZ + 1) chứa panel, nhận mọi pointer event. */
-  const panelZ = transparentOverlay ? overlayZ + 1 : overlayZ;
+  /* Overlay (overlayZ) bắt click vùng trống để đóng panel.
+     Panel (overlayZ + 1) luôn nằm trên overlay, nhận mọi pointer event. */
+  const panelZ = overlayZ + 1;
 
   const handleProgressSubmit = () => {
     const val = localProgress ?? task?.progress ?? 0;
