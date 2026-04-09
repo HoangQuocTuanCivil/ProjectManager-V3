@@ -78,6 +78,13 @@ export default function AccountsSettingsPage() {
     return map;
   }, [allTeams]);
 
+  /** Maps center code → ID for Excel import to resolve center_code column */
+  const centerCodeMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (allCenters as any[]).forEach((c: any) => { if (c.code) map.set(c.code, c.id); });
+    return map;
+  }, [allCenters]);
+
   //  Cascading filter states 
   const [filterCenter, setFilterCenter] = useState<string>("all");
   const [filterDept, setFilterDept] = useState<string>("all");
@@ -294,6 +301,7 @@ export default function AccountsSettingsPage() {
             ref={excelRef}
             deptCodeMap={deptCodeMap}
             teamCodeMap={teamCodeMap}
+            centerCodeMap={centerCodeMap}
             onComplete={() => queryClient.invalidateQueries({ queryKey: ["users"] })}
           />
         </div>

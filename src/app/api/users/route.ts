@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   if (roleErr) return errorResponse(roleErr, 403);
 
   const body = await req.json();
-  const { email, password, full_name, role, dept_id, team_id, job_title, employee_code } = body;
+  const { email, password, full_name, role, dept_id, team_id, job_title, employee_code, phone, center_id } = body;
 
   // Director: chỉ tạo user trong center mình
   if (profile!.role === "director" && dept_id) {
@@ -122,10 +122,12 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase.from("users").upsert({
     id: authData.user.id,
     org_id: profile!.org_id,
+    center_id: center_id || null,
     dept_id: dept_id || null,
     team_id: team_id || null,
     full_name,
     email,
+    phone: phone || null,
     role: role || "staff",
     job_title: job_title || null,
     employee_code: employee_code || null,

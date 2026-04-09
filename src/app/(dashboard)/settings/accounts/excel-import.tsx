@@ -7,17 +7,20 @@ import { toast } from "sonner";
 import { Download, Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2, FileText } from "lucide-react";
 
 /**
- * Expected columns in the Excel template.
- * Maps Vietnamese header names to internal field keys used by the create-user API.
+ * Các cột trong mẫu Excel import tài khoản.
+ * Thứ tự và tên cột khớp với bảng danh sách tài khoản hiển thị trên giao diện.
  */
 const TEMPLATE_COLUMNS = [
   { header: "Họ tên (*)", key: "full_name" },
+  { header: "Mã hệ thống", key: "employee_code" },
   { header: "Email (*)", key: "email" },
   { header: "Mật khẩu (*)", key: "password" },
   { header: "Vai trò", key: "role" },
   { header: "Chức danh", key: "job_title" },
+  { header: "Trung tâm (mã)", key: "center_code" },
   { header: "Phòng ban (mã)", key: "dept_code" },
   { header: "Nhóm (mã)", key: "team_code" },
+  { header: "Số điện thoại", key: "phone" },
 ] as const;
 
 /** Valid role values that the system accepts */
@@ -26,12 +29,15 @@ const VALID_ROLES = ["admin", "leader", "director", "head", "team_leader", "staf
 interface ParsedRow {
   rowNum: number;
   full_name: string;
+  employee_code: string;
   email: string;
   password: string;
   role: string;
   job_title: string;
+  center_code: string;
   dept_code: string;
   team_code: string;
+  phone: string;
   errors: string[];
   status: "pending" | "creating" | "success" | "error";
   statusMsg?: string;
@@ -43,14 +49,16 @@ interface ParsedRow {
  */
 function downloadTemplate() {
   const headers = TEMPLATE_COLUMNS.map((c) => c.header);
-  const exampleRow = ["Nguyễn Văn A", "nguyenvana@company.com", "Pass@1234", "staff", "Kỹ sư BIM", "KT01", ""];
+  const exampleRow = [
+    "Nguyễn Văn A", "DC12345", "nguyenvana@company.com", "Pass@1234",
+    "staff", "Kỹ sư BIM", "TT-TK1", "BIM", "", "0912345678",
+  ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
 
-  // Set column widths for readability
   ws["!cols"] = [
-    { wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 14 },
-    { wch: 18 }, { wch: 16 }, { wch: 14 },
+    { wch: 22 }, { wch: 14 }, { wch: 28 }, { wch: 16 }, { wch: 14 },
+    { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 14 },
   ];
 
   const wb = XLSX.utils.book_new();
@@ -119,10 +127,12 @@ function parseExcelFile(file: File): Promise<ParsedRow[]> {
 }
 
 interface ExcelImportProps {
-  /** Maps department code to department ID for resolving dept_code from Excel */
+  /** Maps department code → ID for resolving dept_code from Excel */
   deptCodeMap: Map<string, string>;
-  /** Maps team code to team ID for resolving team_code from Excel */
+  /** Maps team code → ID for resolving team_code from Excel */
   teamCodeMap: Map<string, string>;
+  /** Maps center code → ID for resolving center_code from Excel */
+  centerCodeMap: Map<string, string>;
   /** Called after successful import to refresh the user list */
   onComplete: () => void;
 }
@@ -133,7 +143,7 @@ export interface ExcelImportHandle {
   downloadTemplate: () => void;
 }
 
-export const ExcelImportButton = forwardRef<ExcelImportHandle, ExcelImportProps>(function ExcelImportButton({ deptCodeMap, teamCodeMap, onComplete }, ref) {
+export const ExcelImportButton = forwardRef<ExcelImportHandle, ExcelImportProps>(function ExcelImportButton({ deptCodeMap, teamCodeMap, centerCodeMap, onComplete }, ref) {
   const [showModal, setShowModal] = useState(false);
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
@@ -179,21 +189,24 @@ export const ExcelImportButton = forwardRef<ExcelImportHandle, ExcelImportProps>
       setRows((prev) => prev.map((r) => r.rowNum === row.rowNum ? { ...r, status: "creating" } : r));
 
       try {
-        // Resolve department and team codes to IDs
         const dept_id = row.dept_code ? (deptCodeMap.get(row.dept_code) || "") : "";
         const team_id = row.team_code ? (teamCodeMap.get(row.team_code) || "") : "";
+        const center_id = row.center_code ? (centerCodeMap.get(row.center_code) || "") : "";
 
         const res = await fetch("/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             full_name: row.full_name,
+            employee_code: row.employee_code || undefined,
             email: row.email,
             password: row.password,
             role: row.role,
             job_title: row.job_title || undefined,
+            center_id: center_id || undefined,
             dept_id: dept_id || undefined,
             team_id: team_id || undefined,
+            phone: row.phone || undefined,
           }),
         });
 
@@ -249,11 +262,14 @@ export const ExcelImportButton = forwardRef<ExcelImportHandle, ExcelImportProps>
                     <tr className="border-b border-border bg-secondary/50">
                       <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground w-10">#</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Họ tên</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Mã HT</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Email</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Vai trò</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Chức danh</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Trung tâm</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Phòng ban</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Nhóm</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">SĐT</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground w-32">Trạng thái</th>
                     </tr>
                   </thead>
@@ -262,11 +278,14 @@ export const ExcelImportButton = forwardRef<ExcelImportHandle, ExcelImportProps>
                       <tr key={row.rowNum} className={`border-b border-border/30 ${row.errors.length > 0 ? "bg-red-50 dark:bg-red-950/20" : ""}`}>
                         <td className="px-3 py-2 text-muted-foreground">{row.rowNum}</td>
                         <td className="px-3 py-2 font-medium">{row.full_name || <span className="text-red-400">—</span>}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{row.employee_code || "—"}</td>
                         <td className="px-3 py-2">{row.email || <span className="text-red-400">—</span>}</td>
                         <td className="px-3 py-2">{row.role}</td>
                         <td className="px-3 py-2 text-muted-foreground">{row.job_title || "—"}</td>
+                        <td className="px-3 py-2">{row.center_code || "—"}</td>
                         <td className="px-3 py-2">{row.dept_code || "—"}</td>
                         <td className="px-3 py-2">{row.team_code || "—"}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{row.phone || "—"}</td>
                         <td className="px-3 py-2">
                           {row.errors.length > 0 ? (
                             <span className="text-red-500 text-xs flex items-center gap-1"><XCircle size={13} /> {row.errors[0]}</span>
