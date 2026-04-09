@@ -7,6 +7,7 @@ import {
   type BusinessTotals,
 } from "@/features/revenue/hooks/use-business-report";
 import { formatVND, currentMonthRange } from "@/lib/utils/format";
+import { useCenters } from "@/features/organization/hooks/use-teams";
 import { Download, TrendingUp, TrendingDown, Building2, Landmark, Package } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -32,6 +33,7 @@ export default function BusinessReportPage() {
   const { data: companyData, isLoading: companyLoading } = useBusinessReport({ group_by: "company", ...dateFilters });
   const { data: centerData, isLoading: centerLoading } = useBusinessReport({ group_by: "center", ...dateFilters });
   const { data: psData, isLoading: psLoading } = useBusinessReport({ group_by: "product_service", ...dateFilters });
+  const { data: allCenters = [] } = useCenters();
 
   const company = companyData?.totals ?? empty();
   const centerRows = centerData?.rows ?? [];
@@ -100,7 +102,7 @@ export default function BusinessReportPage() {
       ) : (
         <>
           <CompanySection totals={company} onCardClick={setDrilldown} />
-          <CompanyCharts totals={company} centerRows={centerRows} />
+          <CompanyCharts totals={company} centerRows={centerRows} allCenters={allCenters as any[]} />
           <CenterSection rows={centerRows} totals={centerTotals} />
           <ProductServiceSection rows={psRows} totals={psTotals} />
           <DrilldownDialog
@@ -148,24 +150,29 @@ function CompanySection({ totals, onCardClick }: { totals: BusinessTotals; onCar
   );
 }
 
-function CompanyCharts({ totals, centerRows }: { totals: BusinessTotals; centerRows: BusinessRow[] }) {
+function CompanyCharts({ totals, centerRows, allCenters }: { totals: BusinessTotals; centerRows: BusinessRow[]; allCenters: { id: string; name: string; code: string }[] }) {
+  /* Cơ cấu chi phí: không bao gồm lương (lương là khoản ứng trước cho NV) */
   const costPie = useMemo(() => [
     { name: "Giá vốn", value: totals.cogs },
     { name: "CP bán hàng", value: totals.selling },
     { name: "CP quản lý", value: totals.admin },
     { name: "CP tài chính", value: totals.financial },
-    { name: "Lương", value: totals.salary },
     { name: "HĐ giao khoán", value: totals.incoming },
   ].filter((i) => i.value > 0), [totals]);
 
-  const centerBar = useMemo(() =>
-    centerRows.slice(0, 10).map((r) => ({
-      name: r.code || r.name.slice(0, 12),
-      "Doanh thu": r.revenue,
-      "Lương": r.salary,
-      "Lợi nhuận": r.profit,
-    })),
-  [centerRows]);
+  /* Biểu đồ SXKD: hiển thị tất cả trung tâm, kể cả giá trị = 0 */
+  const centerBar = useMemo(() => {
+    const rowMap = new Map(centerRows.map((r) => [r.id, r]));
+    return allCenters.map((c) => {
+      const r = rowMap.get(c.id);
+      return {
+        name: c.code || c.name.slice(0, 12),
+        "Doanh thu": r?.revenue ?? 0,
+        "Lương": r?.salary ?? 0,
+        "Lợi nhuận": r?.profit ?? 0,
+      };
+    });
+  }, [centerRows, allCenters]);
 
   if (!costPie.length && !centerBar.length) return null;
 
