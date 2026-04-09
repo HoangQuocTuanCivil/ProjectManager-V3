@@ -6,7 +6,9 @@ import { useDebounce } from "@/lib/hooks/use-debounce";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { useUsers } from "@/lib/hooks/use-users";
-import { useTeams } from "@/lib/hooks/use-teams";
+import { useTeams, useCenters } from "@/lib/hooks/use-teams";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
 import { useUIStore, useAuthStore, type TaskSortKey } from "@/lib/stores";
 import { StatusBadge, PriorityBadge, ProgressBar, UserAvatar, KPIRing, FilterChip, Button, EmptyState } from "@/components/shared";
 import { ClipboardList, CalendarDays } from "lucide-react";
@@ -131,30 +133,28 @@ export default function TasksPage() {
     return filtered;
   }, [rawTasks, filterCenter, filterDept]);
 
-  // Extract unique centers and departments from tasks for filter dropdowns
-  const centerOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    rawTasks.forEach((t: any) => {
-      if (t.department?.center?.id && t.department.center.name) {
-        map.set(t.department.center.id, t.department.center.name);
-      }
-    });
-    return Array.from(map, ([id, name]) => ({ value: id, label: name })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [rawTasks]);
+  /* Fetch toàn bộ trung tâm và phòng ban từ API — không phụ thuộc vào tasks đã load */
+  const { data: allCenters = [] } = useCenters();
+  const { data: allDepts = [] } = useQuery({
+    queryKey: ["departments-filter"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { data } = await supabase.from("departments").select("id, name, code, center_id").eq("is_active", true).order("sort_order");
+      return data ?? [];
+    },
+  });
+
+  const centerOptions = useMemo(() =>
+    (allCenters as any[]).map((c: any) => ({ value: c.id, label: c.code ? `${c.code} — ${c.name}` : c.name }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  [allCenters]);
 
   const deptOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    let source = rawTasks;
-    if (filterCenter !== "all") {
-      source = rawTasks.filter((t: any) => t.department?.center?.id === filterCenter);
-    }
-    source.forEach((t: any) => {
-      if (t.department?.id && t.department.name) {
-        map.set(t.department.id, t.department.code ? `${t.department.code} — ${t.department.name}` : t.department.name);
-      }
-    });
-    return Array.from(map, ([id, label]) => ({ value: id, label })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [rawTasks, filterCenter]);
+    let source = allDepts as any[];
+    if (filterCenter !== "all") source = source.filter((d) => d.center_id === filterCenter);
+    return source.map((d) => ({ value: d.id, label: d.code ? `${d.code} — ${d.name}` : d.name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [allDepts, filterCenter]);
 
   const handleSearch = (val: string) => {
     setSearchInput(val);
