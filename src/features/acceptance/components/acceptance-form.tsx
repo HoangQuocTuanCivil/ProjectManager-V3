@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useEvaluateKPI } from "@/lib/hooks/use-tasks";
+import { useEvaluateKPI } from "@/features/tasks";
 import { Button, KPIRing, KPIScoreBar } from "@/components/shared";
 import { calcKPIScore } from "@/lib/utils/kpi";
 import { useUpdatePayment } from "../hooks/use-acceptance-records";

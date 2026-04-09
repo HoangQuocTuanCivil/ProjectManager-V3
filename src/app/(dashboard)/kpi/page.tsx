@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useTasks } from "@/lib/hooks/use-tasks";
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useUsers } from "@/lib/hooks/use-users";
+import { useTasks } from "@/features/tasks";
+import { useProjects } from "@/features/projects";
+import { useUsers } from "@/features/organization";
 import { StatCard, Section, EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";
-import { UserKPICard } from "@/components/kpi";
+import { UserKPICard } from "@/features/kpi";
 import { VERDICT_CONFIG, getVerdict } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
 import type { Task } from "@/lib/types";

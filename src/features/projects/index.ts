@@ -12,3 +12,6 @@ export {
   useDeleteProject,
   projectKeys,
 } from './hooks/use-projects';
+
+// Components
+export { ProjectHealthCard, MilestoneTimeline, ProjectMemberList } from './components/project-cards';

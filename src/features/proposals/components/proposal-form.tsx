@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useCreateProposal } from "@/lib/hooks/use-proposals";
-import { useProjects } from "@/lib/hooks/use-projects";
+import { useCreateProposal } from "@/features/proposals";
+import { useProjects } from "@/features/projects";
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/shared";

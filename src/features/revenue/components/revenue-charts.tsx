@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useContracts } from "@/lib/hooks/use-contracts";
+import { useContracts } from "@/features/contracts";
 import { useI18n } from "@/lib/i18n";
 import { formatVND } from "@/lib/utils/format";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCreateWorkflow } from "@/lib/hooks/use-workflows";
+import { useCreateWorkflow } from "@/features/workflows";
 import { Button, Toggle } from "@/components/shared";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";

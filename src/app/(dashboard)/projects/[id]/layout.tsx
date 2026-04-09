@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useParams } from "next/navigation";
-import { useProject } from "@/lib/hooks/use-projects";
+import { useProject } from "@/features/projects";
 import { cn } from "@/lib/utils/cn";
 import { HealthBadge, ProgressBar } from "@/components/shared";
 import { formatDate, formatVND } from "@/lib/utils/kpi";

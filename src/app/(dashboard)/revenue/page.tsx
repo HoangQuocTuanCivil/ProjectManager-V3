@@ -3,9 +3,9 @@
 import { useState, useMemo } from "react";
 import { useAuthStore } from "@/lib/stores";
 import { useI18n } from "@/lib/i18n";
-import { useCreateRevenueEntry } from "@/lib/hooks/use-revenue";
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useContracts } from "@/lib/hooks/use-contracts";
+import { useCreateRevenueEntry } from "@/features/revenue";
+import { useProjects } from "@/features/projects";
+import { useContracts } from "@/features/contracts";
 import { useProductServices } from "@/features/revenue/hooks/use-product-services";
 import { Button } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";

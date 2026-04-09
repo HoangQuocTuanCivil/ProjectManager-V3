@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useContracts } from "@/lib/hooks/use-contracts";
+import { useContracts } from "@/features/contracts";
 import { useAuthStore } from "@/lib/stores";
 import { EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";

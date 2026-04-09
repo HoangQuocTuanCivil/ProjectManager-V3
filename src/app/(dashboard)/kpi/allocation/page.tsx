@@ -6,12 +6,12 @@ import {
   useApproveAllocation, useDeleteAllocationPeriod,
   useFundSummary, useEmployeeBonus, useCalculateBonus, usePreviewFund,
 } from "@/features/kpi";
-import { useProjects } from "@/lib/hooks/use-projects";
+import { useProjects } from "@/features/projects";
 import { useAuthStore } from "@/lib/stores";
 import { Section, Button, EmptyState } from "@/components/shared";
 import { Coins, TrendingUp, TrendingDown, Zap, AlertTriangle } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
-import { AllocationTable } from "@/components/kpi";
+import { AllocationTable } from "@/features/kpi";
 import { formatVND } from "@/lib/utils/kpi";
 import { currentMonthRange } from "@/lib/utils/format";
 import { useI18n } from "@/lib/i18n";

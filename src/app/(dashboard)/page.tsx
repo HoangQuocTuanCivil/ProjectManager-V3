@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useTasks } from "@/lib/hooks/use-tasks";
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
-import { useCenters, useAllTeams } from "@/lib/hooks";
+import { useTasks } from "@/features/tasks";
+import { useProjects } from "@/features/projects";
+import { useAllocationPeriods } from "@/features/kpi";
+import { useCenters, useAllTeams } from "@/features/organization";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores";
 import { useI18n } from "@/lib/i18n";

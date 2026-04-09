@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useContracts, useCreateBillingMilestone, useUpdateBillingMilestone, useDeleteBillingMilestone } from "@/lib/hooks/use-contracts";
+import { useContracts, useCreateBillingMilestone, useUpdateBillingMilestone, useDeleteBillingMilestone } from "@/features/contracts";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";

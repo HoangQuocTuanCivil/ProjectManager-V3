@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useWorkflows, useToggleWorkflow, useDeleteWorkflow } from "@/lib/hooks/use-workflows";
+import { useWorkflows, useToggleWorkflow, useDeleteWorkflow } from "@/features/workflows";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/stores";
 import { Button, Toggle, FilterChip, EmptyState, Section, StatCard, UserAvatar } from "@/components/shared";
@@ -10,7 +10,7 @@ import { Zap } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/shared/dialog";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
-import { WorkflowBuilder } from "@/components/workflows/workflow-builder";
+import { WorkflowBuilder } from "@/features/workflows";
 import type { WorkflowStepType } from "@/lib/types";
 
 const STEP_TYPE_CONFIG: Record<string, { icon: string; color: string }> = {

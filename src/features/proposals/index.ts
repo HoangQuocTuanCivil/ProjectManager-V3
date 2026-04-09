@@ -7,3 +7,7 @@ export {
   useRejectProposal,
   proposalKeys,
 } from './hooks/use-proposals';
+
+// Components
+export { ProposalForm } from './components/proposal-form';
+export { ProposalList } from './components/proposal-list';

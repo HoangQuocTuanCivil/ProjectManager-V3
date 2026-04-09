@@ -1,7 +1,7 @@
 "use client";
 
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useContracts } from "@/lib/hooks/use-contracts";
+import { useProjects } from "@/features/projects";
+import { useContracts } from "@/features/contracts";
 import { useProductServices } from "../hooks/use-product-services";
 import { useI18n } from "@/lib/i18n";
 import { SearchSelect } from "@/components/shared/search-select";

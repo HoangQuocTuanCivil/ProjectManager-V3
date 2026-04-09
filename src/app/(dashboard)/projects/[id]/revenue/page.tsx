@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useRevenueByProject } from "@/features/revenue/hooks/use-revenue-analytics";
-import { useContracts } from "@/lib/hooks/use-contracts";
+import { useContracts } from "@/features/contracts";
 import { useI18n } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/stores";
 import { formatVND } from "@/lib/utils/format";

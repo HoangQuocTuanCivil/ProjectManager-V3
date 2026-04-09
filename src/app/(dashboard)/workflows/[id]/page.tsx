@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useWorkflow, useToggleWorkflow, useUpdateWorkflow, useDeleteWorkflow } from "@/lib/hooks/use-workflows";
+import { useWorkflow, useToggleWorkflow, useUpdateWorkflow, useDeleteWorkflow } from "@/features/workflows";
 import { Section, Toggle, Button, EmptyState, StatCard } from "@/components/shared";
 import { toast } from "sonner";
 import { SearchSelect } from "@/components/shared/search-select";

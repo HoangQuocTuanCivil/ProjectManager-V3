@@ -2,11 +2,11 @@
 
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useCreateTask } from "@/lib/hooks/use-tasks";
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useUsers } from "@/lib/hooks/use-users";
-import { useTeams } from "@/lib/hooks/use-teams";
-import { useWorkflows } from "@/lib/hooks/use-workflows";
+import { useCreateTask } from "@/features/tasks";
+import { useProjects } from "@/features/projects";
+import { useUsers } from "@/features/organization";
+import { useTeams } from "@/features/organization";
+import { useWorkflows } from "@/features/workflows";
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/shared";

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "./client";
-import { taskKeys } from "@/lib/hooks/use-tasks";
+import { taskKeys } from "@/features/tasks";
 import { useNotifStore } from "@/lib/stores";
 
 export function useRealtimeSubscriptions(userId: string) {

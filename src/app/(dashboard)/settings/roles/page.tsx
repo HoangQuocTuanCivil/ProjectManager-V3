@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCustomRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from "@/lib/hooks/use-org-settings";
+import { useCustomRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from "@/features/settings";
 import { Section, Button, RoleBadge, EmptyState } from "@/components/shared";
 import { toast } from "sonner";
 import { SearchSelect } from "@/components/shared/search-select";

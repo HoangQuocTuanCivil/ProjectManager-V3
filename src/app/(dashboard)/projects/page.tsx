@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useProjects, useDeleteProject } from "@/lib/hooks/use-projects";
-import { useContracts } from "@/lib/hooks/use-contracts";
-import { useTasks } from "@/lib/hooks/use-tasks";
+import { useProjects, useDeleteProject } from "@/features/projects";
+import { useContracts } from "@/features/contracts";
+import { useTasks } from "@/features/tasks";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useAuthStore } from "@/lib/stores";
 import { canCreateProject } from "@/lib/utils/permissions";

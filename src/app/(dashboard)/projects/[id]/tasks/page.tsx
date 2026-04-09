@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { useTasks } from "@/lib/hooks/use-tasks";
+import { useTasks } from "@/features/tasks";
 import { StatusBadge, PriorityBadge, ProgressBar, UserAvatar, KPIRing, FilterChip, Button, EmptyState } from "@/components/shared";
 import { ClipboardList } from "lucide-react";
 import { ROLE_CONFIG, STATUS_CONFIG, formatDate } from "@/lib/utils/kpi";
-import { TaskDetail } from "@/components/tasks/task-detail";
-import { TaskForm } from "@/components/tasks/task-form";
+import { TaskDetail, TaskForm } from "@/features/tasks";
 import type { TaskStatus } from "@/lib/types";
 
 export default function ProjectTasksPage() {

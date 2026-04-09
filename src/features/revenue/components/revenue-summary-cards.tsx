@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRevenueEntries } from "@/lib/hooks/use-revenue";
-import { useContracts } from "@/lib/hooks/use-contracts";
+import { useRevenueEntries } from "@/features/revenue";
+import { useContracts } from "@/features/contracts";
 import { useI18n } from "@/lib/i18n";
 import { formatVND } from "@/lib/utils/format";
 

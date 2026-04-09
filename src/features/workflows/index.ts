@@ -10,3 +10,6 @@ export {
   useToggleWorkflow,
   workflowKeys,
 } from './hooks/use-workflows';
+
+// Components
+export { WorkflowBuilder } from './components/workflow-builder';

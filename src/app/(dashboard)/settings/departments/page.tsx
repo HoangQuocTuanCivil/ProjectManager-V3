@@ -8,7 +8,7 @@ import { Landmark } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { toast } from "sonner";
-import { useDeleteDepartment } from "@/lib/hooks/use-teams";
+import { useDeleteDepartment } from "@/features/organization";
 import { useMultiSelect } from "@/lib/hooks/use-multi-select";
 
 const supabase = createClient();

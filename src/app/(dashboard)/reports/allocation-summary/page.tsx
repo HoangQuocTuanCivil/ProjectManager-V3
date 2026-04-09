@@ -1,9 +1,9 @@
 "use client";
 
-import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
+import { useAllocationPeriods } from "@/features/kpi";
 import { Section, StatCard, EmptyState, UserAvatar } from "@/components/shared";
 import { Coins } from "lucide-react";
-import { AllocationTable } from "@/components/kpi";
+import { AllocationTable } from "@/features/kpi";
 import { ROLE_CONFIG, formatVND, formatDate } from "@/lib/utils/kpi";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,

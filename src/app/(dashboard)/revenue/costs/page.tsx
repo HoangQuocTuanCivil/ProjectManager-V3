@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useContracts } from "@/lib/hooks/use-contracts";
-import { useCostEntries, useCreateCostEntry, useDeleteCostEntry } from "@/lib/hooks/use-revenue";
+import { useProjects } from "@/features/projects";
+import { useContracts } from "@/features/contracts";
+import { useCostEntries, useCreateCostEntry, useDeleteCostEntry } from "@/features/revenue";
 import { useSalaryRecords, useCreateSalaryBatch, useSalaryDeductions } from "@/features/kpi";
-import { useCenters } from "@/lib/hooks/use-teams";
+import { useCenters } from "@/features/organization";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
 import { BarChart3, Wallet, AlertTriangle, Download, Upload, ChevronDown } from "lucide-react";

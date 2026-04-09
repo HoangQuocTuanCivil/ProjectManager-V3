@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAllocationConfig, useAllocationCycle, useUpdateAllocationCycle, kpiKeys } from "@/lib/hooks/use-kpi";
+import { useAllocationConfig, useAllocationCycle, useUpdateAllocationCycle, kpiKeys } from "@/features/kpi";
 import { useAuthStore } from "@/lib/stores";
 import { createClient } from "@/lib/supabase/client";
 import { Section, Button } from "@/components/shared";

@@ -1,8 +1,8 @@
 "use client";
 
-import { useTasks } from "@/lib/hooks/use-tasks";
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useUsers } from "@/lib/hooks/use-users";
+import { useTasks } from "@/features/tasks";
+import { useProjects } from "@/features/projects";
+import { useUsers } from "@/features/organization";
 import { Section, StatCard, ProgressBar, UserAvatar, StatusBadge, HealthBadge } from "@/components/shared";
 import { ROLE_CONFIG, STATUS_CONFIG, formatDate } from "@/lib/utils/kpi";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { TaskDetail } from "@/components/tasks/task-detail";
+import { TaskDetail } from "@/features/tasks";
 
 export default function TaskDetailPage() {
   const params = useParams();

@@ -36,12 +36,7 @@ supabase db reset
 
 | Email | Mật khẩu | Vai trò | Quyền |
 |-------|----------|---------|-------|
-| `viet.nq@a2z.com.vn` | `Test@2026!` | admin | Toàn quyền |
-| `tam.tm@a2z.com.vn` | `Test@2026!` | leader | Quản lý phòng BIM |
-| `dung.lh@a2z.com.vn` | `Test@2026!` | head | Nhóm trưởng BIM |
-| `huong.pt@a2z.com.vn` | `Test@2026!` | head | Nhóm trưởng TK |
-| `khoa.vd@a2z.com.vn` | `Test@2026!` | staff | Kỹ sư BIM |
-| `linh.dn@a2z.com.vn` | `Test@2026!` | staff | Kỹ sư TK |
+| `hoangquoctuan1395@gmail.com` | `Test@2026!` | admin | Toàn quyền |
 
 ---
 

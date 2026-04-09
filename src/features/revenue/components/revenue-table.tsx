@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRevenueEntries, useDeleteRevenueEntry, useConfirmRevenueEntry, useCancelRevenueEntry } from "../hooks/use-revenue";
-import { useContracts } from "@/lib/hooks/use-contracts";
+import { useContracts } from "@/features/contracts";
 import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
 import { EmptyState, Button } from "@/components/shared";

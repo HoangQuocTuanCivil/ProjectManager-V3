@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useUsers, useUpdateUser, useDeleteUser, useBulkDeleteUsers, useCreateUser } from "@/lib/hooks/use-users";
+import { useUsers, useUpdateUser, useDeleteUser, useBulkDeleteUsers, useCreateUser } from "@/features/organization";
 import { useMultiSelect } from "@/lib/hooks/use-multi-select";
-import { useCustomRoles } from "@/lib/hooks/use-org-settings";
-import { useAllTeams, useCenters } from "@/lib/hooks/use-teams";
+import { useCustomRoles } from "@/features/settings";
+import { useAllTeams, useCenters } from "@/features/organization";
 import { Section, Button, UserAvatar, RoleBadge, Toggle, EmptyState } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";

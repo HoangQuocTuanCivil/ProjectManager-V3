@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, Fragment } from "react";
-import { useContracts } from "@/lib/hooks/use-contracts";
+import { useContracts } from "@/features/contracts";
 import { useDeptBudgetAllocations, useUpsertDeptBudgetAllocation, useDeleteDeptBudgetAllocation, useAcceptanceRounds, useUpsertAcceptanceRound, useDeleteAcceptanceRound } from "@/features/kpi";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";

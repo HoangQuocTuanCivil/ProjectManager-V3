@@ -1,10 +1,10 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useProject } from "@/lib/hooks/use-projects";
-import { useTasks } from "@/lib/hooks/use-tasks";
+import { useProject } from "@/features/projects";
+import { useTasks } from "@/features/tasks";
 import { StatCard, Section, StatusBadge, ProgressBar, UserAvatar, KPIRing } from "@/components/shared";
-import { ProjectHealthCard, MilestoneTimeline, ProjectMemberList } from "@/components/projects";
+import { ProjectHealthCard, MilestoneTimeline, ProjectMemberList } from "@/features/projects";
 import { ROLE_CONFIG, STATUS_CONFIG, formatDate, formatVND, getVerdict, VERDICT_CONFIG } from "@/lib/utils/kpi";
 import type { Task } from "@/lib/types";
 

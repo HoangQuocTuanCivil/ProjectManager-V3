@@ -1,11 +1,11 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useTasks } from "@/lib/hooks/use-tasks";
-import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
+import { useTasks } from "@/features/tasks";
+import { useAllocationPeriods } from "@/features/kpi";
 import { Section, StatCard, UserAvatar, KPIRing, EmptyState } from "@/components/shared";
 import { User, Coins } from "lucide-react";
-import { AllocationTable } from "@/components/kpi";
+import { AllocationTable } from "@/features/kpi";
 import { ROLE_CONFIG, formatVND } from "@/lib/utils/kpi";
 import type { Task, AllocationPeriod } from "@/lib/types";
 

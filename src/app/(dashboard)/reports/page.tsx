@@ -3,13 +3,13 @@
 import { useState, useMemo } from "react";
 
 import { useRouter } from "next/navigation";
-import { useTasks } from "@/lib/hooks/use-tasks";
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useContracts } from "@/lib/hooks/use-contracts";
-import { useAllocationPeriods } from "@/lib/hooks/use-kpi";
-import { useUsers } from "@/lib/hooks/use-users";
+import { useTasks } from "@/features/tasks";
+import { useProjects } from "@/features/projects";
+import { useContracts } from "@/features/contracts";
+import { useAllocationPeriods } from "@/features/kpi";
+import { useUsers } from "@/features/organization";
 import { StatCard, Section, ProgressBar, TrendIndicator, AlertCard, StatusBadge, PriorityBadge, UserAvatar } from "@/components/shared";
-import { TaskDetail } from "@/components/tasks/task-detail";
+import { TaskDetail } from "@/features/tasks";
 import { STATUS_CONFIG, PRIORITY_CONFIG, ROLE_CONFIG, formatVND, getVerdict, VERDICT_CONFIG } from "@/lib/utils/kpi";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,

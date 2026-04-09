@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useProjects } from "@/lib/hooks/use-projects";
+import { useProjects } from "@/features/projects";
 import {
   useContracts, useCreateContract, useUpdateContract, useDeleteContract,
   useCreateAddendum, useDeleteAddendum,
   useCreateBillingMilestone, useUpdateBillingMilestone, useDeleteBillingMilestone,
-} from "@/lib/hooks/use-contracts";
+} from "@/features/contracts";
 import { useAuthStore } from "@/lib/stores";
 import { useProductServices } from "@/features/revenue/hooks/use-product-services";
 import { Button, EmptyState } from "@/components/shared";

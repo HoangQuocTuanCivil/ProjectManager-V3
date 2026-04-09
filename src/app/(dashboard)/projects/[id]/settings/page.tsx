@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { useProject, useUpdateProject } from "@/lib/hooks/use-projects";
+import { useProject, useUpdateProject } from "@/features/projects";
 import { Section, Button } from "@/components/shared";
 import { formatDate, formatVND } from "@/lib/utils/kpi";
 import { SearchSelect } from "@/components/shared/search-select";

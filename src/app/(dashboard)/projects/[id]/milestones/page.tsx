@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { useProject, useCreateMilestone, useUpdateMilestone, useDeleteMilestone } from "@/lib/hooks/use-projects";
+import { useProject, useCreateMilestone, useUpdateMilestone, useDeleteMilestone } from "@/features/projects";
 import { Section, Button, EmptyState } from "@/components/shared";
 import { Diamond } from "lucide-react";
 import { formatDate } from "@/lib/utils/kpi";

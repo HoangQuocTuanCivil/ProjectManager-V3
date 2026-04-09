@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useAllocationConfig } from "@/lib/hooks/use-kpi";
-import { useUpdateSetting } from "@/lib/hooks/use-org-settings";
-import { useCenters } from "@/lib/hooks/use-teams";
+import { useAllocationConfig } from "@/features/kpi";
+import { useUpdateSetting } from "@/features/settings";
+import { useCenters } from "@/features/organization";
 import { Section, Button, KPIRing, KPIScoreBar } from "@/components/shared";
 import { SearchSelect } from "@/components/shared/search-select";
 import { KPI_WEIGHTS, calcKPIScore } from "@/lib/utils/kpi";

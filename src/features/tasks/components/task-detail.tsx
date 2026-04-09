@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { useTask, useUpdateTask, useUpdateProgress, useEvaluateKPI } from "@/lib/hooks/use-tasks";
-import { useAdvanceWorkflow } from "@/lib/hooks/use-workflows";
+import { useTask, useUpdateTask, useUpdateProgress, useEvaluateKPI } from "@/features/tasks";
+import { useAdvanceWorkflow } from "@/features/workflows";
 import { StatusBadge, PriorityBadge, ProgressBar, UserAvatar, KPIRing, KPIScoreBar, VerdictBadge, Button, Tag, Section } from "@/components/shared";
 import { ROLE_CONFIG, STATUS_CONFIG, formatDate, getVerdict, VERDICT_CONFIG, calcKPIScore } from "@/lib/utils/kpi";
 import { useAuthStore } from "@/lib/stores";

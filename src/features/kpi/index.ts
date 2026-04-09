@@ -1,6 +1,10 @@
 // KPI feature module barrel export
+
+// Shared keys
+export { kpiKeys } from './hooks/kpi-keys';
+
+// Allocation (config, periods, dept budget, cycle)
 export {
-  useKPIRecords,
   useAllocationConfig,
   useAllocationPeriods,
   useCreateAllocationPeriod,
@@ -10,17 +14,31 @@ export {
   useDeptBudgetAllocations,
   useUpsertDeptBudgetAllocation,
   useDeleteDeptBudgetAllocation,
-  useFundSummary,
-  useEmployeeBonus,
   useAllocationCycle,
   useUpdateAllocationCycle,
+} from './hooks/use-allocation';
+
+// Fund & bonus
+export {
+  useFundSummary,
+  useEmployeeBonus,
   useCalculateBonus,
+  usePreviewFund,
+} from './hooks/use-fund';
+
+// Salary
+export {
   useSalaryRecords,
   useCreateSalaryBatch,
   useSalaryDeductions,
-  usePreviewFund,
+} from './hooks/use-salary';
+
+// Acceptance rounds
+export {
   useAcceptanceRounds,
   useUpsertAcceptanceRound,
   useDeleteAcceptanceRound,
-  kpiKeys,
-} from './hooks/use-kpi';
+} from './hooks/use-acceptance-rounds';
+
+// Components
+export { AllocationTable, UserKPICard } from './components/kpi-cards';

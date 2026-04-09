@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores";
-import { goalKeys } from "@/lib/hooks/use-goals";
+import { goalKeys } from "@/features/goals";
 import { Section, ProgressBar, UserAvatar, EmptyState, StatCard, Button } from "@/components/shared";
 import { Target } from "lucide-react";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";

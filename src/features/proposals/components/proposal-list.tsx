@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useProposals, useApproveProposal, useRejectProposal } from "@/lib/hooks/use-proposals";
+import { useProposals, useApproveProposal, useRejectProposal } from "@/features/proposals";
 import { useAuthStore } from "@/lib/stores";
 import { Button, UserAvatar, PriorityBadge } from "@/components/shared";
 import { ROLE_CONFIG, formatDate } from "@/lib/utils/kpi";

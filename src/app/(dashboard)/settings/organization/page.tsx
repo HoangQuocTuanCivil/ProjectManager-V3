@@ -1,6 +1,6 @@
 "use client";
 
-import { useOrgSettings, useUpdateSetting } from "@/lib/hooks/use-org-settings";
+import { useOrgSettings, useUpdateSetting } from "@/features/settings";
 import { useAuthStore } from "@/lib/stores";
 import { Section, Button } from "@/components/shared";
 

@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useTasks } from "@/lib/hooks/use-tasks";
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useContracts } from "@/lib/hooks/use-contracts";
-import { useUsers } from "@/lib/hooks/use-users";
-import { useAllTeams, useCenters } from "@/lib/hooks/use-teams";
+import { useTasks } from "@/features/tasks";
+import { useProjects } from "@/features/projects";
+import { useContracts } from "@/features/contracts";
+import { useUsers } from "@/features/organization";
+import { useAllTeams, useCenters } from "@/features/organization";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Button, ProgressBar, AlertCard, DeadlineCountdown, StatusBadge, PriorityBadge, TrendIndicator } from "@/components/shared";
-import { TaskDetail } from "@/components/tasks/task-detail";
+import { TaskDetail } from "@/features/tasks";
 import { STATUS_CONFIG, PRIORITY_CONFIG, ROLE_CONFIG } from "@/lib/utils/kpi";
 import { Download, Calendar, Clock, CheckCircle2, Rocket, Printer, AlertTriangle, Users, TrendingUp, BarChart3, UsersRound, Landmark } from "lucide-react";
 import {

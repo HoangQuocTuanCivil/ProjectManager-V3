@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useContracts } from "@/lib/hooks/use-contracts";
+import { useContracts } from "@/features/contracts";
 import { formatVND } from "@/lib/utils/format";
 import { SearchSelect } from "@/components/shared/search-select";
 import { EmptyState } from "@/components/shared";

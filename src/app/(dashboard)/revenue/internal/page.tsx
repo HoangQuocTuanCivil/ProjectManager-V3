@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useProjects } from "@/lib/hooks/use-projects";
-import { useInternalRevenue, useCreateInternalRevenue, useUpdateInternalRevenue, useDeleteInternalRevenue } from "@/lib/hooks/use-revenue";
+import { useProjects } from "@/features/projects";
+import { useInternalRevenue, useCreateInternalRevenue, useUpdateInternalRevenue, useDeleteInternalRevenue } from "@/features/revenue";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState } from "@/components/shared";
 import { Factory } from "lucide-react";

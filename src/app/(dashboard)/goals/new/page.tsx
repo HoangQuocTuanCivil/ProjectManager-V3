@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useCreateGoal } from "@/lib/hooks/use-goals";
+import { useCreateGoal } from "@/features/goals";
 import { useAuthStore } from "@/lib/stores";
 import { getAllowedGoalTypes } from "@/lib/utils/permissions";
 import { Button } from "@/components/shared";
