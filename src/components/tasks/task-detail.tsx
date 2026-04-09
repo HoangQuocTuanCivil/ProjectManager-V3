@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTask, useUpdateTask, useUpdateProgress, useEvaluateKPI } from "@/lib/hooks/use-tasks";
 import { useAdvanceWorkflow } from "@/lib/hooks/use-workflows";
 import { StatusBadge, PriorityBadge, ProgressBar, UserAvatar, KPIRing, KPIScoreBar, VerdictBadge, Button, Tag, Section } from "@/components/shared";
@@ -145,8 +145,14 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
           <div className="flex items-center gap-2">
             {canManage && (
               <>
-                <button onClick={() => setShowEditForm(true)} className="text-sm text-primary hover:underline">Sửa</button>
-                <button onClick={() => setConfirmDelete(true)} className="text-sm text-destructive hover:underline">Xóa</button>
+                <button onClick={() => setShowEditForm(true)}
+                  className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors">
+                  Sửa
+                </button>
+                <button onClick={() => setConfirmDelete(true)}
+                  className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-sm font-semibold hover:bg-destructive/20 transition-colors">
+                  Xóa
+                </button>
               </>
             )}
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg ml-2 p-1 rounded focus-ring" aria-label="Đóng">✕</button>
@@ -216,11 +222,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
           </div>
 
           {/* KPI E vs A Comparison */}
-          <div className="border border-border rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-border bg-secondary/50 flex items-center justify-between">
-              <h3 className="text-sm font-bold uppercase tracking-wider">KPI: kỳ vọng vs thực tế</h3>
-              <VerdictBadge verdict={verdict} />
-            </div>
+          <CollapsibleSection title="KPI: kỳ vọng vs thực tế" badge={<VerdictBadge verdict={verdict} />}>
             <div className="p-4 grid grid-cols-2 gap-4">
               {/* Expected */}
               <div>
@@ -275,7 +277,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
                 )}
               </div>
             </div>
-          </div>
+          </CollapsibleSection>
 
           {/* Evaluate Form */}
           {showEvalForm && (
@@ -325,7 +327,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
 
           {/* Workflow State */}
           {task.workflow_state && (
-            <Section title="⚡ Workflow">
+            <CollapsibleSection title="Workflow" icon="⚡" defaultOpen={false}>
               <div className="p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -390,7 +392,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
                   );
                 })()}
               </div>
-            </Section>
+            </CollapsibleSection>
           )}
 
           {/* Delete Confirmation */}
@@ -418,7 +420,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
 
           {/* Checklists */}
           {task.checklists && task.checklists.length > 0 && (
-            <Section title={`☑ Checklists (${task.checklists.reduce((s, c) => s + (c.items?.length ?? 0), 0)})`}>
+            <CollapsibleSection title={`Checklists (${task.checklists.reduce((s, c) => s + (c.items?.length ?? 0), 0)})`} icon="☑" defaultOpen={false}>
               <div className="p-3 space-y-2">
                 {task.checklists.map((cl) => (
                   <div key={cl.id}>
@@ -432,7 +434,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
                   </div>
                 ))}
               </div>
-            </Section>
+            </CollapsibleSection>
           )}
 
           {/* Project Members */}
@@ -446,6 +448,28 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
         </div>
     </div>
     </>
+  );
+}
+
+/** Section thu gọn/mở rộng: giảm không gian khi nội dung không cần xem liên tục */
+function CollapsibleSection({ title, icon, badge, children, defaultOpen = true }: {
+  title: string; icon?: ReactNode; badge?: ReactNode;
+  children: ReactNode; defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-border rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full px-4 py-2.5 bg-secondary/30 flex items-center justify-between hover:bg-secondary/50 transition-colors"
+      >
+        <h4 className="text-sm font-bold flex items-center gap-1.5">
+          {icon} {title} {badge}
+        </h4>
+        <span className={`text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+      </button>
+      {open && <div>{children}</div>}
+    </div>
   );
 }
 
@@ -529,7 +553,7 @@ function TaskProjectMembers({ projectId }: { projectId: string }) {
   const sorted = [...members].sort((a: any, b: any) => (ROLE_ORDER[a.role] ?? 5) - (ROLE_ORDER[b.role] ?? 5));
 
   return (
-    <Section title={`👥 Thành viên dự án (${sorted.length})`}>
+    <CollapsibleSection title={`Thành viên dự án (${sorted.length})`} icon="👥" defaultOpen={false}>
       <div className="p-3 space-y-1.5">
         {sorted.map((m: any) => (
           <div key={m.id} className="flex items-center gap-2 py-1">
@@ -547,7 +571,7 @@ function TaskProjectMembers({ projectId }: { projectId: string }) {
           </div>
         ))}
       </div>
-    </Section>
+    </CollapsibleSection>
   );
 }
 
@@ -561,6 +585,10 @@ function EditTaskForm({ task, onClose, onSave, isPending }: {
     status: task.status,
     deadline: task.deadline?.slice(0, 10) || "",
     kpi_weight: task.kpi_weight,
+    expect_volume: task.expect_volume ?? 100,
+    expect_quality: task.expect_quality ?? 80,
+    expect_difficulty: task.expect_difficulty ?? 70,
+    expect_ahead: task.expect_ahead ?? 50,
   });
 
   const inputClass = "mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none";
@@ -614,6 +642,23 @@ function EditTaskForm({ task, onClose, onSave, isPending }: {
           <label className={labelClass}>Trọng số KPI (1-10)</label>
           <input type="number" min={1} max={10} value={form.kpi_weight} onChange={(e) => setForm({ ...form, kpi_weight: parseInt(e.target.value) || 5 })} className={inputClass} />
         </div>
+      </div>
+      {/* KPI kỳ vọng: 4 chỉ số xác định điểm KPI mục tiêu cho công việc */}
+      <div className="border border-border rounded-lg p-3 space-y-2">
+        <p className="text-sm font-semibold text-primary">KPI kỳ vọng (%)</p>
+        {([
+          { key: "expect_volume", label: "Khối lượng", color: "accent-sky-400" },
+          { key: "expect_quality", label: "Chất lượng", color: "accent-green-400" },
+          { key: "expect_difficulty", label: "Độ khó", color: "accent-amber-400" },
+          { key: "expect_ahead", label: "Vượt TĐ", color: "accent-purple-400" },
+        ] as const).map(({ key, label, color }) => (
+          <div key={key} className="flex items-center gap-3">
+            <label className="text-xs text-muted-foreground w-20">{label}</label>
+            <input type="range" min={0} max={100} step={5} value={(form as any)[key]} onChange={(e) => setForm({ ...form, [key]: +e.target.value })} className={`flex-1 ${color}`} />
+            <span className="font-mono text-xs w-7 text-right">{(form as any)[key]}</span>
+          </div>
+        ))}
+        <p className="text-xs text-muted-foreground">Điểm kỳ vọng: <span className="font-mono font-bold text-primary">{calcKPIScore(form.expect_volume, form.expect_quality, form.expect_difficulty, form.expect_ahead)}</span></p>
       </div>
       <div>
         <label className={labelClass}>Mô tả</label>
