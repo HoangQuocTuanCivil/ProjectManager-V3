@@ -61,6 +61,7 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
         description={t.dashboard.panelDesc}
         size="xl"
         className="max-h-[80vh] flex flex-col"
+        preventAutoClose={!!selectedTaskId}
       >
         <div className="overflow-y-auto -mx-5 -mb-5 px-5 pb-5 max-h-[60vh]">
           {filteredTasks.length === 0 ? (

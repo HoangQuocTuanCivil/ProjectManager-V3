@@ -26,12 +26,15 @@ export function DialogContent({
   description,
   className,
   size = "md",
+  preventAutoClose = false,
 }: {
   children: React.ReactNode;
   title: string;
   description?: string;
   className?: string;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
+  /** Ngăn dialog tự đóng khi click ngoài hoặc nhấn Escape (dùng khi có popup con đè lên) */
+  preventAutoClose?: boolean;
 }) {
   const sizes = {
     sm: "max-w-sm",
@@ -55,6 +58,8 @@ export function DialogContent({
           sizes[size],
           className
         )}
+        onPointerDownOutside={preventAutoClose ? (e) => e.preventDefault() : undefined}
+        onEscapeKeyDown={preventAutoClose ? (e) => e.preventDefault() : undefined}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
