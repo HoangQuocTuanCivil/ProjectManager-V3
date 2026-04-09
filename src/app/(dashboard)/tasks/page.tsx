@@ -268,46 +268,40 @@ export default function TasksPage() {
         />
 
         {/* Center */}
-        {centerOptions.length > 0 && (
-          <SearchSelect
-            value={filterCenter}
-            onChange={(val) => { setFilterCenter(val); setFilterDept("all"); }}
-            options={[
-              { value: "all", label: t.tasks.centerAll },
-              ...centerOptions,
-            ]}
-            placeholder={t.tasks.centerAll}
-            className="h-8 w-40 bg-card text-xs"
-          />
-        )}
+        <SearchSelect
+          value={filterCenter}
+          onChange={(val) => { setFilterCenter(val); setFilterDept("all"); }}
+          options={[
+            { value: "all", label: t.tasks.centerAll },
+            ...centerOptions,
+          ]}
+          placeholder={t.tasks.centerAll}
+          className="h-8 w-40 bg-card text-xs"
+        />
 
         {/* Department */}
-        {deptOptions.length > 0 && (
-          <SearchSelect
-            value={filterDept}
-            onChange={(val) => setFilterDept(val)}
-            options={[
-              { value: "all", label: t.tasks.deptAll },
-              ...deptOptions,
-            ]}
-            placeholder={t.tasks.deptAll}
-            className="h-8 w-40 bg-card text-xs"
-          />
-        )}
+        <SearchSelect
+          value={filterDept}
+          onChange={(val) => setFilterDept(val)}
+          options={[
+            { value: "all", label: t.tasks.deptAll },
+            ...deptOptions,
+          ]}
+          placeholder={t.tasks.deptAll}
+          className="h-8 w-40 bg-card text-xs"
+        />
 
         {/* Team */}
-        {deptTeams.length > 0 && (
-          <SearchSelect
-            value={taskFilters.team_id || "all"}
-            onChange={(val) => setTaskFilters({ team_id: val })}
-            options={[
-              { value: "all", label: t.tasks.teamAll },
-              ...deptTeams.map((t: any) => ({ value: t.id, label: t.name })),
-            ]}
-            placeholder={t.tasks.teamAll}
-            className="h-8 w-36 bg-card text-xs"
-          />
-        )}
+        <SearchSelect
+          value={taskFilters.team_id || "all"}
+          onChange={(val) => setTaskFilters({ team_id: val })}
+          options={[
+            { value: "all", label: t.tasks.teamAll },
+            ...deptTeams.map((t: any) => ({ value: t.id, label: t.name })),
+          ]}
+          placeholder={t.tasks.teamAll}
+          className="h-8 w-36 bg-card text-xs"
+        />
 
         {/* Project */}
         <SearchSelect
