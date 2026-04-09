@@ -37,6 +37,36 @@ export async function GET(req: NextRequest) {
   return jsonResponse({ data, count, page, per_page });
 }
 
+// Xóa bảng lương theo tháng (toàn bộ hoặc theo danh sách user_ids)
+export async function DELETE(req: NextRequest) {
+  const { profile } = await getAuthProfile();
+  if (!profile) return errorResponse("Unauthorized", 401);
+
+  const roleErr = requireMinRole(profile, "leader");
+  if (roleErr) return errorResponse(roleErr, 403);
+
+  const { searchParams } = new URL(req.url);
+  const month = searchParams.get("month");
+  if (!month) return errorResponse("Thiếu tham số month", 400);
+
+  const admin = getUntypedAdmin();
+  let query = admin
+    .from("salary_records")
+    .delete()
+    .eq("org_id", profile.org_id)
+    .eq("month", month);
+
+  const userIds = searchParams.get("user_ids");
+  if (userIds) {
+    query = query.in("user_id", userIds.split(","));
+  }
+
+  const { error, count } = await query;
+  if (error) return errorResponse(error.message, 500);
+
+  return jsonResponse({ deleted: count ?? 0 });
+}
+
 // Tạo bảng lương — hỗ trợ nhập hàng loạt (mảng records)
 export async function POST(req: NextRequest) {
   const { user, profile } = await getAuthProfile();
