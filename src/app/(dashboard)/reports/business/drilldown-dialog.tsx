@@ -88,14 +88,16 @@ interface CenterGroup {
   depts: { name: string; code: string; total: number }[];
 }
 
-interface IncomingRow {
+interface AllocationRow {
   id: string;
-  contract_no: string;
-  title: string;
-  contract_value: number;
-  signed_date: string | null;
-  status: string;
+  allocated_amount: number;
+  allocation_code: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
   project: { code: string; name: string } | null;
+  center: { id: string; name: string; code: string } | null;
+  contract: { contract_no: string; title: string } | null;
 }
 
 /* ── Component chính ─────────────────────────────────────────── */
@@ -387,69 +389,94 @@ function SalaryDetail({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: string
   );
 }
 
-/* ── Chi tiết HĐ giao khoán ─────────────────────────────────── */
+/* ── Chi tiết HĐ giao khoán: tổng hợp theo trung tâm ────────── */
 
 function IncomingDetail({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["drilldown", "incoming", dateFrom, dateTo],
     queryFn: async () => {
       let q = supabase
-        .from("contracts")
-        .select("id, contract_no, title, contract_value, signed_date, status, project:projects(code, name)")
-        .eq("contract_type", "incoming")
-        .in("status", ["active", "completed"])
-        .order("signed_date", { ascending: false });
-      if (dateFrom) q = q.gte("signed_date", dateFrom);
-      if (dateTo) q = q.lte("signed_date", dateTo);
+        .from("dept_budget_allocations")
+        .select("id, allocated_amount, allocation_code, start_date, end_date, created_at, project:projects(code, name), center:centers(id, name, code), contract:contracts(contract_no, title)")
+        .not("center_id", "is", null)
+        .order("allocated_amount", { ascending: false });
+      /* Lọc theo khoảng thời gian: dùng created_at vì giao khoán
+         không phải lúc nào cũng có start_date/end_date */
+      if (dateFrom) q = q.gte("created_at", dateFrom);
+      if (dateTo) q = q.lte("created_at", `${dateTo}T23:59:59`);
       const { data, error } = await q;
       if (error) throw error;
-      return data as unknown as IncomingRow[];
+      return data as unknown as AllocationRow[];
     },
   });
 
   if (isLoading) return <LoadingState />;
   if (!data?.length) return <EmptyState />;
 
-  const total = data.reduce((s, r) => s + Number(r.contract_value), 0);
+  /* Nhóm giao khoán theo Trung tâm, mỗi trung tâm liệt kê các giao khoán con */
+  const groups = useMemo(() => {
+    const map = new Map<string, {
+      id: string; name: string; code: string; total: number;
+      items: AllocationRow[];
+    }>();
 
-  const statusLabel: Record<string, string> = { active: "Đang thực hiện", completed: "Hoàn thành" };
+    for (const r of data) {
+      const cId = r.center?.id ?? "__none__";
+      const cName = r.center?.name ?? "Khác";
+      const cCode = r.center?.code ?? "";
+      if (!map.has(cId)) map.set(cId, { id: cId, name: cName, code: cCode, total: 0, items: [] });
+      const g = map.get(cId)!;
+      g.total += Number(r.allocated_amount);
+      g.items.push(r);
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [data]);
+
+  const total = data.reduce((s, r) => s + Number(r.allocated_amount), 0);
 
   return (
-    <table className="w-full text-xs whitespace-nowrap">
+    <table className="w-full text-xs">
       <thead>
         <tr className="border-b border-border text-muted-foreground">
-          <th className="text-left px-3 py-2 font-medium">Số HĐ</th>
-          <th className="text-left px-3 py-2 font-medium">Tên hợp đồng</th>
+          <th className="text-left px-3 py-2 font-medium">Trung tâm / Giao khoán</th>
           <th className="text-left px-3 py-2 font-medium">Dự án</th>
-          <th className="text-left px-3 py-2 font-medium">Ngày ký</th>
-          <th className="text-left px-3 py-2 font-medium">Trạng thái</th>
-          <th className="text-right px-3 py-2 font-medium">Giá trị HĐ</th>
+          <th className="text-left px-3 py-2 font-medium">Hợp đồng gốc</th>
+          <th className="text-right px-3 py-2 font-medium">Giá trị</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-border/30">
-        {data.map((r) => (
-          <tr key={r.id} className="hover:bg-secondary/20 transition-colors">
-            <td className="px-3 py-2 font-medium">{r.contract_no}</td>
-            <td className="px-3 py-2 max-w-[200px] truncate" title={r.title}>{r.title}</td>
-            <td className="px-3 py-2">{r.project?.code || "—"}</td>
-            <td className="px-3 py-2">{formatDate(r.signed_date)}</td>
-            <td className="px-3 py-2">
-              <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                r.status === "completed"
-                  ? "bg-green-500/10 text-green-500"
-                  : "bg-blue-500/10 text-blue-500"
-              }`}>
-                {statusLabel[r.status] || r.status}
-              </span>
-            </td>
-            <td className="px-3 py-2 text-right font-mono text-cyan-500">{formatVND(r.contract_value)}</td>
-          </tr>
+      <tbody>
+        {groups.map((g) => (
+          <Fragment key={g.id}>
+            {/* Dòng trung tâm: tổng giá trị giao khoán cho trung tâm */}
+            <tr className="bg-secondary/30 border-t border-border">
+              <td className="px-3 py-2.5 font-bold" colSpan={3}>
+                {g.name}
+                {g.code && <span className="ml-1.5 text-muted-foreground text-[10px] font-normal">{g.code}</span>}
+                <span className="ml-2 text-muted-foreground text-[10px] font-normal">({g.items.length} giao khoán)</span>
+              </td>
+              <td className="px-3 py-2.5 text-right font-mono font-bold text-cyan-500">{formatVND(g.total)}</td>
+            </tr>
+            {/* Từng giao khoán thuộc trung tâm */}
+            {g.items.map((r) => (
+              <tr key={r.id} className="hover:bg-secondary/10 transition-colors border-b border-border/20">
+                <td className="px-3 py-2 pl-8 text-muted-foreground">
+                  {r.allocation_code || "—"}
+                </td>
+                <td className="px-3 py-2">{r.project?.code || "—"}</td>
+                <td className="px-3 py-2 max-w-[180px] truncate" title={r.contract?.title}>
+                  {r.contract?.contract_no || "—"}
+                </td>
+                <td className="px-3 py-2 text-right font-mono text-cyan-400">{formatVND(r.allocated_amount)}</td>
+              </tr>
+            ))}
+          </Fragment>
         ))}
       </tbody>
       <tfoot>
         <tr className="border-t-2 border-border bg-secondary/30 font-bold">
-          <td className="px-3 py-2" colSpan={5}>TỔNG ({data.length} hợp đồng)</td>
-          <td className="px-3 py-2 text-right font-mono text-cyan-500">{formatVND(total)}</td>
+          <td className="px-3 py-2.5" colSpan={3}>TỔNG CỘNG</td>
+          <td className="px-3 py-2.5 text-right font-mono text-cyan-500">{formatVND(total)}</td>
         </tr>
       </tfoot>
     </table>

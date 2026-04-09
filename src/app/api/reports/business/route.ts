@@ -314,8 +314,10 @@ async function fetchIncomingContracts(admin: Admin, orgId: string, groupBy: Grou
     .select("id, contract_value, project_id")
     .eq("org_id", orgId).eq("contract_type", "incoming")
     .in("status", ["active", "completed"]);
-  if (f.from) q = q.gte("signed_date", f.from);
-  if (f.to) q = q.lte("signed_date", f.to);
+  /* HĐ đầu vào sinh từ giao khoán thường không có signed_date,
+     dùng created_at để lọc theo khoảng thời gian */
+  if (f.from) q = q.gte("created_at", f.from);
+  if (f.to) q = q.lte("created_at", `${f.to}T23:59:59`);
 
   const { data: incoming } = await q;
   if (!incoming?.length) return map;
