@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
-  const [allocsRes, contractsRes, salaryMap, costsMap, incomingMap] = await Promise.all([
+  const [allocsRes, contractsRes, salaryMap, costsMap] = await Promise.all([
     admin.from("dept_budget_allocations")
       .select("project_id, center_id, allocated_amount, delivery_date, start_date, end_date, created_at, center:centers(id, name, code)")
       .eq("org_id", orgId)
@@ -84,7 +84,6 @@ async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
       .in("status", ["active", "completed"]),
     fetchSalary(admin, orgId, "center", f),
     fetchCostsByCenter(admin, orgId, f),
-    fetchIncomingByCenter(admin, orgId, f),
   ]);
 
   const allocs = (allocsRes.data ?? []).filter((a: any) => {
@@ -116,6 +115,13 @@ async function buildCenterReport(admin: Admin, orgId: string, f: Filters) {
   for (const c of contractsRes.data ?? []) {
     if (!contractsByProject.has(c.project_id)) contractsByProject.set(c.project_id, []);
     contractsByProject.get(c.project_id)!.push({ contract_value: Number(c.contract_value) });
+  }
+
+  /* DT nhận khoán = tổng allocated_amount theo trung tâm từ cùng bộ allocs đã lọc */
+  const incomingMap = new Map<string, number>();
+  for (const a of allocs) {
+    if (!a.center_id) continue;
+    incomingMap.set(a.center_id, (incomingMap.get(a.center_id) ?? 0) + Number(a.allocated_amount));
   }
 
   /* DT công ty = doanh thu HĐ đầu ra phân bổ cho trung tâm theo tỷ lệ giao khoán */
@@ -186,22 +192,6 @@ async function fetchCostsByCenter(admin: Admin, orgId: string, f: Filters) {
   return map;
 }
 
-/* Tổng giá trị giao khoán (HĐ đầu vào) nhóm theo trung tâm */
-async function fetchIncomingByCenter(admin: Admin, orgId: string, f: Filters) {
-  const map = new Map<string, number>();
-  let q = admin.from("dept_budget_allocations")
-    .select("center_id, allocated_amount, created_at")
-    .eq("org_id", orgId)
-    .not("center_id", "is", null);
-  if (f.from) q = q.gte("created_at", f.from);
-  if (f.to) q = q.lte("created_at", `${f.to}T23:59:59`);
-  const { data } = await q;
-  for (const r of data ?? []) {
-    if (!r.center_id) continue;
-    map.set(r.center_id, (map.get(r.center_id) ?? 0) + Number(r.allocated_amount));
-  }
-  return map;
-}
 
 function sumTotals(rows: any[]) {
   const t = rows.reduce(
