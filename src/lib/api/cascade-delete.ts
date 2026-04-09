@@ -10,7 +10,10 @@ export async function deleteUserDependencies(
   targetId: string,
   currentUserId: string,
 ) {
+  const t = (table: string) => admin.from(table as any);
+
   await Promise.all([
+    // Nullable FK → set null
     admin.from("goals").update({ owner_id: null }).eq("owner_id", targetId),
     admin.from("departments").update({ head_user_id: null }).eq("head_user_id", targetId),
     admin.from("centers").update({ director_id: null }).eq("director_id", targetId),
@@ -20,13 +23,35 @@ export async function deleteUserDependencies(
     admin.from("tasks").update({ assigner_id: currentUserId }).eq("assigner_id", targetId),
     admin.from("workflow_steps").update({ assigned_user_id: null }).eq("assigned_user_id", targetId),
     admin.from("audit_logs").update({ user_id: null }).eq("user_id", targetId),
-    admin.from("task_proposals" as any).update({ approver_id: null }).eq("approver_id", targetId),
     admin.from("allocation_periods").update({ approved_by: null }).eq("approved_by", targetId),
-    admin.from("salary_records" as any).update({ created_by: null }).eq("created_by", targetId),
+    t("task_proposals").update({ approver_id: null }).eq("approver_id", targetId),
+    t("checklist_items").update({ assignee_id: null }).eq("assignee_id", targetId),
+    t("task_workflow_state").update({ completed_by: null }).eq("completed_by", targetId),
+    t("workflow_history").update({ actor_id: null }).eq("actor_id", targetId),
+    t("workflow_templates").update({ created_by: null }).eq("created_by", targetId),
+    t("task_templates").update({ created_by: null }).eq("created_by", targetId),
+    t("project_templates").update({ created_by: null }).eq("created_by", targetId),
+    t("intake_forms").update({ auto_assign_to: null }).eq("auto_assign_to", targetId),
+    t("intake_forms").update({ created_by: null }).eq("created_by", targetId),
+    t("form_submissions").update({ submitted_by: null }).eq("submitted_by", targetId),
+    t("automation_rules").update({ created_by: null }).eq("created_by", targetId),
+    t("org_settings").update({ updated_by: null }).eq("updated_by", targetId),
 
+    // NOT NULL FK → reassign to current user
+    t("contracts").update({ created_by: currentUserId }).eq("created_by", targetId),
+    t("contract_addendums").update({ created_by: currentUserId }).eq("created_by", targetId),
+    t("revenue_entries").update({ created_by: currentUserId }).eq("created_by", targetId),
+    t("revenue_adjustments").update({ adjusted_by: currentUserId }).eq("adjusted_by", targetId),
+    t("cost_entries").update({ created_by: currentUserId }).eq("created_by", targetId),
+    t("dept_budget_allocations").update({ created_by: currentUserId }).eq("created_by", targetId),
+    t("acceptance_rounds").update({ created_by: currentUserId }).eq("created_by", targetId),
+    t("status_updates").update({ author_id: currentUserId }).eq("author_id", targetId),
+    t("salary_records").update({ created_by: currentUserId }).eq("created_by", targetId),
+
+    // Delete user-owned records
     admin.from("tasks").delete().eq("assignee_id", targetId),
-    admin.from("salary_deductions" as any).delete().eq("user_id", targetId),
-    admin.from("salary_records" as any).delete().eq("user_id", targetId),
+    t("salary_deductions").delete().eq("user_id", targetId),
+    t("salary_records").delete().eq("user_id", targetId),
     admin.from("allocation_results").delete().eq("user_id", targetId),
     admin.from("user_invitations").delete().eq("invited_by", targetId),
     admin.from("dashboards").delete().eq("owner_id", targetId),
