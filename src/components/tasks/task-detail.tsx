@@ -115,7 +115,11 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
   const isAssignee = user && task.assignee_id === user.id;
   const canManage = user && (["admin", "leader", "head", "team_leader"].includes(user.role) || isTaskTeamLeader || isAssignee);
   const canUpdateProgress = user && (user.role === "admin" || isAssignee);
-  const canEvaluate = canManage && !task.kpi_evaluated_at && task.status === "review";
+  /* Cho phép chấm KPI lần đầu hoặc chấm lại trong vòng 8 tiếng sau lần chấm trước */
+  const KPI_REEVALUATE_HOURS = 8;
+  const evaluatedAt = task.kpi_evaluated_at ? new Date(task.kpi_evaluated_at).getTime() : 0;
+  const withinReevaluateWindow = evaluatedAt > 0 && (Date.now() - evaluatedAt) < KPI_REEVALUATE_HOURS * 3600_000;
+  const canEvaluate = canManage && (!task.kpi_evaluated_at || withinReevaluateWindow);
   const verdict = getVerdict(task.kpi_variance);
   const verdictCfg = VERDICT_CONFIG[verdict];
 
@@ -263,6 +267,17 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
                     </div>
                     {task.kpi_note && (
                       <p className="text-xs text-muted-foreground mt-2 italic">"{task.kpi_note}"</p>
+                    )}
+                    {/* Cho phép chấm lại KPI trong vòng 8 tiếng */}
+                    {canEvaluate && withinReevaluateWindow && (
+                      <div className="mt-3 pt-2 border-t border-border/50">
+                        <Button size="xs" variant="primary" onClick={() => setShowEvalForm(true)}>
+                          Chấm lại KPI
+                        </Button>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Còn {Math.max(0, Math.ceil((evaluatedAt + KPI_REEVALUATE_HOURS * 3600_000 - Date.now()) / 3600_000))}h để chấm lại
+                        </p>
+                      </div>
                     )}
                   </>
                 ) : (
