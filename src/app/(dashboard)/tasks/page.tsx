@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useTasks, useUpdateTask } from "@/lib/hooks/use-tasks";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -21,6 +21,7 @@ import { ProposalForm } from "@/components/tasks/proposal-form";
 import { ProposalList } from "@/components/tasks/proposal-list";
 import { useProposalPendingCount } from "@/lib/hooks/use-proposals";
 import { useI18n } from "@/lib/i18n";
+import { useSearchParams } from "next/navigation";
 import type { Task, TaskStatus, TaskPriority } from "@/lib/types";
 
 const STATUS_ORDER: TaskStatus[] = ["pending", "in_progress", "review", "completed", "overdue"];
@@ -52,6 +53,7 @@ function sortTasks(tasks: Task[], key: TaskSortKey, dir: 'asc' | 'desc'): Task[]
 export default function TasksPage() {
   const { t } = useI18n();
   const { user } = useAuthStore();
+  const searchParams = useSearchParams();
   const { taskView, setTaskView, taskFilters, setTaskFilters, taskSort, setTaskSort } = useUIStore();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -66,6 +68,20 @@ export default function TasksPage() {
   const { data: deptTeams = [] } = useTeams(user?.dept_id || undefined);
   const [filterCenter, setFilterCenter] = useState<string>("all");
   const [filterDept, setFilterDept] = useState<string>("all");
+
+  /* Đọc URL params từ popup Tổng quan: áp dụng bộ lọc trạng thái và mở chi tiết task */
+  useEffect(() => {
+    const statusParam = searchParams.get("status");
+    const selectedParam = searchParams.get("selected");
+    if (statusParam) {
+      if (statusParam === "processing") {
+        setTaskFilters({ status: "all" });
+      } else {
+        setTaskFilters({ status: statusParam as TaskStatus | "all" });
+      }
+    }
+    if (selectedParam) setSelectedTaskId(selectedParam);
+  }, [searchParams, setTaskFilters]);
 
   const canAssign = user?.role !== "staff";
   const effectiveFilters = user?.role === "staff"

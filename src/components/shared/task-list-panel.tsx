@@ -1,10 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { createPortal } from "react-dom";
 import { Dialog, DialogContent } from "./dialog";
 import { StatusBadge, ProgressBar, UserAvatar, PriorityBadge, EmptyState } from "./index";
-import { TaskDetail } from "@/components/tasks/task-detail";
 import { ClipboardList } from "lucide-react";
 import { ROLE_CONFIG, formatRelativeDate } from "@/lib/utils/kpi";
 import { useI18n } from "@/lib/i18n";
@@ -20,10 +17,19 @@ interface TaskListPanelProps {
   tasks: Task[];
 }
 
+/** Map loại panel → giá trị status filter trên trang Công việc */
+const PANEL_STATUS_MAP: Record<string, string> = {
+  total: "all",
+  in_progress: "in_progress",
+  overdue: "overdue",
+  processing: "processing",
+  review: "review",
+  evaluated: "all",
+};
+
 export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskListPanelProps) {
   const { t } = useI18n();
   const router = useRouter();
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const titleMap: Record<string, string> = {
     total: t.dashboard.totalTasks,
@@ -51,19 +57,20 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
       return da - db;
     });
 
+  /** Chuyển sang trang Công việc, áp dụng bộ lọc tương ứng và mở chi tiết task */
   const handleTaskClick = (taskId: string) => {
-    setSelectedTaskId(taskId);
+    const statusFilter = PANEL_STATUS_MAP[panelType ?? "total"] || "all";
+    onOpenChange(false);
+    router.push(`/tasks?status=${statusFilter}&selected=${taskId}`);
   };
 
   return (
-    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title={`${titleMap[panelType ?? "total"]} (${filteredTasks.length})`}
         description={t.dashboard.panelDesc}
         size="xl"
         className="max-h-[80vh] flex flex-col"
-        preventAutoClose={!!selectedTaskId}
       >
         <div className="overflow-y-auto -mx-5 -mb-5 px-5 pb-5 max-h-[60vh]">
           {filteredTasks.length === 0 ? (
@@ -118,18 +125,5 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
         )}
       </DialogContent>
     </Dialog>
-
-    {/* Portal TaskDetail vào document.body — overlay trong suốt giữ popup danh sách nhìn thấy,
-       click vùng trống đóng TaskDetail và quay lại popup danh sách */}
-    {selectedTaskId && typeof document !== "undefined" && createPortal(
-      <TaskDetail
-        taskId={selectedTaskId}
-        onClose={() => setSelectedTaskId(null)}
-        zIndex={60}
-        transparentOverlay
-      />,
-      document.body,
-    )}
-    </>
   );
 }
