@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { getAuthProfile, getAdminSupabase, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { deleteProjectDependencies } from "@/lib/api/cascade-delete";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const { profile } = await getAuthProfile();
@@ -56,14 +57,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const roleErr = requireMinRole(profile, "leader");
   if (roleErr) return errorResponse(roleErr, 403);
 
-  const supabase = await getServerSupabase();
+  const admin = getAdminSupabase();
 
-  // Soft delete: archive
-  const { error } = await supabase
-    .from("projects")
-    .update({ status: "archived" })
-    .eq("id", params.id);
+  await deleteProjectDependencies(admin, params.id);
 
+  const { error } = await admin.from("projects").delete().eq("id", params.id);
   if (error) return errorResponse(error.message, 500);
 
   return jsonResponse({ success: true });
