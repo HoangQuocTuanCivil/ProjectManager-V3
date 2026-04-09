@@ -1,6 +1,8 @@
 import type { TaskStatus, TaskPriority, UserRole, KPIVerdict } from '@/lib/types';
 
-export const KPI_WEIGHTS = { volume: 0.40, quality: 0.30, difficulty: 0.20, ahead: 0.10 };
+/* Khối lượng 40% + Chất lượng 30% + Độ khó 30% = 100% cơ bản.
+   Vượt tiến độ 10% là thưởng thêm (đúng hạn = 100%, vượt hạn = tối đa 110%). */
+export const KPI_WEIGHTS = { volume: 0.40, quality: 0.30, difficulty: 0.30, ahead: 0.10 };
 
 export const VERDICT_CONFIG: Record<KPIVerdict, { label: string; color: string; bg: string }> = {
   exceptional: { label: 'Đặc biệt XS', color: '#10b981', bg: '#ecfdf5' },

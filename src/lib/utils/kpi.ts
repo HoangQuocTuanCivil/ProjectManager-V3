@@ -1,8 +1,11 @@
 import type { Task, KPIScores, KPIComparison, KPIVerdict } from '@/lib/types';
 import { KPI_WEIGHTS } from '@/lib/constants/kpi';
 
+/** Tính điểm KPI: 3 chỉ số chính (KL+CL+ĐK = 100%), vượt TĐ là thưởng thêm tối đa 10% */
 export function calcKPIScore(vol: number, qual: number, diff: number, ahd: number): number {
-  return Math.round(vol * KPI_WEIGHTS.volume + qual * KPI_WEIGHTS.quality + diff * KPI_WEIGHTS.difficulty + ahd * KPI_WEIGHTS.ahead);
+  const base = vol * KPI_WEIGHTS.volume + qual * KPI_WEIGHTS.quality + diff * KPI_WEIGHTS.difficulty;
+  const bonus = ahd * KPI_WEIGHTS.ahead;
+  return Math.round(base + bonus);
 }
 
 export function getExpectedScores(task: Task): KPIScores {

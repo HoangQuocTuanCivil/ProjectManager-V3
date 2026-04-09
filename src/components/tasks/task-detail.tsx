@@ -238,8 +238,8 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
                 <div className="space-y-1.5">
                   <KPIScoreBar label="Khối lượng" value={task.expect_volume} color="#38bdf8" weight="40%" />
                   <KPIScoreBar label="Chất lượng" value={task.expect_quality} color="#10b981" weight="30%" />
-                  <KPIScoreBar label="Độ khó" value={task.expect_difficulty} color="#f59e0b" weight="20%" />
-                  <KPIScoreBar label="Vượt TĐ" value={task.expect_ahead} color="#8b5cf6" weight="10%" />
+                  <KPIScoreBar label="Độ khó" value={task.expect_difficulty} color="#f59e0b" weight="30%" />
+                  <KPIScoreBar label="Vượt TĐ +" value={task.expect_ahead} color="#8b5cf6" weight="10%" />
                 </div>
               </div>
 
@@ -262,8 +262,8 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
                     <div className="space-y-1.5">
                       <KPIScoreBar label="Khối lượng" value={task.actual_volume} color="#38bdf8" weight="40%" />
                       <KPIScoreBar label="Chất lượng" value={task.actual_quality} color="#10b981" weight="30%" />
-                      <KPIScoreBar label="Độ khó" value={task.actual_difficulty} color="#f59e0b" weight="20%" />
-                      <KPIScoreBar label="Vượt TĐ" value={task.actual_ahead} color="#8b5cf6" weight="10%" />
+                      <KPIScoreBar label="Độ khó" value={task.actual_difficulty} color="#f59e0b" weight="30%" />
+                      <KPIScoreBar label="Vượt TĐ +" value={task.actual_ahead} color="#8b5cf6" weight="10%" />
                     </div>
                     {task.kpi_note && (
                       <p className="text-xs text-muted-foreground mt-2 italic">"{task.kpi_note}"</p>

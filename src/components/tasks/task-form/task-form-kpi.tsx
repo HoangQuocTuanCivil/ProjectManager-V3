@@ -61,7 +61,7 @@ export function TaskFormKPI({
 
         {/* ĐK */}
         <div className="flex items-center gap-3">
-          <label className="text-sm text-muted-foreground w-24">Độ khó (20%)</label>
+          <label className="text-sm text-muted-foreground w-24">Độ khó (30%)</label>
           <input
             type="range" min="0" max="100" step="5" value={expectDifficulty}
             onChange={(e) => onUpdate("expect_difficulty", +e.target.value)}
@@ -72,7 +72,7 @@ export function TaskFormKPI({
 
         {/* VTĐ */}
         <div className="flex items-center gap-3">
-          <label className="text-sm text-muted-foreground w-24">Vượt T.Đ (10%)</label>
+          <label className="text-sm text-muted-foreground w-24">Vượt T.Đ (+10%)</label>
           <input
             type="range" min="0" max="100" step="5" value={expectAhead}
             onChange={(e) => onUpdate("expect_ahead", +e.target.value)}
@@ -88,7 +88,7 @@ export function TaskFormKPI({
             <p className="text-[11px] text-muted-foreground">Điểm KPI kỳ vọng</p>
           </div>
           <div className="text-[11px] font-mono text-muted-foreground leading-relaxed">
-            {expectVolume}×0.4 + {expectQuality}×0.3 + {expectDifficulty}×0.2 + {expectAhead}×0.1 = {expectScore}
+            {expectVolume}×0.4 + {expectQuality}×0.3 + {expectDifficulty}×0.3 + {expectAhead}×0.1(bonus) = {expectScore}
           </div>
         </div>
       </div>
