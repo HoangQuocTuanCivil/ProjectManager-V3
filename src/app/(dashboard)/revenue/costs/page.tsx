@@ -4,11 +4,11 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useProjects } from "@/features/projects";
 import { useContracts } from "@/features/contracts";
 import { useCostEntries, useCreateCostEntry, useDeleteCostEntry } from "@/features/revenue";
-import { useSalaryRecords, useCreateSalaryBatch, useSalaryDeductions } from "@/features/kpi";
+import { useSalaryRecords, useCreateSalaryBatch, useDeleteSalary, useSalaryDeductions } from "@/features/kpi";
 import { useCenters } from "@/features/organization";
 import { useAuthStore } from "@/lib/stores";
-import { Button, EmptyState } from "@/components/shared";
-import { BarChart3, Wallet, AlertTriangle, Download, Upload, ChevronDown } from "lucide-react";
+import { Button, EmptyState, ConfirmDialog } from "@/components/shared";
+import { BarChart3, Wallet, AlertTriangle, Download, Upload, ChevronDown, Trash2 } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { useI18n } from "@/lib/i18n";
 import { formatVND, formatDate } from "@/lib/utils/format";
@@ -418,7 +418,7 @@ function SalarySection({ canManage }: { canManage: boolean }) {
           </div>
         )}
       </div>
-      {salaryTab === "view" && <SalaryViewInner month={month} setMonth={setMonth} centerId={centerId} setCenterId={setCenterId} deptId={deptId} setDeptId={setDeptId} depts={departments} centers={allCenters as any[]} />}
+      {salaryTab === "view" && <SalaryViewInner month={month} setMonth={setMonth} centerId={centerId} setCenterId={setCenterId} deptId={deptId} setDeptId={setDeptId} depts={departments} centers={allCenters as any[]} canManage={canManage} />}
       {salaryTab === "deductions" && <DeductionsInner />}
 
       {/* Popup nhập lương thủ công — kế thừa bộ lọc TT/PB từ view cha */}
@@ -430,12 +430,13 @@ function SalarySection({ canManage }: { canManage: boolean }) {
 }
 
 /* ── Tab "Lương tháng": xem bảng lương đã ghi nhận, lọc theo tháng / trung tâm / phòng ban ── */
-function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDeptId, depts, centers }: {
+function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDeptId, depts, centers, canManage }: {
   month: string; setMonth: (v: string) => void;
   centerId: string; setCenterId: (v: string) => void;
   deptId: string; setDeptId: (v: string) => void;
   depts: { id: string; name: string; code: string; center_id?: string }[];
   centers: { id: string; name: string; code?: string; is_active?: boolean }[];
+  canManage: boolean;
 }) {
   /* Phòng ban phụ thuộc trung tâm đã chọn */
   const filteredDepts = useMemo(() => {
@@ -443,9 +444,11 @@ function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDe
     return depts.filter((d: any) => d.center_id === centerId);
   }, [depts, centerId]);
 
-  /* Fetch lương theo tháng + PB (nếu chọn PB), hoặc toàn bộ tháng */
   const { data: existing } = useSalaryRecords({ month, dept_id: deptId || undefined });
   const salaryRows = existing?.data ?? [];
+  const deleteSalary = useDeleteSalary();
+  const [deleteTarget, setDeleteTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
 
   /* Lọc theo TT: bao gồm user có dept trong TT hoặc center_id trực tiếp */
   const visibleRows = useMemo(() => {
@@ -507,10 +510,19 @@ function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDe
       {rows.length === 0 ? (
         <EmptyState icon={<Wallet size={32} strokeWidth={1.5} />} title="Chưa có dữ liệu lương" subtitle="Chưa có bản ghi lương cho bộ lọc đã chọn" />
       ) : (
+        <>
         <div className="bg-card border border-border rounded-xl overflow-hidden">
+          {canManage && rows.length > 0 && (
+            <div className="flex justify-end px-4 py-2 border-b border-border">
+              <button onClick={() => setShowDeleteAll(true)}
+                className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors">
+                <Trash2 size={13} /> Xóa tất cả lương tháng này
+              </button>
+            </div>
+          )}
           <table className="w-full text-xs">
             <thead><tr className="border-b border-border text-muted-foreground">
-              {["Mã HT", "Nhân viên", "Phòng ban", "Lương tháng", "Đã khấu trừ", "Thực nhận"].map(h => (
+              {["Mã HT", "Nhân viên", "Phòng ban", "Lương tháng", "Đã khấu trừ", "Thực nhận", ...(canManage ? [""] : [])].map(h => (
                 <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
               ))}
             </tr></thead>
@@ -523,6 +535,14 @@ function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDe
                   <td className="px-4 py-2.5 font-mono">{formatVND(r.base)}</td>
                   <td className="px-4 py-2.5 font-mono text-red-400">{r.deduction > 0 ? `-${formatVND(r.deduction)}` : "—"}</td>
                   <td className="px-4 py-2.5 font-mono text-green-500">{formatVND(r.net)}</td>
+                  {canManage && (
+                    <td className="px-4 py-2.5">
+                      <button onClick={() => setDeleteTarget({ userId: r.user_id, name: r.full_name })}
+                        className="text-red-400 hover:text-red-500 transition-colors" title="Xóa">
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -531,9 +551,43 @@ function SalaryViewInner({ month, setMonth, centerId, setCenterId, deptId, setDe
               <td className="px-4 py-2 font-mono font-bold">{formatVND(rows.reduce((s, r) => s + r.base, 0))}</td>
               <td className="px-4 py-2 font-mono font-bold text-red-400">{formatVND(rows.reduce((s, r) => s + r.deduction, 0))}</td>
               <td className="px-4 py-2 font-mono font-bold text-green-500">{formatVND(rows.reduce((s, r) => s + r.net, 0))}</td>
+              {canManage && <td />}
             </tr></tfoot>
           </table>
         </div>
+
+        <ConfirmDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+          title={`Xóa lương của "${deleteTarget?.name}"?`}
+          description={`Xóa bản ghi lương tháng ${month.slice(0, 7)} của nhân viên này.`}
+          confirmLabel="Xóa"
+          loading={deleteSalary.isPending}
+          onConfirm={() => {
+            if (!deleteTarget) return;
+            deleteSalary.mutate({ month, userIds: [deleteTarget.userId] }, {
+              onSuccess: () => { toast.success(`Đã xóa lương của "${deleteTarget.name}"`); setDeleteTarget(null); },
+              onError: (err: any) => toast.error(err.message),
+            });
+          }}
+        />
+
+        <ConfirmDialog
+          open={showDeleteAll}
+          onOpenChange={setShowDeleteAll}
+          title={`Xóa toàn bộ lương tháng ${month.slice(0, 7)}?`}
+          description={`${rows.length} bản ghi lương sẽ bị xóa vĩnh viễn.\nHành động này không thể hoàn tác!`}
+          confirmLabel="Xóa tất cả"
+          loading={deleteSalary.isPending}
+          onConfirm={() => {
+            const userIds = rows.map((r) => r.user_id);
+            deleteSalary.mutate({ month, userIds }, {
+              onSuccess: (res) => { toast.success(`Đã xóa ${res.deleted} bản ghi lương`); setShowDeleteAll(false); },
+              onError: (err: any) => toast.error(err.message),
+            });
+          }}
+        />
+        </>
       )}
     </div>
   );

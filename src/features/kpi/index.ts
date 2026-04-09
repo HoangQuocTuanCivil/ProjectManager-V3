@@ -30,6 +30,7 @@ export {
 export {
   useSalaryRecords,
   useCreateSalaryBatch,
+  useDeleteSalary,
   useSalaryDeductions,
 } from './hooks/use-salary';
 

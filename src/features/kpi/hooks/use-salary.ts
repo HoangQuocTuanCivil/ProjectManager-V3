@@ -37,6 +37,21 @@ export function useCreateSalaryBatch() {
   });
 }
 
+/** Xóa bảng lương theo tháng, tuỳ chọn theo danh sách user */
+export function useDeleteSalary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ month, userIds }: { month: string; userIds?: string[] }) => {
+      const params = new URLSearchParams({ month });
+      if (userIds?.length) params.set("user_ids", userIds.join(","));
+      const res = await fetch(`/api/salary?${params}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error);
+      return res.json() as Promise<{ deleted: number }>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.salary() }),
+  });
+}
+
 /** Danh sách khấu trừ lương */
 export function useSalaryDeductions() {
   return useQuery({
