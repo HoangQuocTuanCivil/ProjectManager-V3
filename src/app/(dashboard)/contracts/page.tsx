@@ -794,6 +794,7 @@ function ContractCard({ contract: c, canManage, contractType }: {
 }) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const deleteContract = useDeleteContract();
   const updateContract = useUpdateContract();
 
@@ -938,7 +939,7 @@ function ContractCard({ contract: c, canManage, contractType }: {
 
           {/* Actions */}
           {canManage && (
-            <div className="px-4 py-2 border-t border-border/30 flex items-center gap-2">
+            <div className="px-4 py-2.5 border-t border-border/30 flex items-center gap-2">
               <label className="text-[11px] text-primary cursor-pointer hover:underline">
                 {t.contracts.uploadFile}
                 <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={async (e) => {
@@ -953,15 +954,36 @@ function ContractCard({ contract: c, canManage, contractType }: {
               </label>
               <div className="flex-1" />
               <button
+                onClick={() => setShowEdit(true)}
+                className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+              >
+                Sửa
+              </button>
+              <button
                 onClick={() => {
                   if (confirm(t.contracts.confirmDelete.replace("{name}", c.title)))
                     deleteContract.mutate(c.id);
                 }}
-                className="text-[11px] text-destructive hover:underline"
+                className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors"
               >
-                {t.common.delete}
+                Xóa
               </button>
             </div>
+          )}
+
+          {/* Form chỉnh sửa hợp đồng */}
+          {showEdit && (
+            <EditContractForm
+              contract={c}
+              isOutgoing={isOutgoing}
+              onClose={() => setShowEdit(false)}
+              onSave={async (updates) => {
+                await updateContract.mutateAsync({ id: c.id, ...updates } as any);
+                toast.success("Cập nhật hợp đồng thành công");
+                setShowEdit(false);
+              }}
+              isPending={updateContract.isPending}
+            />
           )}
 
           {/* Outgoing: Addendums + Milestones */}
@@ -978,6 +1000,126 @@ function ContractCard({ contract: c, canManage, contractType }: {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Edit Contract Form
+   ═══════════════════════════════════════════════════════════════════ */
+
+function EditContractForm({ contract, isOutgoing, onClose, onSave, isPending }: {
+  contract: Contract; isOutgoing: boolean;
+  onClose: () => void; onSave: (u: any) => void; isPending: boolean;
+}) {
+  const [form, setForm] = useState({
+    contract_no: contract.contract_no,
+    title: contract.title,
+    contract_value: contract.contract_value,
+    client_name: contract.client_name || "",
+    subcontractor_name: contract.subcontractor_name || "",
+    bid_package: contract.bid_package || "",
+    signed_date: contract.signed_date?.slice(0, 10) || "",
+    start_date: contract.start_date?.slice(0, 10) || "",
+    end_date: contract.end_date?.slice(0, 10) || "",
+    status: contract.status,
+    notes: contract.notes || "",
+    work_content: contract.work_content || "",
+    person_in_charge: contract.person_in_charge || "",
+  });
+
+  const inputClass = "w-full h-9 px-3 rounded-lg border border-border bg-secondary text-sm focus:border-primary focus:outline-none";
+  const labelClass = "text-xs text-muted-foreground font-medium";
+
+  return (
+    <div className="px-4 py-4 border-t border-primary/30 bg-primary/5 space-y-3">
+      <h4 className="text-sm font-bold text-primary">Chỉnh sửa hợp đồng</h4>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelClass}>Số hợp đồng</label>
+          <input value={form.contract_no} onChange={(e) => setForm({ ...form, contract_no: e.target.value })} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Giá trị HĐ</label>
+          <input type="number" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: +e.target.value })} className={inputClass} />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Tên hợp đồng</label>
+        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputClass} />
+      </div>
+
+      {isOutgoing && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Khách hàng</label>
+            <input value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Gói thầu</label>
+            <input value={form.bid_package} onChange={(e) => setForm({ ...form, bid_package: e.target.value })} className={inputClass} />
+          </div>
+        </div>
+      )}
+
+      {!isOutgoing && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Nhà thầu phụ</label>
+            <input value={form.subcontractor_name} onChange={(e) => setForm({ ...form, subcontractor_name: e.target.value })} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Người phụ trách</label>
+            <input value={form.person_in_charge} onChange={(e) => setForm({ ...form, person_in_charge: e.target.value })} className={inputClass} />
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className={labelClass}>Ngày ký</label>
+          <input type="date" value={form.signed_date} onChange={(e) => setForm({ ...form, signed_date: e.target.value })} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Ngày bắt đầu</label>
+          <input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Ngày kết thúc</label>
+          <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className={inputClass} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelClass}>Trạng thái</label>
+          <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as any })} className={inputClass}>
+            <option value="draft">Nháp</option>
+            <option value="active">Đang thực hiện</option>
+            <option value="completed">Hoàn thành</option>
+            <option value="cancelled">Đã hủy</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Nội dung công việc</label>
+          <input value={form.work_content} onChange={(e) => setForm({ ...form, work_content: e.target.value })} className={inputClass} />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Ghi chú</label>
+        <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className={inputClass + " h-auto py-2"} />
+      </div>
+
+      <div className="flex justify-end gap-2 pt-2">
+        <button onClick={onClose} className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-secondary transition-colors">Hủy</button>
+        <button onClick={() => onSave(form)} disabled={isPending}
+          className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:brightness-110 transition-all disabled:opacity-40">
+          {isPending ? "Đang lưu..." : "Lưu thay đổi"}
+        </button>
+      </div>
     </div>
   );
 }
