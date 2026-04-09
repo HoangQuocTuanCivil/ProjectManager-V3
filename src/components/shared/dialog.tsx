@@ -60,6 +60,7 @@ export function DialogContent({
         )}
         onPointerDownOutside={preventAutoClose ? (e) => e.preventDefault() : undefined}
         onEscapeKeyDown={preventAutoClose ? (e) => e.preventDefault() : undefined}
+        onFocusOutside={preventAutoClose ? (e) => e.preventDefault() : undefined}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">

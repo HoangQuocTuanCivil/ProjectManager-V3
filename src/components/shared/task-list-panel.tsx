@@ -55,6 +55,7 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title={`${titleMap[panelType ?? "total"]} (${filteredTasks.length})`}
@@ -115,15 +116,16 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
           </div>
         )}
       </DialogContent>
-
-      {/* Panel chi tiết task: hiển thị đè lên dialog danh sách, z-index cao hơn */}
-      {selectedTaskId && (
-        <TaskDetail
-          taskId={selectedTaskId}
-          onClose={() => setSelectedTaskId(null)}
-          zIndex={60}
-        />
-      )}
     </Dialog>
+
+    {/* Panel chi tiết task: render ngoài Dialog tree để không bị focus trap chặn tương tác */}
+    {selectedTaskId && (
+      <TaskDetail
+        taskId={selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+        zIndex={60}
+      />
+    )}
+    </>
   );
 }
