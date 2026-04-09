@@ -36,7 +36,7 @@ function useDepartments() {
   return useQuery({
     queryKey: ["departments"],
     queryFn: async () => {
-      const { data } = await supabase.from("departments").select("id, name, code, center_id, is_executive").eq("is_active", true).order("sort_order");
+      const { data } = await supabase.from("departments").select("id, name, code, center_id").eq("is_active", true).order("sort_order");
       return data ?? [];
     },
   });
@@ -73,12 +73,7 @@ export default function AllocationPage() {
   const { data: departments = [] } = useDepartments();
   const calcBonus = useCalculateBonus();
 
-  // Ban điều hành (is_executive): nhân sự thuộc PB này cũng xem được toàn bộ TT
-  const userDeptIsExecutive = !!user?.dept_id && departments.some(
-    (d) => d.id === user.dept_id && d.is_executive
-  );
-  // Xem toàn bộ: admin/leader/director HOẶC thuộc Ban điều hành
-  const canViewAll = canManage || userDeptIsExecutive;
+  const canViewAll = canManage;
 
   // Lọc quỹ theo trung tâm: NV thường chỉ thấy TT của mình
   const userCenterId = user?.center_id as string | undefined;

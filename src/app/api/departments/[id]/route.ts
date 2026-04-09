@@ -8,9 +8,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (roleErr) return errorResponse(roleErr, 403);
 
   const body = await req.json();
-  const { id: _id, org_id: _org, created_at: _ca, head: _head, ...updates } = body;
+  const { id: _id, org_id: _org, created_at: _ca, head: _head, is_executive: _exec, ...updates } = body;
 
-  // Clean empty strings → null for UUID FK columns
   if (updates.head_user_id === "") updates.head_user_id = null;
 
   const admin = getAdminSupabase();
