@@ -13,7 +13,11 @@ import { TaskMessenger } from "./task-messenger";
 import { TaskAttachments } from "./task-attachments";
 import { SearchSelect } from "@/components/shared/search-select";
 
-export function TaskDetail({ taskId, onClose, zIndex }: { taskId: string; onClose: () => void; zIndex?: number }) {
+export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
+  taskId: string; onClose: () => void; zIndex?: number;
+  /** Overlay trong suốt: dùng khi TaskDetail mở đè lên dialog khác, giữ dialog phía sau có thể nhìn thấy */
+  transparentOverlay?: boolean;
+}) {
   const { data: task, isLoading, error } = useTask(taskId);
   const { user } = useAuthStore();
   const updateProgress = useUpdateProgress();
@@ -34,7 +38,7 @@ export function TaskDetail({ taskId, onClose, zIndex }: { taskId: string; onClos
   const [localProgress, setLocalProgress] = useState<number | null>(null);
   const overlayZ = zIndex ?? 50;
   const overlayClass = `fixed inset-0 flex justify-end`;
-  const overlayStyle = { background: "rgba(0,0,0,0.5)", zIndex: overlayZ };
+  const overlayStyle = { background: transparentOverlay ? "transparent" : "rgba(0,0,0,0.5)", zIndex: overlayZ };
 
   const handleProgressSubmit = () => {
     const val = localProgress ?? task?.progress ?? 0;

@@ -119,13 +119,14 @@ export function TaskListPanel({ open, onOpenChange, panelType, tasks }: TaskList
       </DialogContent>
     </Dialog>
 
-    {/* Portal TaskDetail vào document.body — đảm bảo nằm trên Radix Dialog overlay,
-       không bị focus trap hay pointer-event chặn */}
+    {/* Portal TaskDetail vào document.body — overlay trong suốt giữ popup danh sách nhìn thấy,
+       click vùng trống đóng TaskDetail và quay lại popup danh sách */}
     {selectedTaskId && typeof document !== "undefined" && createPortal(
       <TaskDetail
         taskId={selectedTaskId}
         onClose={() => setSelectedTaskId(null)}
         zIndex={60}
+        transparentOverlay
       />,
       document.body,
     )}
