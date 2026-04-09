@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     const costs = costsMap.get(key) ?? { cogs: 0, selling: 0, admin: 0, financial: 0 };
     const salary = salaryMap.get(key) ?? 0;
     const incoming = incomingMap.get(key) ?? 0;
-    const totalCost = costs.cogs + costs.selling + costs.admin + costs.financial + salary + incoming;
+    const totalCost = costs.cogs + costs.selling + costs.admin + costs.financial + incoming;
     const profit = revenue - totalCost;
     const margin = revenue > 0 ? Math.round((profit / revenue) * 1000) / 10 : 0;
 

@@ -486,17 +486,15 @@ function IncomingDetail({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: stri
 /* ── Tổng hợp Lợi nhuận (P&L rút gọn) ──────────────────────── */
 
 function ProfitSummary({ totals }: { totals: BusinessTotals }) {
-  const directCost = totals.cogs + totals.selling + totals.admin + totals.financial;
-
+  /* Lợi nhuận = Doanh thu − Giá vốn − CP bán hàng − CP quản lý − CP tài chính − CP khoán
+     Lương không tham gia vào công thức lợi nhuận */
   const lines: { label: string; value: number; color: string; indent?: boolean; bold?: boolean }[] = [
     { label: "Doanh thu", value: totals.revenue, color: "text-green-500", bold: true },
     { label: "Giá vốn hàng bán", value: -totals.cogs, color: "text-red-400", indent: true },
     { label: "Chi phí bán hàng", value: -totals.selling, color: "text-red-400", indent: true },
     { label: "Chi phí quản lý", value: -totals.admin, color: "text-red-400", indent: true },
     { label: "Chi phí tài chính", value: -totals.financial, color: "text-red-400", indent: true },
-    { label: "Tổng chi phí trực tiếp", value: -directCost, color: "text-red-500", bold: true },
-    { label: "Lương nhân viên", value: -totals.salary, color: "text-blue-500", indent: true },
-    { label: "HĐ giao khoán (đầu vào)", value: -totals.incoming, color: "text-cyan-500", indent: true },
+    { label: "Chi phí khoán", value: -totals.incoming, color: "text-cyan-500", indent: true },
     { label: "Tổng chi phí", value: -totals.total_cost, color: "text-orange-500", bold: true },
     { label: "Lợi nhuận", value: totals.profit, color: totals.profit >= 0 ? "text-green-500" : "text-red-500", bold: true },
   ];
