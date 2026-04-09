@@ -118,7 +118,7 @@ function CompanySection({ totals }: { totals: BusinessTotals }) {
 
   return (
     <div>
-      <SectionHeader icon={<Building2 size={15} />} title="Toàn công ty" subtitle="DT − Chi phí − Giao khoán = LN" />
+      <SectionHeader icon={<Building2 size={15} />} title="Toàn công ty" />
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-3">
         {cards.map((c, i) => (
           <div key={i} className="bg-card border border-border rounded-xl p-3">
@@ -198,7 +198,7 @@ function CenterSection({ rows, totals }: { rows: BusinessRow[]; totals: Business
 
   return (
     <div>
-      <SectionHeader icon={<Landmark size={15} />} title="Lợi nhuận theo trung tâm" subtitle="DT phân bổ − Lương = LN" />
+      <SectionHeader icon={<Landmark size={15} />} title="Lợi nhuận theo trung tâm" />
       <div className="bg-card border border-border rounded-xl overflow-x-auto mt-3">
         <table className="w-full text-xs whitespace-nowrap">
           <thead>
@@ -255,7 +255,7 @@ function ProductServiceSection({ rows, totals: psTotals }: { rows: BusinessRow[]
 
   return (
     <div>
-      <SectionHeader icon={<Package size={15} />} title="Lợi nhuận theo sản phẩm / dịch vụ" subtitle="DT HĐ − CP − HĐ giao khoán = LN" />
+      <SectionHeader icon={<Package size={15} />} title="Lợi nhuận theo sản phẩm / dịch vụ" />
 
       {barData.length > 1 && (
         <div className="bg-card border border-border rounded-xl p-4 mt-3">
@@ -322,12 +322,11 @@ function ProductServiceSection({ rows, totals: psTotals }: { rows: BusinessRow[]
   );
 }
 
-function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
+function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-muted-foreground">{icon}</span>
       <h3 className="text-sm font-bold">{title}</h3>
-      <span className="text-[10px] text-muted-foreground">({subtitle})</span>
     </div>
   );
 }
