@@ -32,11 +32,44 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (roleErr) return errorResponse(roleErr, 403);
 
   const admin = getAdminSupabase();
+  const deptId = params.id;
+  const orgId = profile.org_id;
+
+  /* Lấy danh sách nhóm thuộc phòng ban để reset team_id của users */
+  const { data: teams } = await admin
+    .from("teams")
+    .select("id")
+    .eq("dept_id", deptId);
+  const teamIds = (teams ?? []).map((t: any) => t.id);
+
+  /* Reset dept_id và team_id của tất cả users thuộc phòng ban */
+  await admin
+    .from("users")
+    .update({ dept_id: null, team_id: null })
+    .eq("dept_id", deptId);
+
+  /* Nếu có users thuộc nhóm trong phòng ban nhưng dept_id khác, reset team_id */
+  if (teamIds.length > 0) {
+    await admin
+      .from("users")
+      .update({ team_id: null })
+      .in("team_id", teamIds);
+  }
+
+  /* Xóa (vô hiệu) tất cả nhóm thuộc phòng ban */
+  if (teamIds.length > 0) {
+    await admin
+      .from("teams")
+      .update({ is_active: false })
+      .in("id", teamIds);
+  }
+
+  /* Vô hiệu phòng ban */
   const { error } = await admin
     .from("departments")
     .update({ is_active: false })
-    .eq("id", params.id)
-    .eq("org_id", profile.org_id);
+    .eq("id", deptId)
+    .eq("org_id", orgId);
 
   if (error) return errorResponse(error.message, 500);
   return jsonResponse({ success: true });
