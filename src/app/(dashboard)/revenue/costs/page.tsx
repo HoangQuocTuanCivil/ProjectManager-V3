@@ -106,10 +106,11 @@ function CostsSection({ canManage }: { canManage: boolean }) {
 
   const [filterProjectId, setFilterProjectId] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("");
-  const { data: entries = [] } = useCostEntries({
+  const { data: costResult } = useCostEntries({
     projectId: filterProjectId || undefined,
     category: filterCategory || undefined,
   });
+  const entries = costResult?.data ?? [];
   const create = useCreateCostEntry();
   const remove = useDeleteCostEntry();
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { RevenueEntry, InternalRevenue, CostEntry } from "@/lib/types";
+import { PAGINATION } from "@/lib/constants/app";
 
 const supabase = createClient();
 
@@ -8,8 +9,8 @@ export const revenueKeys = {
   all: ["revenue"] as const,
   entries: (filters?: Record<string, string | undefined>) => [...revenueKeys.all, "entries", filters] as const,
   entry: (id: string) => [...revenueKeys.all, "entry", id] as const,
-  internal: (filters?: { projectId?: string; deptId?: string }) => [...revenueKeys.all, "internal", filters] as const,
-  costs: (filters?: { projectId?: string; category?: string }) => [...revenueKeys.all, "costs", filters] as const,
+  internal: (filters?: Record<string, string | undefined>) => [...revenueKeys.all, "internal", filters] as const,
+  costs: (filters?: Record<string, string | undefined>) => [...revenueKeys.all, "costs", filters] as const,
 };
 
 async function getOrgId() {
@@ -25,6 +26,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) throw new Error(json.error || "Request failed");
   return json;
 }
+
+/* ───── Revenue Entries ──────────────────────────────────────── */
 
 export function useRevenueEntries(filters?: {
   status?: string; dimension?: string; project_id?: string; dept_id?: string;
@@ -56,7 +59,7 @@ export function useCreateRevenueEntry() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
   });
 }
 
@@ -69,7 +72,7 @@ export function useUpdateRevenueEntry() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
   });
 }
 
@@ -77,7 +80,7 @@ export function useDeleteRevenueEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiFetch(`/api/revenue/${id}`, { method: "DELETE" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
   });
 }
 
@@ -85,7 +88,7 @@ export function useConfirmRevenueEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiFetch(`/api/revenue/${id}/confirm`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
   });
 }
 
@@ -93,25 +96,37 @@ export function useCancelRevenueEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiFetch(`/api/revenue/${id}/cancel`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
   });
 }
 
 /* ───── Internal Revenue ──────────────────────────────────────── */
 
-export function useInternalRevenue(filters?: { projectId?: string; deptId?: string }) {
+export function useInternalRevenue(filters?: {
+  projectId?: string;
+  deptId?: string;
+  page?: number;
+  per_page?: number;
+}) {
+  const filterKey = { projectId: filters?.projectId, deptId: filters?.deptId, page: String(filters?.page ?? 1) };
   return useQuery({
-    queryKey: revenueKeys.internal(filters),
+    queryKey: revenueKeys.internal(filterKey as Record<string, string | undefined>),
     queryFn: async () => {
+      const page = filters?.page ?? 1;
+      const perPage = filters?.per_page ?? PAGINATION.DEFAULT_PAGE_SIZE;
+      const from = (page - 1) * perPage;
+      const to = from + perPage - 1;
+
       let query = supabase
         .from("internal_revenue")
-        .select("*, project:projects(id, code, name), department:departments(id, name, code), creator:users!created_by(id, full_name)")
-        .order("created_at", { ascending: false });
+        .select("*, project:projects(id, code, name), department:departments(id, name, code), creator:users!created_by(id, full_name)", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
       if (filters?.projectId) query = query.eq("project_id", filters.projectId);
       if (filters?.deptId) query = query.eq("dept_id", filters.deptId);
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data as unknown as InternalRevenue[];
+      return { data: data as unknown as InternalRevenue[], count, page, per_page: perPage };
     },
   });
 }
@@ -129,7 +144,7 @@ export function useCreateInternalRevenue() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.internal() }),
   });
 }
 
@@ -144,7 +159,7 @@ export function useUpdateInternalRevenue() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.internal() }),
   });
 }
 
@@ -155,25 +170,37 @@ export function useDeleteInternalRevenue() {
       const { error } = await supabase.from("internal_revenue").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.internal() }),
   });
 }
 
 /* ───── Cost Entries ──────────────────────────────────────────── */
 
-export function useCostEntries(filters?: { projectId?: string; category?: string }) {
+export function useCostEntries(filters?: {
+  projectId?: string;
+  category?: string;
+  page?: number;
+  per_page?: number;
+}) {
+  const filterKey = { projectId: filters?.projectId, category: filters?.category, page: String(filters?.page ?? 1) };
   return useQuery({
-    queryKey: revenueKeys.costs(filters),
+    queryKey: revenueKeys.costs(filterKey as Record<string, string | undefined>),
     queryFn: async () => {
+      const page = filters?.page ?? 1;
+      const perPage = filters?.per_page ?? PAGINATION.DEFAULT_PAGE_SIZE;
+      const from = (page - 1) * perPage;
+      const to = from + perPage - 1;
+
       let query = supabase
         .from("cost_entries")
-        .select("*, project:projects(id, code, name), contract:contracts(id, contract_no, title), department:departments(id, name, code), creator:users!created_by(id, full_name)")
-        .order("created_at", { ascending: false });
+        .select("*, project:projects(id, code, name), contract:contracts(id, contract_no, title), department:departments(id, name, code), creator:users!created_by(id, full_name)", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
       if (filters?.projectId) query = query.eq("project_id", filters.projectId);
       if (filters?.category) query = query.eq("category", filters.category);
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data as unknown as CostEntry[];
+      return { data: data as unknown as CostEntry[], count, page, per_page: perPage };
     },
   });
 }
@@ -190,7 +217,7 @@ export function useCreateCostEntry() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.costs() }),
   });
 }
 
@@ -201,6 +228,6 @@ export function useDeleteCostEntry() {
       const { error } = await supabase.from("cost_entries").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.costs() }),
   });
 }

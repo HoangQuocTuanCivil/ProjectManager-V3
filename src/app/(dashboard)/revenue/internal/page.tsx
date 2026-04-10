@@ -40,10 +40,11 @@ export default function InternalRevenuePage() {
 
   const [filterProjectId, setFilterProjectId] = useState<string>("");
   const [filterDeptId, setFilterDeptId] = useState<string>("");
-  const { data: entries = [] } = useInternalRevenue({
+  const { data: internalResult } = useInternalRevenue({
     projectId: filterProjectId || undefined,
     deptId: filterDeptId || undefined,
   });
+  const entries = internalResult?.data ?? [];
   const create = useCreateInternalRevenue();
   const update = useUpdateInternalRevenue();
   const remove = useDeleteInternalRevenue();
