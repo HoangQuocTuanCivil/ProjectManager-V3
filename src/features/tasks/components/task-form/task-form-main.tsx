@@ -318,7 +318,7 @@ export function TaskForm({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          {/* Workflow Selection */}
+          {/* Quy trình phê duyệt — hiển thị ngay sau phần giao việc */}
           <TaskFormWorkflow
             activeWorkflows={activeWorkflows}
             workflowId={workflowId}

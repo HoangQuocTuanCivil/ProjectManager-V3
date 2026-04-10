@@ -109,6 +109,17 @@ export function useTask(id: string) {
         supabase.from('task_workflow_state').select('*, current_step:workflow_steps(*)').eq('task_id', id).maybeSingle(),
       ]);
 
+      // Lấy tất cả bước của workflow template để hiển thị quy trình đầy đủ
+      let allSteps: any[] = [];
+      if (wfState.data?.template_id) {
+        const { data: steps } = await supabase
+          .from('workflow_steps')
+          .select('*')
+          .eq('template_id', wfState.data.template_id)
+          .order('step_order');
+        allSteps = steps || [];
+      }
+
       return {
         ...data,
         team,
@@ -116,7 +127,7 @@ export function useTask(id: string) {
         checklists: checklists.data || [],
         attachments: [],
         dependencies: [],
-        workflow_state: wfState.data || null,
+        workflow_state: wfState.data ? { ...wfState.data, all_steps: allSteps } : null,
       } as unknown as Task;
     },
     enabled: !!id,

@@ -342,8 +342,31 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
 
           {/* Workflow State */}
           {task.workflow_state && (
-            <CollapsibleSection title="Workflow" icon="⚡" defaultOpen={false}>
-              <div className="p-3 space-y-2">
+            <CollapsibleSection title="Quy trình phê duyệt" icon="⚡" defaultOpen>
+              <div className="p-3 space-y-3">
+                {/* Hiển thị tất cả bước với người phụ trách */}
+                {(task.workflow_state as any).all_steps?.length > 0 && (
+                  <div className="space-y-1.5">
+                    {(task.workflow_state as any).all_steps.map((step: any) => {
+                      const isCurrent = step.id === task.workflow_state?.current_step?.id;
+                      const isPast = step.step_order < (task.workflow_state?.current_step?.step_order ?? 0);
+                      const assigneeId = (task.metadata as any)?.step_assignees?.[step.id];
+                      void assigneeId; // Người phụ trách lưu trong metadata, hiển thị role thay vì tên
+                      const stepLabel: Record<string, string> = { create: "Tạo", execute: "Thực hiện", review: "Kiểm tra", approve: "Phê duyệt", submit: "Nộp", revise: "Sửa" };
+                      return (
+                        <div key={step.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${isCurrent ? "bg-primary/10 ring-1 ring-primary/30" : isPast ? "bg-secondary/50 text-muted-foreground" : "text-muted-foreground/70"}`}>
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${isPast ? "bg-emerald-500" : isCurrent ? "bg-primary" : "bg-muted-foreground/30"}`}>
+                            {isPast ? "✓" : step.step_order}
+                          </span>
+                          <span className={`font-medium ${isCurrent ? "text-primary" : ""}`}>{step.name || stepLabel[step.step_type] || step.step_type}</span>
+                          {step.assigned_role && <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{step.assigned_role}</span>}
+                          {isCurrent && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-semibold">Đang thực hiện</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <p className="text-sm">Đang ở bước: <span className="font-semibold text-primary">{task.workflow_state.current_step?.name}</span></p>
