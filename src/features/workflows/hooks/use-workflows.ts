@@ -176,9 +176,12 @@ export function useUpdateWorkflow() {
       const { error: wfErr } = await supabase.from("workflow_templates").update(updates).eq("id", id);
       if (wfErr) throw wfErr;
 
-      // If steps provided, rebuild them
       if (steps) {
-        // Delete old steps and transitions
+        await (supabase.from("task_workflow_state") as any)
+          .update({ completed_at: new Date().toISOString(), result: "cancelled" })
+          .eq("template_id", id)
+          .is("completed_at", null);
+
         await supabase.from("workflow_transitions").delete().eq("template_id", id);
         await supabase.from("workflow_steps").delete().eq("template_id", id);
 
@@ -218,8 +221,8 @@ export function useUpdateWorkflow() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: workflowKeys.list() });
       qc.invalidateQueries({ queryKey: workflowKeys.all });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }
@@ -228,13 +231,28 @@ export function useDeleteWorkflow() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // Delete transitions, steps, then template
+      const { count } = await supabase
+        .from("task_workflow_state")
+        .select("id", { count: "exact", head: true })
+        .eq("template_id", id)
+        .is("completed_at", null);
+
+      if (count && count > 0) {
+        throw new Error(
+          `Không thể xóa: quy trình đang được sử dụng bởi ${count} công việc đang hoạt động`,
+        );
+      }
+
+      await supabase.from("task_workflow_state").delete().eq("template_id", id);
       await supabase.from("workflow_transitions").delete().eq("template_id", id);
       await supabase.from("workflow_steps").delete().eq("template_id", id);
       const { error } = await supabase.from("workflow_templates").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: workflowKeys.list() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: workflowKeys.list() });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
   });
 }
 
@@ -244,7 +262,18 @@ export function useToggleWorkflow() {
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
       const { error } = await supabase.from("workflow_templates").update({ is_active }).eq("id", id);
       if (error) throw error;
+
+      if (!is_active) {
+        await (supabase.from("task_workflow_state") as any)
+          .update({ completed_at: new Date().toISOString(), result: "cancelled" })
+          .eq("template_id", id)
+          .is("completed_at", null);
+      }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: workflowKeys.list() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: workflowKeys.list() });
+      qc.invalidateQueries({ queryKey: workflowKeys.pending() });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
   });
 }

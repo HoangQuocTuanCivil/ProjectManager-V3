@@ -125,7 +125,6 @@ export function useCreateRole() {
   });
 }
 
-/** Cập nhật vai trò tùy chỉnh */
 export function useUpdateRole() {
   const qc = useQueryClient();
   return useMutation({
@@ -150,11 +149,11 @@ export function useUpdateRole() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.roles() });
       qc.invalidateQueries({ queryKey: settingsKeys.permissions() });
+      qc.invalidateQueries({ queryKey: ["workflows"] });
     },
   });
 }
 
-/** Xóa vai trò tùy chỉnh */
 export function useDeleteRole() {
   const qc = useQueryClient();
   return useMutation({
@@ -167,6 +166,7 @@ export function useDeleteRole() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.roles() });
       qc.invalidateQueries({ queryKey: settingsKeys.permissions() });
+      qc.invalidateQueries({ queryKey: ["workflows"] });
     },
   });
 }

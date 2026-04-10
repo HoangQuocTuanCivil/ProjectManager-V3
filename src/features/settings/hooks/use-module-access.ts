@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { workflowKeys } from "@/features/workflows/hooks/use-workflows";
 
 const MODULE_ACCESS_KEY = ["module-access"] as const;
 const MODULE_ACCESS_ALL_KEY = ["module-access", "all"] as const;
@@ -56,6 +57,8 @@ export function useSaveModuleAccess() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: MODULE_ACCESS_KEY });
       qc.invalidateQueries({ queryKey: MODULE_ACCESS_ALL_KEY });
+      qc.invalidateQueries({ queryKey: workflowKeys.all });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }

@@ -47,10 +47,20 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const admin = getAdminSupabase();
 
-  // Delete permission mappings first
+  const { count } = await admin
+    .from("workflow_steps")
+    .select("id", { count: "exact", head: true })
+    .eq("assigned_custom_role", params.id);
+
+  if (count && count > 0) {
+    return errorResponse(
+      `Không thể xóa: vai trò đang được sử dụng bởi ${count} bước quy trình`,
+      409,
+    );
+  }
+
   await admin.from("role_permissions").delete().eq("role_id", params.id);
 
-  // Delete the custom role
   const { error } = await admin
     .from("custom_roles")
     .delete()

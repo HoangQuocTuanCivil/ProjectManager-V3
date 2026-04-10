@@ -262,13 +262,28 @@ export function useUpdateProgress() {
       }
 
       const updates: TablesUpdate<'tasks'> = { progress };
-      // Auto-sync status based on progress:
-      // 0% → pending (Đang chuẩn bị)
-      // 0% < progress < 100% → in_progress (Đang làm)
-      // 100% → review (Chờ duyệt)
-      if (progress === 0) updates.status = 'pending';
-      else if (progress === 100) updates.status = 'review';
-      else updates.status = 'in_progress';
+
+      let currentStepType: string | null = null;
+      if (progress === 100) {
+        const { data: wfState } = await supabase
+          .from("task_workflow_state")
+          .select("current_step_id, current_step:workflow_steps(step_type)")
+          .eq("task_id", id)
+          .is("completed_at", null)
+          .maybeSingle();
+        currentStepType = (wfState?.current_step as { step_type: string } | null)?.step_type ?? null;
+      }
+
+      if (progress === 0) {
+        updates.status = 'pending';
+      } else if (progress === 100) {
+        if (!currentStepType || currentStepType === 'execute') {
+          updates.status = 'review';
+        }
+      } else {
+        updates.status = 'in_progress';
+      }
+
       const { data, error } = await supabase
         .from('tasks')
         .update(updates)
@@ -277,23 +292,12 @@ export function useUpdateProgress() {
         .single();
       if (error) throw error;
 
-      // Auto-advance workflow from "execute" to "review" step
-      if (progress === 100) {
+      if (progress === 100 && currentStepType === 'execute') {
         try {
-          const { data: wfState } = await supabase
-            .from("task_workflow_state")
-            .select("current_step_id, current_step:workflow_steps(step_type)")
-            .eq("task_id", id)
-            .is("completed_at", null)
-            .maybeSingle();
-          const step = wfState?.current_step as { step_type: string } | null;
-          if (step?.step_type === 'execute') {
-            const { data: { user } } = await supabase.auth.getUser();
-            await supabase.rpc("fn_workflow_advance", {
-              p_task: id, p_actor: user!.id, p_result: "completed",
-              p_note: "Tự động chuyển khi tiến độ đạt 100%",
-            });
-          }
+          await supabase.rpc("fn_workflow_advance", {
+            p_task: id, p_actor: authUser.id, p_result: "completed",
+            p_note: "Tự động chuyển khi tiến độ đạt 100%",
+          });
         } catch {}
       }
 
