@@ -34,6 +34,34 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (roleErr) return errorResponse(roleErr, 403);
 
   const supabase = await getServerSupabase();
+
+  // Guard: check if product_service is used in active contracts or revenue
+  const [contractCheck, revenueCheck] = await Promise.all([
+    supabase
+      .from("contracts")
+      .select("id", { count: "exact", head: true })
+      .eq("product_service_id", params.id)
+      .is("deleted_at", null),
+    supabase
+      .from("revenue_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("product_service_id", params.id)
+      .is("deleted_at", null),
+  ]);
+
+  const contractCount = contractCheck.count ?? 0;
+  const revenueCount = revenueCheck.count ?? 0;
+
+  if (contractCount > 0 || revenueCount > 0) {
+    const parts: string[] = [];
+    if (contractCount > 0) parts.push(`${contractCount} hợp đồng`);
+    if (revenueCount > 0) parts.push(`${revenueCount} doanh thu`);
+    return errorResponse(
+      `Không thể vô hiệu hóa: sản phẩm/dịch vụ đang được sử dụng bởi ${parts.join(" và ")}`,
+      409,
+    );
+  }
+
   const { data, error } = await supabase
     .from("product_services")
     .update({ is_active: false })

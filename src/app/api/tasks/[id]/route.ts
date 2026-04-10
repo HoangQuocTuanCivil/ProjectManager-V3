@@ -82,13 +82,21 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return errorResponse("Không có quyền xóa công việc này", 403);
   }
 
-  // Soft delete: set status to cancelled
-  const { error } = await supabase
-    .from("tasks")
-    .update({ status: "cancelled", deleted_at: new Date().toISOString() })
-    .eq("id", params.id);
+  const now = new Date().toISOString();
 
-  if (error) return errorResponse(error.message, 500);
+  const [taskResult, wfResult] = await Promise.all([
+    supabase
+      .from("tasks")
+      .update({ status: "cancelled", deleted_at: now })
+      .eq("id", params.id),
+    supabase
+      .from("task_workflow_state")
+      .update({ completed_at: now, result: "cancelled" })
+      .eq("task_id", params.id)
+      .is("completed_at", null),
+  ]);
+
+  if (taskResult.error) return errorResponse(taskResult.error.message, 500);
 
   return jsonResponse({ success: true });
 }

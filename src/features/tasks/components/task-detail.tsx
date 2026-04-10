@@ -60,12 +60,17 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const supabase = createClient();
-      const { error } = await (supabase.from("tasks") as any).update({ status: "cancelled", deleted_at: new Date().toISOString() }).eq("id", taskId);
-      if (error) throw error;
+      const now = new Date().toISOString();
+      const [taskResult, _wfResult] = await Promise.all([
+        (supabase.from("tasks") as any).update({ status: "cancelled", deleted_at: now }).eq("id", taskId),
+        (supabase.from("task_workflow_state") as any).update({ completed_at: now, result: "cancelled" }).eq("task_id", taskId).is("completed_at", null),
+      ]);
+      if (taskResult.error) throw taskResult.error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["kpi", "periods"] });
+      queryClient.invalidateQueries({ queryKey: ["workflows", "pending"] });
       toast.success("Đã xóa công việc");
       onClose();
     },

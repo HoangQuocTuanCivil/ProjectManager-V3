@@ -173,6 +173,14 @@ export function useUpdateProject() {
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: projectKeys.list() });
       qc.invalidateQueries({ queryKey: projectKeys.detail(vars.id) });
+      // Cross-module: status change affects downstream modules
+      if (vars.status) {
+        qc.invalidateQueries({ queryKey: ["contracts"] });
+        qc.invalidateQueries({ queryKey: ["tasks"] });
+        qc.invalidateQueries({ queryKey: ["revenue"] });
+        qc.invalidateQueries({ queryKey: ["reports"] });
+        qc.invalidateQueries({ queryKey: ["kpi"] });
+      }
     },
   });
 }
@@ -249,6 +257,10 @@ export function useDeleteProject() {
       qc.invalidateQueries({ queryKey: projectKeys.all });
       qc.invalidateQueries({ queryKey: ["contracts"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+      qc.invalidateQueries({ queryKey: ["reports"] });
+      qc.invalidateQueries({ queryKey: ["kpi"] });
+      qc.invalidateQueries({ queryKey: ["workflows", "pending"] });
     },
   });
 }
@@ -263,7 +275,13 @@ export function useArchiveProject() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.all });
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+      qc.invalidateQueries({ queryKey: ["kpi"] });
+    },
   });
 }
 
@@ -277,6 +295,12 @@ export function useRestoreProject() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.all });
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+      qc.invalidateQueries({ queryKey: ["kpi"] });
+    },
   });
 }

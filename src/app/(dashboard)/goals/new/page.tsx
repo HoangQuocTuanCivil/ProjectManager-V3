@@ -120,7 +120,7 @@ export default function NewGoalPage() {
         const rows = validTargets.map((t, idx) => ({
           goal_id: newGoal.id,
           title: t.title,
-          target_type: t.target_type || "number",
+          target_type: (t.target_type || "number") as "number" | "boolean" | "currency" | "percentage" | "task_completion",
           start_value: t.start_value,
           current_value: t.start_value,
           target_value: t.target_value,

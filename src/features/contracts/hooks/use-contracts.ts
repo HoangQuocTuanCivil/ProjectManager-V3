@@ -141,6 +141,8 @@ export function useUpdateContract() {
       qc.invalidateQueries({ queryKey: contractKeys.all });
       if (vars.status && ["terminated", "settled"].includes(vars.status)) {
         qc.invalidateQueries({ queryKey: ["tasks"] });
+        qc.invalidateQueries({ queryKey: ["revenue"] });
+        qc.invalidateQueries({ queryKey: ["reports"] });
       }
     },
   });
@@ -159,6 +161,8 @@ export function useDeleteContract() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
       qc.invalidateQueries({ queryKey: ["kpi"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+      qc.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }
