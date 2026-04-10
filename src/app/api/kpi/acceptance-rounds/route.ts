@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { createAcceptanceRoundSchema } from "@/features/kpi/schemas/allocation.schema";
 
 /** GET: batch fetch đợt nghiệm thu cho nhiều giao khoán
  *  Query: allocation_ids=id1,id2,... */
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await admin
     .from("acceptance_rounds")
     .select("*")
+    .eq("org_id", profile.org_id)
     .in("allocation_id", ids)
     .order("sort_order", { ascending: true });
 
@@ -30,22 +32,20 @@ export async function POST(req: NextRequest) {
   if (roleErr) return errorResponse(roleErr, 403);
 
   const body = await req.json();
-  const { allocation_id, round_name, amount, round_date, note, sort_order } = body;
-
-  if (!allocation_id || !round_name) return errorResponse("allocation_id và round_name là bắt buộc", 400);
-  if (typeof amount !== "number" || amount < 0) return errorResponse("amount phải là số ≥ 0", 400);
+  const parsed = createAcceptanceRoundSchema.safeParse(body);
+  if (!parsed.success) {
+    const msg = parsed.error.issues.map((i) => i.message).join("; ");
+    return errorResponse(msg, 422);
+  }
 
   const admin = getUntypedAdmin();
   const { data, error } = await admin
     .from("acceptance_rounds")
     .insert({
-      allocation_id,
+      ...parsed.data,
+      round_date: parsed.data.round_date || null,
+      note: parsed.data.note || null,
       org_id: profile.org_id,
-      round_name,
-      amount,
-      round_date: round_date || null,
-      note: note || null,
-      sort_order: sort_order ?? 0,
       created_by: user.id,
     })
     .select("*")

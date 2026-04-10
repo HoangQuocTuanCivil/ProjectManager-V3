@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse, parsePagination } from "@/lib/api/helpers";
+import { hasMinRole } from "@/lib/utils/permissions";
+import type { UserRole } from "@/lib/types";
 
-// Bảng thưởng/nợ cá nhân — dữ liệu từ view v_employee_bonus
-// Filter theo đợt khoán, phòng ban, loại kết quả (bonus/deduction/balanced)
 export async function GET(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
@@ -22,10 +22,15 @@ export async function GET(req: NextRequest) {
   const outcome = searchParams.get("outcome");
 
   if (period_id) query = query.eq("period_id", period_id);
-  if (dept_id) query = query.eq("dept_id", dept_id);
   if (outcome && outcome !== "all") {
     if (!["bonus", "deduction", "balanced"].includes(outcome)) return errorResponse("outcome không hợp lệ", 400);
     query = query.eq("outcome", outcome);
+  }
+
+  if (!hasMinRole(profile.role as UserRole, "director")) {
+    query = query.eq("dept_id", profile.dept_id);
+  } else if (dept_id) {
+    query = query.eq("dept_id", dept_id);
   }
 
   const { data, error, count } = await query;

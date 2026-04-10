@@ -21,6 +21,7 @@ export function useAllocationConfigs() {
       if (error) throw error;
       return data as unknown as (AllocationConfig & { center: { id: string; name: string; code: string } | null })[];
     },
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -55,12 +56,13 @@ export function useAllocationPeriods() {
       const { data, error } = await supabase
         .from("allocation_periods")
         .select(
-          "*, config:allocation_configs(*), project:projects(code, name), results:allocation_results(*, user:users(id, full_name, avatar_url, role))"
+          "*, config:allocation_configs(*), project:projects(code, name), results:allocation_results(id, user_id, weighted_score, share_percentage, allocated_amount, task_count, user:users(id, full_name, avatar_url))"
         )
         .order("period_start", { ascending: false });
       if (error) throw error;
       return data as unknown as AllocationPeriod[];
     },
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -191,19 +193,23 @@ export function useDeleteAllocationPeriod() {
 /* ───── Dept Budget Allocation (Giao khoán) ───────────────────── */
 
 /** Lấy danh sách giao khoán theo phòng ban, có thể lọc theo dự án */
-export function useDeptBudgetAllocations(projectId?: string) {
+export function useDeptBudgetAllocations(projectId?: string, page = 1, perPage = 50) {
   return useQuery({
     queryKey: kpiKeys.budgetAllocations(projectId),
     queryFn: async () => {
+      const from = (page - 1) * perPage;
+      const to = from + perPage - 1;
       let query = supabase
         .from("dept_budget_allocations")
-        .select("*, project:projects(id, code, name, budget, allocation_fund), contract:contracts!contract_id(id, contract_no, title, contract_value), department:departments(id, name, code), center:centers(id, name, code), creator:users!created_by(id, full_name)")
-        .order("created_at", { ascending: false });
+        .select("*, project:projects(id, code, name, budget, allocation_fund), contract:contracts!contract_id(id, contract_no, title, contract_value), department:departments(id, name, code), center:centers(id, name, code), creator:users!created_by(id, full_name)", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
       if (projectId) query = query.eq("project_id", projectId);
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data as unknown as DeptBudgetAllocation[];
+      return { data: data as unknown as DeptBudgetAllocation[], count, page, per_page: perPage };
     },
+    staleTime: 60_000,
   });
 }
 

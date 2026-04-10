@@ -45,3 +45,6 @@ export {
 
 // Components
 export { AllocationTable, UserKPICard } from './components/kpi-cards';
+
+export { calculateAllocationSchema, createAcceptanceRoundSchema } from './schemas/allocation.schema';
+export type { CalculateAllocationInput, CreateAcceptanceRoundInput } from './schemas/allocation.schema';

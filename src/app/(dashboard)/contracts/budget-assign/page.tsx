@@ -59,11 +59,12 @@ export default function BudgetAssignPage() {
     [contracts]
   );
 
-  const { data: allocations = [] } = useDeptBudgetAllocations(
+  const { data: allocResult } = useDeptBudgetAllocations(
     filterContractId !== "all"
       ? activeContracts.find((c: any) => c.id === filterContractId)?.project_id
       : undefined,
   );
+  const allocations = allocResult?.data ?? [];
   const upsert = useUpsertDeptBudgetAllocation();
   const update = useUpdateDeptBudgetAllocation();
   const remove = useDeleteDeptBudgetAllocation();
