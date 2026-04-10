@@ -12,10 +12,34 @@ export const projectKeys = {
   all: ["projects"] as const,
   list: () => [...projectKeys.all, "list"] as const,
   paginated: (filters: ProjectListFilters) => [...projectKeys.all, "paginated", filters] as const,
+  summary: () => [...projectKeys.all, "summary"] as const,
   detail: (id: string) => [...projectKeys.all, id] as const,
   members: (id: string) => [...projectKeys.all, id, "members"] as const,
   milestones: (id: string) => [...projectKeys.all, id, "milestones"] as const,
 };
+
+export interface ProjectSummaryItem {
+  project_id: string;
+  outgoing_budget: number;
+  incoming_fund: number;
+  task_count: number;
+  overdue_count: number;
+}
+
+export function useProjectsSummary() {
+  return useQuery({
+    queryKey: projectKeys.summary(),
+    queryFn: async () => {
+      const res = await fetch("/api/projects/summary");
+      if (!res.ok) throw new Error("Failed to fetch summary");
+      const json = await res.json();
+      const map = new Map<string, ProjectSummaryItem>();
+      for (const s of json.data as ProjectSummaryItem[]) map.set(s.project_id, s);
+      return map;
+    },
+    staleTime: 60_000,
+  });
+}
 
 export interface ProjectListFilters {
   page?: number;

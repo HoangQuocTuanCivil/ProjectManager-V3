@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useProjects, useDeleteProject, useArchiveProject } from "@/features/projects";
-import { useContracts } from "@/features/contracts";
-import { useTasks } from "@/features/tasks";
+import { useProjects, useDeleteProject, useArchiveProject, useProjectsSummary } from "@/features/projects";
+import type { ProjectSummaryItem } from "@/features/projects";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useAuthStore } from "@/lib/stores";
 import { canCreateProject } from "@/lib/utils/permissions";
@@ -31,8 +30,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const { t } = useI18n();
   const { data: projects = [], isLoading } = useProjects();
-  const { data: allContracts = [] } = useContracts();
-  const { data: allTasks = [] } = useTasks({});
+  const { data: summaryMap = new Map<string, ProjectSummaryItem>() } = useProjectsSummary();
   const { user } = useAuthStore();
   const deleteProject = useDeleteProject();
   const archiveProject = useArchiveProject();
@@ -53,43 +51,35 @@ export default function ProjectsPage() {
 
   const isAdminOrLeader = user && canCreateProject(user.role as UserRole);
 
-  // Collect project IDs from tasks the user can see (RLS-filtered)
-  const myTaskProjectIds = new Set(
-    allTasks.filter((t: any) => t.project_id).map((t: any) => t.project_id)
-  );
+  const visibleProjects = useMemo(() => {
+    if (isAdminOrLeader) return projects;
+    return projects.filter((p) => {
+      if (!user) return false;
+      if (user.dept_id && p.departments?.some((pd: any) => pd.dept?.id === user.dept_id)) return true;
+      if (summaryMap.has(p.id)) return true;
+      if (p.manager_id === user.id) return true;
+      return false;
+    });
+  }, [projects, user, isAdminOrLeader, summaryMap]);
 
-  // Filter projects: admin/leader see all; others see projects they participate in
-  const visibleProjects = isAdminOrLeader
-    ? projects
-    : projects.filter((p) => {
-        if (!user) return false;
-        // 1. User's department is explicitly assigned to this project
-        if (user.dept_id && p.departments?.some((pd: any) => pd.dept?.id === user.dept_id)) return true;
-        // 2. User has tasks in this project (RLS already filters tasks by dept/team/assignee)
-        if (myTaskProjectIds.has(p.id)) return true;
-        // 3. User is the project manager
-        if (p.manager_id === user.id) return true;
-        return false;
-      });
+  const filtered = useMemo(() =>
+    visibleProjects.filter((p) => {
+      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      const q = debouncedSearch.toLowerCase();
+      if (q && !p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
+      return true;
+    }),
+  [visibleProjects, statusFilter, debouncedSearch]);
 
-  const filtered = visibleProjects.filter((p) => {
-    if (statusFilter !== "all" && p.status !== statusFilter) return false;
-    const q = debouncedSearch.toLowerCase();
-    if (q && !p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
-    return true;
-  });
-
-  const activeCount = visibleProjects.filter((p) => p.status === "active").length;
-  const activeContracts = (allContracts as any[]).filter((c) => ["active", "completed"].includes(c.status));
-  const projectBudgetMap = new Map<string, number>();
-  const projectFundMap = new Map<string, number>();
-  for (const c of activeContracts) {
-    const val = Number(c.contract_value);
-    if (c.contract_type === "outgoing") projectBudgetMap.set(c.project_id, (projectBudgetMap.get(c.project_id) || 0) + val);
-    else if (c.contract_type === "incoming") projectFundMap.set(c.project_id, (projectFundMap.get(c.project_id) || 0) + val);
-  }
-  const totalBudget = visibleProjects.reduce((s, p) => s + (projectBudgetMap.get(p.id) || 0), 0);
-  const totalFund = visibleProjects.reduce((s, p) => s + (projectFundMap.get(p.id) || 0), 0);
+  const { activeCount, totalBudget, totalFund } = useMemo(() => {
+    let active = 0, budget = 0, fund = 0;
+    for (const p of visibleProjects) {
+      if (p.status === "active") active++;
+      const s = summaryMap.get(p.id);
+      if (s) { budget += s.outgoing_budget; fund += s.incoming_fund; }
+    }
+    return { activeCount: active, totalBudget: budget, totalFund: fund };
+  }, [visibleProjects, summaryMap]);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -173,9 +163,7 @@ export default function ProjectsPage() {
             <ProjectCard
               key={project.id}
               project={project}
-              contractBudget={projectBudgetMap.get(project.id) || 0}
-              taskCount={allTasks.filter((t) => t.project_id === project.id).length}
-              overdueCount={allTasks.filter((t) => t.project_id === project.id && t.status === "overdue").length}
+              summary={summaryMap.get(project.id)}
               onClick={() => router.push(`/projects/${project.id}`)}
               canManage={!!isAdminOrLeader}
               onArchive={() => setArchiveTarget(project)}
@@ -186,9 +174,7 @@ export default function ProjectsPage() {
       ) : (
         <ProjectListView
           projects={filtered}
-          allTasks={allTasks}
-          projectBudgetMap={projectBudgetMap}
-          projectFundMap={projectFundMap}
+          summaryMap={summaryMap}
           onClick={(id) => router.push(`/projects/${id}`)}
           canManage={!!isAdminOrLeader}
           onArchive={(p) => setArchiveTarget(p)}
@@ -243,24 +229,23 @@ export default function ProjectsPage() {
 
 function ProjectCard({
   project,
-  contractBudget,
-  taskCount,
-  overdueCount,
+  summary,
   onClick,
   canManage,
   onArchive,
   onDelete,
 }: {
   project: Project;
-  contractBudget: number;
-  taskCount: number;
-  overdueCount: number;
+  summary?: ProjectSummaryItem;
   onClick: () => void;
   canManage?: boolean;
   onArchive?: () => void;
   onDelete?: () => void;
 }) {
   const { t } = useI18n();
+  const taskCount = summary?.task_count ?? 0;
+  const overdueCount = summary?.overdue_count ?? 0;
+  const contractBudget = summary?.outgoing_budget ?? 0;
   const statusLabel = {
     planning: t.projects.planning,
     active: t.projects.active,
@@ -388,18 +373,14 @@ function ProjectCard({
 
 function ProjectListView({
   projects,
-  allTasks,
-  projectBudgetMap,
-  projectFundMap,
+  summaryMap,
   onClick,
   canManage,
   onArchive,
   onDelete,
 }: {
   projects: Project[];
-  allTasks: any[];
-  projectBudgetMap: Map<string, number>;
-  projectFundMap: Map<string, number>;
+  summaryMap: Map<string, ProjectSummaryItem>;
   onClick: (id: string) => void;
   canManage?: boolean;
   onArchive?: (p: Project) => void;
@@ -429,8 +410,7 @@ function ProjectListView({
           {projects.map((p) => {
             const statusColor = STATUS_COLORS[p.status];
             const label = getStatusLabel(p.status);
-            const pTasks = allTasks.filter((t: any) => t.project_id === p.id);
-            const overdue = pTasks.filter((t: any) => t.status === "overdue").length;
+            const s = summaryMap.get(p.id);
             return (
               <tr
                 key={p.id}
@@ -464,14 +444,14 @@ function ProjectListView({
                   <ProgressBar value={p.progress ?? 0} />
                 </td>
                 <td className="px-4 py-3">
-                  <span className="font-mono text-sm">{pTasks.length}</span>
-                  {overdue > 0 && <span className="text-destructive text-[11px] ml-1">({overdue} {t.projects.lateLbl})</span>}
+                  <span className="font-mono text-sm">{s?.task_count ?? 0}</span>
+                  {(s?.overdue_count ?? 0) > 0 && <span className="text-destructive text-[11px] ml-1">({s!.overdue_count} {t.projects.lateLbl})</span>}
                 </td>
                 <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
-                  {(projectBudgetMap.get(p.id) || 0) > 0 ? formatVND(projectBudgetMap.get(p.id)!) : "—"}
+                  {(s?.outgoing_budget ?? 0) > 0 ? formatVND(s!.outgoing_budget) : "—"}
                 </td>
                 <td className="px-4 py-3 font-mono text-sm text-amber-500 font-semibold">
-                  {(projectFundMap.get(p.id) || 0) > 0 ? formatVND(projectFundMap.get(p.id)!) : "—"}
+                  {(s?.incoming_fund ?? 0) > 0 ? formatVND(s!.incoming_fund) : "—"}
                 </td>
                 <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
                   {formatDate(p.end_date)}

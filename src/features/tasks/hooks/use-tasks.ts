@@ -26,7 +26,8 @@ export function useTasks(filters: TaskFilters = {}) {
           assignee:users!tasks_assignee_id_fkey(id, full_name, avatar_url, role),
           assigner:users!tasks_assigner_id_fkey(id, full_name),
           project:projects(id, code, name),
-          department:departments(id, name, code, center_id, center:centers(id, name, code))
+          department:departments(id, name, code, center_id, center:centers(id, name, code)),
+          team:teams(id, name, code)
         `)
         .is('deleted_at', null)
         .neq('status', 'cancelled')
@@ -49,27 +50,18 @@ export function useTasks(filters: TaskFilters = {}) {
       if (error) throw error;
       if (!data || data.length === 0) return [] as Task[];
 
-      // Fetch team names separately (new FK not auto-detected by PostgREST)
-      const teamIds = [...new Set(data.map((t) => t.team_id).filter((id): id is string => id != null))];
-      let teamsMap: Record<string, { id: string; name: string; code: string | null }> = {};
-      if (teamIds.length > 0) {
-        const { data: teamsData } = await supabase.from('teams').select('id, name, code').in('id', teamIds);
-        if (teamsData) teamsData.forEach((t) => { teamsMap[t.id] = t; });
-      }
+      const normalize = <T,>(v: T | T[]): T | null =>
+        Array.isArray(v) ? v[0] || null : v ?? null;
 
       return data.map((t) => {
-        const dept = Array.isArray(t.department) ? t.department[0] || null : t.department;
-        // Normalize center nested inside department
-        if (dept?.center) {
-          dept.center = Array.isArray(dept.center) ? dept.center[0] || null : dept.center;
-        }
+        const dept = normalize(t.department) as any;
+        if (dept?.center) dept.center = normalize(dept.center);
         return {
           ...t,
-          team: teamsMap[t.team_id ?? ''] || null,
-          // Normalize joined relations (PostgREST may return arrays after schema reload)
-          assignee: Array.isArray(t.assignee) ? t.assignee[0] || null : t.assignee,
-          assigner: Array.isArray(t.assigner) ? t.assigner[0] || null : t.assigner,
-          project: Array.isArray(t.project) ? t.project[0] || null : t.project,
+          assignee: normalize(t.assignee),
+          assigner: normalize(t.assigner),
+          project: normalize(t.project),
+          team: normalize(t.team),
           department: dept,
         };
       }) as unknown as Task[];
@@ -83,27 +75,19 @@ export function useTask(id: string) {
   return useQuery({
     queryKey: taskKeys.detail(id),
     queryFn: async () => {
-      // Main task with core relations only (avoid RLS-blocked tables)
       const { data, error } = await supabase
         .from('tasks')
         .select(`
           *,
           assignee:users!tasks_assignee_id_fkey(id, full_name, avatar_url, role, email),
           assigner:users!tasks_assigner_id_fkey(id, full_name),
-          project:projects(id, code, name)
+          project:projects(id, code, name),
+          team:teams(id, name, code)
         `)
         .eq('id', id)
         .single();
       if (error) throw error;
 
-      // Fetch team separately
-      let team: { id: string; name: string; code: string | null } | null = null;
-      if (data.team_id) {
-        const { data: teamData } = await supabase.from('teams').select('id, name, code').eq('id', data.team_id).single();
-        team = teamData || null;
-      }
-
-      // Fetch optional relations separately (may be blocked by RLS)
       const [comments, checklists, wfState] = await Promise.all([
         supabase.from('task_comments').select('*, user:users(id, full_name, role)').eq('task_id', id).order('created_at'),
         supabase.from('task_checklists').select('*, items:checklist_items(*)').eq('task_id', id),
@@ -123,7 +107,6 @@ export function useTask(id: string) {
 
       return {
         ...data,
-        team,
         comments: comments.data || [],
         checklists: checklists.data || [],
         attachments: [],
