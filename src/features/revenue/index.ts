@@ -22,3 +22,6 @@ export {
 export {
   useDeptRevenue, useDeptRevenueByProject,
 } from './hooks/use-dept-revenue';
+
+export { createRevenueEntrySchema, updateRevenueEntrySchema } from './schemas/revenue.schema';
+export type { CreateRevenueEntryInput, UpdateRevenueEntryInput } from './schemas/revenue.schema';

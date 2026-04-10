@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole, parsePagination } from "@/lib/api/helpers";
+import { createRevenueEntrySchema } from "@/features/revenue/schemas/revenue.schema";
 
 const REVENUE_SELECT = `
   *,
@@ -37,7 +38,6 @@ export async function GET(req: NextRequest) {
   const date_to = searchParams.get("date_to");
   const search = searchParams.get("search");
 
-  // Validate enum filters — chặn giá trị không hợp lệ trước khi gửi DB
   const VALID_STATUS = ["draft", "confirmed", "adjusted", "cancelled"];
   const VALID_DIMENSION = ["project", "contract", "period", "product_service"];
   const VALID_METHOD = ["acceptance", "completion_rate", "time_based"];
@@ -47,7 +47,6 @@ export async function GET(req: NextRequest) {
     if (!VALID_STATUS.includes(status)) return errorResponse("status không hợp lệ", 400);
     query = query.eq("status", status as any);
   } else {
-    // Mặc định ẩn bút toán đã huỷ và bút toán đảo (offset)
     query = query.neq("status", "cancelled").is("original_entry_id", null);
   }
   if (dimension && dimension !== "all") {
@@ -94,37 +93,39 @@ export async function POST(req: NextRequest) {
   if (roleErr) return errorResponse(roleErr, 403);
 
   const body = await req.json();
-
-  if (!body.description || body.amount === undefined) {
-    return errorResponse("Thiếu mô tả hoặc số tiền", 400);
-  }
-  if (typeof body.amount !== "number" || body.amount === 0) {
-    return errorResponse("Số tiền không hợp lệ", 400);
+  const parsed = createRevenueEntrySchema.safeParse(body);
+  if (!parsed.success) {
+    const msg = parsed.error.issues.map((i) => i.message).join("; ");
+    return errorResponse(msg, 422);
   }
 
+  const { project_id, contract_id, dept_id } = parsed.data;
   const supabase = await getServerSupabase();
 
-  // Chỉ cho phép set các trường nghiệp vụ — chặn injection trường hệ thống
+  if (project_id || contract_id || dept_id) {
+    const checks = await Promise.all([
+      project_id
+        ? supabase.from("projects").select("id").eq("id", project_id).is("deleted_at", null).single()
+        : null,
+      contract_id
+        ? supabase.from("contracts").select("id").eq("id", contract_id).is("deleted_at", null).single()
+        : null,
+      dept_id
+        ? supabase.from("departments").select("id").eq("id", dept_id).single()
+        : null,
+    ]);
+
+    if (project_id && checks[0]?.error) return errorResponse("Dự án không tồn tại hoặc đã bị xóa", 400);
+    if (contract_id && checks[1]?.error) return errorResponse("Hợp đồng không tồn tại hoặc đã bị xóa", 400);
+    if (dept_id && checks[2]?.error) return errorResponse("Phòng ban không tồn tại", 400);
+  }
+
   const { data, error } = await supabase
     .from("revenue_entries")
     .insert({
+      ...parsed.data,
+      recognition_date: parsed.data.recognition_date ?? new Date().toISOString().split("T")[0],
       org_id: profile.org_id,
-      project_id: body.project_id ?? null,
-      contract_id: body.contract_id ?? null,
-      dept_id: body.dept_id ?? null,
-      dimension: body.dimension ?? "project",
-      method: body.method ?? "acceptance",
-      source: body.source ?? "manual",
-      source_id: body.source_id ?? null,
-      amount: body.amount,
-      description: body.description,
-      period_start: body.period_start ?? null,
-      period_end: body.period_end ?? null,
-      notes: body.notes ?? null,
-      product_service_id: body.product_service_id ?? null,
-      addendum_id: body.addendum_id ?? null,
-      recognition_date: body.recognition_date ?? new Date().toISOString().split("T")[0],
-      completion_percentage: body.completion_percentage ?? 0,
       status: "draft",
       created_by: user.id,
     })

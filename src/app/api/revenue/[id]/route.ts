@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { updateRevenueEntrySchema } from "@/features/revenue/schemas/revenue.schema";
 
 const DETAIL_SELECT = `
   *,
@@ -47,19 +48,26 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (existing.status !== "draft") return errorResponse("Chỉ chỉnh sửa được bút toán nháp", 400);
 
   const body = await req.json();
-  // Xoá trường hệ thống và immutable — chỉ cho phép sửa nội dung nghiệp vụ
-  delete body.id;
-  delete body.org_id;
-  delete body.created_by;
-  delete body.created_at;
-  delete body.status;
-  delete body.source;
-  delete body.source_id;
-  delete body.original_entry_id;
+  const parsed = updateRevenueEntrySchema.safeParse(body);
+  if (!parsed.success) {
+    const msg = parsed.error.issues.map((i) => i.message).join("; ");
+    return errorResponse(msg, 422);
+  }
+
+  if (parsed.data.project_id) {
+    const { error: fkErr } = await supabase
+      .from("projects").select("id").eq("id", parsed.data.project_id).is("deleted_at", null).single();
+    if (fkErr) return errorResponse("Dự án không tồn tại hoặc đã bị xóa", 400);
+  }
+  if (parsed.data.contract_id) {
+    const { error: fkErr } = await supabase
+      .from("contracts").select("id").eq("id", parsed.data.contract_id).is("deleted_at", null).single();
+    if (fkErr) return errorResponse("Hợp đồng không tồn tại hoặc đã bị xóa", 400);
+  }
 
   const { data, error } = await supabase
     .from("revenue_entries")
-    .update(body)
+    .update(parsed.data as any)
     .eq("id", params.id)
     .select(DETAIL_SELECT)
     .single();
