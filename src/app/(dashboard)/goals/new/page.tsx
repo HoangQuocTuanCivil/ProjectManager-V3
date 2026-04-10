@@ -127,7 +127,6 @@ export default function NewGoalPage() {
           unit: t.unit || null,
           sort_order: idx,
         }));
-        // @ts-ignore
         const { error: targetError } = await supabase.from("goal_targets").insert(rows);
         if (targetError) {
           toast.error("Tạo goal thành công nhưng lỗi thêm KR: " + targetError.message);

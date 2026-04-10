@@ -117,7 +117,6 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
         const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
 
         // Insert record
-        // @ts-ignore
         const { error: insertError } = await supabase.from("task_attachments").insert({
           task_id: taskId,
           uploaded_by: user.id,

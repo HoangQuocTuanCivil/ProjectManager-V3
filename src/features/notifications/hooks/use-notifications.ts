@@ -58,7 +58,6 @@ export function useMarkNotificationRead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // @ts-ignore
       const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
       if (error) throw error;
     },
@@ -76,7 +75,6 @@ export function useMarkAllNotificationsRead() {
     mutationFn: async () => {
       if (!user?.id) throw new Error("Chưa đăng nhập");
       
-      // @ts-ignore
       const { error } = await supabase
         .from("notifications")
         .update({ is_read: true })
