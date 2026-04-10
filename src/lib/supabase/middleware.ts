@@ -19,7 +19,13 @@ export async function updateSession(request: NextRequest) {
     }
   );
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user && !request.nextUrl.pathname.startsWith("/login") && !request.nextUrl.pathname.startsWith("/register")) {
+  const path = request.nextUrl.pathname;
+  const isPublic = path.startsWith("/login")
+    || path.startsWith("/register")
+    || path.startsWith("/forgot-password")
+    || path.startsWith("/reset-password")
+    || path.startsWith("/accept-invite");
+  if (!user && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   return response;
