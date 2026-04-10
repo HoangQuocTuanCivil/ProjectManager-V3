@@ -20,6 +20,7 @@ export const projectKeys = {
 
 export interface ProjectSummaryItem {
   project_id: string;
+  contract_count: number;
   outgoing_budget: number;
   incoming_fund: number;
   task_count: number;

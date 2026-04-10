@@ -208,7 +208,22 @@ export default function ProjectsPage() {
           <p className="text-base text-muted-foreground">
             {t.projects.deleteConfirm} <strong className="text-foreground">{deleteTarget?.name}</strong> ({deleteTarget?.code})?
           </p>
-          <p className="text-sm text-destructive mt-2">{t.projects.deleteWarn}</p>
+          {deleteTarget && (() => {
+            const s = summaryMap.get(deleteTarget.id);
+            if (!s || (s.contract_count === 0 && s.task_count === 0)) return null;
+            return (
+              <div className="mt-3 p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-sm space-y-1">
+                <p className="font-semibold text-destructive">{t.projects.deleteImpact}</p>
+                {s.contract_count > 0 && (
+                  <p className="text-muted-foreground">• {t.projects.deleteContracts.replace("{n}", String(s.contract_count))}</p>
+                )}
+                {s.task_count > 0 && (
+                  <p className="text-muted-foreground">• {t.projects.deleteTasks.replace("{n}", String(s.task_count)).replace("{overdue}", String(s.task_count - s.overdue_count))}</p>
+                )}
+              </div>
+            );
+          })()}
+          <p className="text-sm text-muted-foreground mt-2">{t.projects.deleteWarn}</p>
           <div className="flex justify-end gap-3 mt-5">
             <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-base rounded-lg border border-border hover:bg-secondary transition-colors">
               {t.common.cancel}

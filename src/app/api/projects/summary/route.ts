@@ -3,6 +3,7 @@ import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse } from "
 
 interface ProjectSummary {
   project_id: string;
+  contract_count: number;
   outgoing_budget: number;
   incoming_fund: number;
   task_count: number;
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
   const ensure = (pid: string): ProjectSummary => {
     let s = summaryMap.get(pid);
     if (!s) {
-      s = { project_id: pid, outgoing_budget: 0, incoming_fund: 0, task_count: 0, overdue_count: 0 };
+      s = { project_id: pid, contract_count: 0, outgoing_budget: 0, incoming_fund: 0, task_count: 0, overdue_count: 0 };
       summaryMap.set(pid, s);
     }
     return s;
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
 
   for (const c of contractsRes.data ?? []) {
     const s = ensure(c.project_id);
+    s.contract_count++;
     const val = Number(c.contract_value);
     if (c.contract_type === "outgoing") s.outgoing_budget += val;
     else s.incoming_fund += val;

@@ -12,7 +12,34 @@ export const taskKeys = {
   list: (filters: TaskFilters) => [...taskKeys.lists(), filters] as const,
   details: () => [...taskKeys.all, 'detail'] as const,
   detail: (id: string) => [...taskKeys.details(), id] as const,
+  workload: () => [...taskKeys.all, 'workload'] as const,
 };
+
+export interface WorkloadEntry {
+  user_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  role: string;
+  total: number;
+  pending: number;
+  in_progress: number;
+  review: number;
+  overdue: number;
+  completed: number;
+}
+
+export function useTasksWorkload() {
+  return useQuery({
+    queryKey: taskKeys.workload(),
+    queryFn: async () => {
+      const res = await fetch("/api/tasks/workload");
+      if (!res.ok) throw new Error("Failed to fetch workload");
+      const json = await res.json();
+      return json.data as WorkloadEntry[];
+    },
+    staleTime: 30_000,
+  });
+}
 
 
 export function useTasks(filters: TaskFilters = {}) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { useTasks, useUpdateTask } from "@/features/tasks";
+import { useTasks, useUpdateTask, useTasksWorkload } from "@/features/tasks";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useProjects } from "@/features/projects";
@@ -1000,100 +1000,111 @@ function WorkloadBarSegment({ tasks, group, widthPct, label, onSelectTask }: {
   );
 }
 
+const OVERLOAD_THRESHOLD = 10;
+
 function TaskWorkload({ tasks, onSelect }: { tasks: Task[]; onSelect: (id: string) => void }) {
   const { t } = useI18n();
+  const { data: workload = [] } = useTasksWorkload();
 
-  const statusLabels: Record<BarSegmentGroup, string> = {
-    completed: t.status.completed,
-    in_progress: t.status.in_progress,
-    overdue: t.status.overdue,
-    pending: t.status.pending,
-  };
+  const maxCount = Math.max(...workload.map((w) => w.total), 1);
+  const overloadedCount = workload.filter((w) => w.total >= OVERLOAD_THRESHOLD).length;
 
-  // Group tasks by assignee
-  const userMap = new Map<string, { name: string; avatar: string | null; role: string; tasks: Task[] }>();
-  for (const task of tasks) {
-    if (!task.assignee_id || !task.assignee) continue;
-    if (!userMap.has(task.assignee_id)) {
-      userMap.set(task.assignee_id, {
-        name: task.assignee.full_name,
-        avatar: task.assignee.avatar_url ?? null,
-        role: task.assignee.role,
-        tasks: [],
-      });
+  const tasksByUser = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    for (const task of tasks) {
+      if (!task.assignee_id) continue;
+      const arr = map.get(task.assignee_id) || [];
+      arr.push(task);
+      map.set(task.assignee_id, arr);
     }
-    userMap.get(task.assignee_id)!.tasks.push(task);
-  }
+    return map;
+  }, [tasks]);
 
-  const users = Array.from(userMap.entries())
-    .map(([id, u]) => ({ id, ...u, count: u.tasks.length }))
-    .sort((a, b) => b.count - a.count);
-
-  const maxCount = Math.max(...users.map((u) => u.count), 1);
-
-  if (users.length === 0) return <EmptyState title={t.tasks.noTasks} subtitle={t.tasks.noTasksSub} />;
+  if (workload.length === 0) return <EmptyState title={t.tasks.noTasks} subtitle={t.tasks.noTasksSub} />;
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="divide-y divide-border/30">
-        {users.map((u) => {
-          // Build segment data: group tasks by bar segment category
-          const segmentTasks: Record<BarSegmentGroup, Task[]> = {
-            completed: [], in_progress: [], overdue: [], pending: [],
-          };
-          for (const task of u.tasks) {
-            const group = (Object.entries(BAR_SEGMENT_CONFIG) as [BarSegmentGroup, typeof BAR_SEGMENT_CONFIG[BarSegmentGroup]][])
-              .find(([, cfg]) => cfg.statuses.includes(task.status));
-            segmentTasks[group?.[0] ?? "pending"].push(task);
-          }
+    <div className="space-y-3">
+      {overloadedCount > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm">
+          <span className="text-amber-600 font-semibold">⚠</span>
+          <span className="text-amber-700 dark:text-amber-400">
+            {overloadedCount} người có {OVERLOAD_THRESHOLD}+ công việc đang mở
+          </span>
+        </div>
+      )}
 
-          return (
-            <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors">
-              {/* User info */}
-              <div className="w-[160px] flex-shrink-0 flex items-center gap-2">
-                <UserAvatar name={u.name} src={u.avatar} color={(ROLE_CONFIG as any)[u.role]?.color} size="sm" />
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold truncate">{u.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{u.count} {t.nav.tasks}</p>
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="divide-y divide-border/30">
+          {workload.map((w) => {
+            const isOverloaded = w.total >= OVERLOAD_THRESHOLD;
+            const userTasks = tasksByUser.get(w.user_id) || [];
+            const segments: Record<BarSegmentGroup, number> = {
+              completed: w.completed,
+              in_progress: w.in_progress + w.review,
+              overdue: w.overdue,
+              pending: w.pending,
+            };
+
+            return (
+              <div key={w.user_id} className={cn(
+                "flex items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors",
+                isOverloaded && "bg-amber-500/5"
+              )}>
+                <div className="w-[160px] flex-shrink-0 flex items-center gap-2">
+                  <UserAvatar name={w.full_name} src={w.avatar_url} color={(ROLE_CONFIG as any)[w.role]?.color} size="sm" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold truncate">{w.full_name}</p>
+                    <p className={cn("text-[10px]", isOverloaded ? "text-amber-600 font-semibold" : "text-muted-foreground")}>
+                      {w.total} {t.nav.tasks}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Stacked bar – each segment is clickable */}
-              <div className="flex-1 flex items-center gap-2">
-                <div className="flex-1 h-5 bg-secondary rounded overflow-hidden flex">
-                  {(["completed", "in_progress", "overdue", "pending"] as BarSegmentGroup[]).map((group) => (
-                    <WorkloadBarSegment
-                      key={group}
-                      group={group}
-                      tasks={segmentTasks[group]}
-                      widthPct={(segmentTasks[group].length / maxCount) * 100}
-                      label={statusLabels[group]}
-                      onSelectTask={onSelect}
-                    />
+                <div className="flex-1 flex items-center gap-2">
+                  <div className="flex-1 h-5 bg-secondary rounded overflow-hidden flex">
+                    {(["completed", "in_progress", "overdue", "pending"] as BarSegmentGroup[]).map((group) => {
+                      const count = segments[group];
+                      if (count === 0) return null;
+                      return (
+                        <div
+                          key={group}
+                          className="h-full transition-all"
+                          style={{
+                            width: `${(count / maxCount) * 100}%`,
+                            backgroundColor: BAR_SEGMENT_CONFIG[group].color,
+                          }}
+                          title={`${count} ${group.replace("_", " ")}`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <span className={cn(
+                    "text-xs font-mono w-6 text-right",
+                    isOverloaded ? "text-amber-600 font-bold" : "text-muted-foreground"
+                  )}>
+                    {w.total}
+                  </span>
+                </div>
+
+                <div className="w-[200px] flex-shrink-0 flex flex-wrap gap-1">
+                  {userTasks.slice(0, 4).map((task) => (
+                    <button
+                      key={task.id}
+                      onClick={() => onSelect(task.id)}
+                      className="px-1.5 py-0.5 rounded text-[10px] truncate max-w-[90px] hover:opacity-80 transition-opacity"
+                      style={{ background: `${STATUS_COLORS[task.status] || "#6366f1"}20`, color: STATUS_COLORS[task.status] || "#6366f1" }}
+                    >
+                      {task.title}
+                    </button>
                   ))}
+                  {userTasks.length > 4 && (
+                    <span className="text-[10px] text-muted-foreground">+{userTasks.length - 4}</span>
+                  )}
                 </div>
-                <span className="text-xs font-mono text-muted-foreground w-6 text-right">{u.count}</span>
               </div>
-
-              {/* Task chips */}
-              <div className="w-[200px] flex-shrink-0 flex flex-wrap gap-1">
-                {u.tasks.slice(0, 4).map((task) => (
-                  <button
-                    key={task.id}
-                    onClick={() => onSelect(task.id)}
-                    className="px-1.5 py-0.5 rounded text-[10px] truncate max-w-[90px] hover:opacity-80 transition-opacity"
-                    style={{ background: `${STATUS_COLORS[task.status] || "#6366f1"}20`, color: STATUS_COLORS[task.status] || "#6366f1" }}
-                  >
-                    {task.title}
-                  </button>
-                ))}
-                {u.tasks.length > 4 && (
-                  <span className="text-[10px] text-muted-foreground">+{u.tasks.length - 4}</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -5,8 +5,10 @@ export {
   useUpdateTask,
   useEvaluateKPI,
   useUpdateProgress,
+  useTasksWorkload,
   taskKeys,
 } from './hooks/use-tasks';
+export type { WorkloadEntry } from './hooks/use-tasks';
 
 export { createTaskSchema, updateTaskSchema } from './schemas/task.schema';
 export type { CreateTaskInput, UpdateTaskInput } from './schemas/task.schema';
