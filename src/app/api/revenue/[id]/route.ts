@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { hasMinRole } from "@/lib/utils/permissions";
 import { updateRevenueEntrySchema } from "@/features/revenue/schemas/revenue.schema";
+import type { UserRole } from "@/lib/types";
 
 const DETAIL_SELECT = `
   *,
@@ -40,12 +42,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const { data: existing } = await supabase
     .from("revenue_entries")
-    .select("status")
+    .select("status, dept_id")
     .eq("id", params.id)
     .single();
 
   if (!existing) return errorResponse("Không tìm thấy bút toán", 404);
   if (existing.status !== "draft") return errorResponse("Chỉ chỉnh sửa được bút toán nháp", 400);
+
+  if (!hasMinRole(profile.role as UserRole, "director") && existing.dept_id !== profile.dept_id) {
+    return errorResponse("Bạn chỉ được sửa bút toán thuộc phòng ban mình", 403);
+  }
 
   const body = await req.json();
   const parsed = updateRevenueEntrySchema.safeParse(body);
@@ -88,12 +94,16 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const { data: existing } = await supabase
     .from("revenue_entries")
-    .select("status")
+    .select("status, dept_id")
     .eq("id", params.id)
     .single();
 
   if (!existing) return errorResponse("Không tìm thấy bút toán", 404);
   if (existing.status !== "draft") return errorResponse("Chỉ xóa được bút toán nháp", 400);
+
+  if (!hasMinRole(profile.role as UserRole, "director") && existing.dept_id !== profile.dept_id) {
+    return errorResponse("Bạn chỉ được xóa bút toán thuộc phòng ban mình", 403);
+  }
 
   const { error } = await supabase
     .from("revenue_entries")

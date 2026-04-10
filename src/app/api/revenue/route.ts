@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole, parsePagination } from "@/lib/api/helpers";
+import { hasMinRole } from "@/lib/utils/permissions";
 import { createRevenueEntrySchema } from "@/features/revenue/schemas/revenue.schema";
+import type { UserRole } from "@/lib/types";
 
 const REVENUE_SELECT = `
   *,
@@ -118,6 +120,10 @@ export async function POST(req: NextRequest) {
     if (project_id && checks[0]?.error) return errorResponse("Dự án không tồn tại hoặc đã bị xóa", 400);
     if (contract_id && checks[1]?.error) return errorResponse("Hợp đồng không tồn tại hoặc đã bị xóa", 400);
     if (dept_id && checks[2]?.error) return errorResponse("Phòng ban không tồn tại", 400);
+  }
+
+  if (!hasMinRole(profile.role as UserRole, "director") && dept_id && dept_id !== profile.dept_id) {
+    return errorResponse("Bạn chỉ được tạo bút toán cho phòng ban mình", 403);
   }
 
   const { data, error } = await supabase

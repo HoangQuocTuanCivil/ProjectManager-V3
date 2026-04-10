@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getServerSupabase, getAdminSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { hasMinRole } from "@/lib/utils/permissions";
+import type { UserRole } from "@/lib/types";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { profile } = await getAuthProfile();
@@ -12,12 +14,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const { data: entry } = await supabase
     .from("revenue_entries")
-    .select("id, status, project_id")
+    .select("id, status, project_id, dept_id, created_by")
     .eq("id", params.id)
     .single();
 
   if (!entry) return errorResponse("Không tìm thấy bút toán", 404);
   if (entry.status !== "draft") return errorResponse("Chỉ xác nhận được bút toán nháp", 400);
+
+  if (!hasMinRole(profile.role as UserRole, "director") && entry.dept_id !== profile.dept_id) {
+    return errorResponse("Bạn chỉ được xác nhận bút toán thuộc phòng ban mình", 403);
+  }
 
   const { data, error } = await supabase
     .from("revenue_entries")

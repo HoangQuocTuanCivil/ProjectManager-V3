@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { hasMinRole } from "@/lib/utils/permissions";
+import type { UserRole } from "@/lib/types";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { user, profile } = await getAuthProfile();
@@ -22,6 +24,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (!entry) return errorResponse("Không tìm thấy bút toán", 404);
   if (entry.status === "cancelled") return errorResponse("Bút toán đã bị huỷ", 400);
+
+  if (!hasMinRole(profile.role as UserRole, "director") && entry.dept_id !== profile.dept_id) {
+    return errorResponse("Bạn chỉ được huỷ bút toán thuộc phòng ban mình", 403);
+  }
 
   const { error: updateErr } = await supabase
     .from("revenue_entries")
