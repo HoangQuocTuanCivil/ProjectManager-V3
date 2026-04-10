@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAllocationConfig } from "@/features/kpi";
 import { useUpdateSetting } from "@/features/settings";
 import { useCenters } from "@/features/organization";
@@ -9,27 +9,41 @@ import { SearchSelect } from "@/components/shared/search-select";
 import { KPI_WEIGHTS, calcKPIScore } from "@/lib/utils/kpi";
 
 export default function KPISettingsPage() {
-  const { data: config } = useAllocationConfig();
-  const updateSetting = useUpdateSetting();
-
   const { data: centers = [] } = useCenters();
   const [scopeCenter, setScopeCenter] = useState("all");
+  const updateSetting = useUpdateSetting();
+
+  // Tra cứu config theo trung tâm đang chọn (null = toàn công ty)
+  const centerId = scopeCenter === "all" ? undefined : scopeCenter;
+  const { data: config } = useAllocationConfig(centerId ?? null);
 
   const [weights, setWeights] = useState({
-    volume: config?.weight_volume ?? KPI_WEIGHTS.volume,
-    quality: config?.weight_quality ?? KPI_WEIGHTS.quality,
-    difficulty: config?.weight_difficulty ?? KPI_WEIGHTS.difficulty,
-    ahead: config?.weight_ahead ?? KPI_WEIGHTS.ahead,
+    volume: KPI_WEIGHTS.volume,
+    quality: KPI_WEIGHTS.quality,
+    difficulty: KPI_WEIGHTS.difficulty,
+    ahead: KPI_WEIGHTS.ahead,
   });
+
+  // Đồng bộ weights khi chuyển trung tâm hoặc config load xong
+  useEffect(() => {
+    if (config) {
+      setWeights({
+        volume: config.weight_volume,
+        quality: config.weight_quality,
+        difficulty: config.weight_difficulty,
+        ahead: config.weight_ahead,
+      });
+    }
+  }, [config?.id, scopeCenter]);
 
   /* KL + CL + ĐK = 100% (cơ bản). VTĐ là bonus thêm, không tính vào tổng cơ bản. */
   const baseTotal = Math.round((weights.volume + weights.quality + weights.difficulty) * 100);
   const bonusPercent = Math.round(weights.ahead * 100);
   const isValid = baseTotal === 100;
 
-  // Example score calculation
-  const exampleE = calcKPIScore(100, 80, 60, 50);
-  const exampleA = calcKPIScore(100, 85, 70, 60);
+  // Ví dụ tính score theo trọng số đang chọn
+  const exampleE = calcKPIScore(100, 80, 60, 50, weights);
+  const exampleA = calcKPIScore(100, 85, 70, 60, weights);
 
   const weightItems = [
     { key: "volume" as const, label: "Khối lượng (KL)", color: "#38bdf8", desc: "Số lượng công việc hoàn thành, mặc định = 100" },
