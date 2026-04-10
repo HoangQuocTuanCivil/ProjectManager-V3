@@ -69,19 +69,19 @@ export default function NewGoalPage() {
     { title: "", target_type: "number", start_value: 0, target_value: 100, unit: "" },
   ]);
 
-  // Parent goal type hierarchy: department→company, team→department, personal→team
-  const PARENT_TYPE_MAP: Record<GoalType, GoalType | null> = {
-    company: null,
-    center: "company",
-    department: "center",
-    team: "department",
-    personal: "team",
+  // Mỗi loại goal có thể chọn cha thuộc các loại cấp trên
+  const PARENT_TYPES: Record<GoalType, GoalType[]> = {
+    company: [],
+    center: ["company"],
+    department: ["company", "center"],
+    team: ["department", "center"],
+    personal: ["team", "department"],
   };
 
   const parentGoals = useMemo(() => {
-    const requiredParentType = PARENT_TYPE_MAP[form.goal_type];
-    if (!requiredParentType) return [];
-    return allGoals.filter((g: any) => g.goal_type === requiredParentType);
+    const allowedParents = PARENT_TYPES[form.goal_type] || [];
+    if (allowedParents.length === 0) return [];
+    return allGoals.filter((g: any) => allowedParents.includes(g.goal_type));
   }, [allGoals, form.goal_type]);
 
   const update = (key: string, val: any) => {
