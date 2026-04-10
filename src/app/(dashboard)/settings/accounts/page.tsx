@@ -16,6 +16,7 @@ import { ExcelImportButton } from "./excel-import";
 import { FileDown, Plus, UserPlus, Upload, Download, ChevronDown, Users } from "lucide-react";
 import * as XLSX from "xlsx";
 import type { ExcelImportHandle } from "./excel-import";
+import { exportAccountsExcel } from "./export-accounts";
 
 const supabase = createClient();
 
@@ -216,39 +217,18 @@ export default function AccountsSettingsPage() {
     }
   };
 
-  /** Exports the current filtered user list to an Excel file with all profile fields */
-  const handleExportExcel = () => {
-    const exportData = filtered.map((u: any) => {
-      const center = (allCenters as any[]).find((c: any) => c.id === u.center_id || c.id === u.department?.center_id);
-      return {
-        "Họ tên": u.full_name,
-        "Mã hệ thống": u.employee_code || "",
-        "Email": u.email,
-        "Vai trò": ROLE_CONFIG[u.role as keyof typeof ROLE_CONFIG]?.label || u.role,
-        "Chức danh": u.job_title || "",
-        "Trung tâm": center?.name || "",
-        "Mã trung tâm": center?.code || "",
-        "Phòng ban": u.department?.name || "",
-        "Mã phòng ban": u.department?.code || "",
-        "Nhóm": u.team?.name || "",
-        "Số điện thoại": u.phone || "",
-        "Trạng thái": u.is_active ? "Hoạt động" : "Đã khóa",
-        "Đăng nhập cuối": u.last_login ? formatDate(u.last_login) : "Chưa",
-        "Ngày tạo": formatDate(u.created_at),
-      };
-    });
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    ws["!cols"] = [
-      { wch: 22 }, { wch: 14 }, { wch: 28 }, { wch: 14 }, { wch: 18 },
-      { wch: 18 }, { wch: 10 }, { wch: 18 }, { wch: 10 },
-      { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 },
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Danh sách tài khoản");
-    XLSX.writeFile(wb, `Danh_sach_tai_khoan_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast.success(`Đã xuất ${exportData.length} tài khoản`);
+  const handleExportExcel = async () => {
+    try {
+      const count = await exportAccountsExcel({
+        users: filtered,
+        centers: allCenters as any[],
+        departments,
+        teams: allTeams as any[],
+      });
+      toast.success(`Đã xuất ${count} tài khoản`);
+    } catch {
+      toast.error("Lỗi xuất file Excel");
+    }
   };
 
   const inputClass = "mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none";
