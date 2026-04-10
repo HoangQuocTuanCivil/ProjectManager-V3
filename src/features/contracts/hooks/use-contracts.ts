@@ -10,8 +10,40 @@ export const contractKeys = {
   all: ["contracts"] as const,
   list: (filters?: { projectId?: string; type?: ContractType }) =>
     [...contractKeys.all, "list", filters?.projectId, filters?.type] as const,
+  paginated: (filters: ContractListFilters) => [...contractKeys.all, "paginated", filters] as const,
   detail: (id: string) => [...contractKeys.all, "detail", id] as const,
 };
+
+export interface ContractListFilters {
+  page?: number;
+  per_page?: number;
+  type?: ContractType;
+  projectId?: string;
+  status?: string;
+  search?: string;
+}
+
+export function useContractsPaginated(filters: ContractListFilters = {}) {
+  const { page = 1, per_page = 50, type, projectId, status, search } = filters;
+  return useQuery({
+    queryKey: contractKeys.paginated(filters),
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(page), per_page: String(per_page) });
+      if (type) params.set("type", type);
+      if (projectId && projectId !== "all") params.set("project_id", projectId);
+      if (status && status !== "all") params.set("status", status);
+      if (search) params.set("search", search);
+      const res = await fetch(`/api/contracts?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch contracts");
+      return res.json() as Promise<{
+        data: Contract[];
+        count: number | null;
+        page: number;
+        per_page: number;
+      }>;
+    },
+  });
+}
 
 /* ───── Contracts ──────────────────────────────────────────────── */
 

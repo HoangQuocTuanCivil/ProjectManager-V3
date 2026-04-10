@@ -11,10 +11,39 @@ const supabase = createClient();
 export const projectKeys = {
   all: ["projects"] as const,
   list: () => [...projectKeys.all, "list"] as const,
+  paginated: (filters: ProjectListFilters) => [...projectKeys.all, "paginated", filters] as const,
   detail: (id: string) => [...projectKeys.all, id] as const,
   members: (id: string) => [...projectKeys.all, id, "members"] as const,
   milestones: (id: string) => [...projectKeys.all, id, "milestones"] as const,
 };
+
+export interface ProjectListFilters {
+  page?: number;
+  per_page?: number;
+  status?: string;
+  search?: string;
+}
+
+export function useProjectsPaginated(filters: ProjectListFilters = {}) {
+  const { page = 1, per_page = 50, status, search } = filters;
+  return useQuery({
+    queryKey: projectKeys.paginated(filters),
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(page), per_page: String(per_page) });
+      if (status && status !== "all") params.set("status", status);
+      if (search) params.set("search", search);
+      const res = await fetch(`/api/projects?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch projects");
+      return res.json() as Promise<{
+        data: Project[];
+        count: number | null;
+        page: number;
+        per_page: number;
+      }>;
+    },
+    staleTime: 60_000,
+  });
+}
 
 export function useProjects() {
   return useQuery({

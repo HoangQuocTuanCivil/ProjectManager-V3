@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getAdminSupabase, getServerSupabase, jsonResponse, errorResponse, requireMinRole, parsePagination } from "@/lib/api/helpers";
 import { hasMinRole } from "@/lib/utils/permissions";
+import { createTaskSchema } from "@/features/tasks/schemas/task.schema";
 import type { UserRole } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
@@ -64,13 +65,17 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
+  const parsed = createTaskSchema.safeParse(body);
+  if (!parsed.success) {
+    const msg = parsed.error.issues.map((i) => i.message).join("; ");
+    return errorResponse(msg, 422);
+  }
 
-  // Validate assignee: tồn tại, active, cùng org, đúng phạm vi quản lý
-  if (body.assignee_id) {
+  if (parsed.data.assignee_id) {
     const { data: assignee, error: lookupErr } = await admin
       .from("users")
       .select("id, org_id, dept_id, team_id, is_active")
-      .eq("id", body.assignee_id)
+      .eq("id", parsed.data.assignee_id)
       .single() as { data: { id: string; org_id: string; dept_id: string | null; team_id: string | null; is_active: boolean } | null; error: any };
 
     if (lookupErr || !assignee) {
@@ -94,16 +99,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const { template_id, ...taskData } = parsed.data;
   const supabase = await getServerSupabase();
   const { data, error } = await supabase
     .from("tasks")
     .insert({
-      ...body,
+      ...taskData,
       org_id: profile.org_id,
-      dept_id: body.dept_id ?? profile.dept_id,
+      dept_id: taskData.dept_id ?? profile.dept_id,
       assigner_id: user.id,
-      expect_volume: body.expect_volume ?? 100,
-      expect_ahead: body.expect_ahead ?? 100,
     })
     .select()
     .single();
