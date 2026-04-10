@@ -137,7 +137,12 @@ export function useUpdateContract() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: contractKeys.all });
+      if (vars.status && ["terminated", "settled"].includes(vars.status)) {
+        qc.invalidateQueries({ queryKey: ["tasks"] });
+      }
+    },
   });
 }
 

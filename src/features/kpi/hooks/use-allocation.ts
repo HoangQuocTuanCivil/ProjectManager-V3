@@ -273,7 +273,7 @@ export function useUpsertDeptBudgetAllocation() {
           ? (await supabase.from("departments").select("name").eq("id", input.dept_id).single()).data?.name
           : "";
 
-        await supabase.from("contracts").insert({
+        const { error: ctErr } = await supabase.from("contracts").insert({
           org_id: profile.org_id,
           project_id: input.project_id,
           contract_type: "incoming",
@@ -287,6 +287,11 @@ export function useUpsertDeptBudgetAllocation() {
           source_allocation_id: data.id,
           created_by: user!.id,
         } as any);
+
+        if (ctErr) {
+          await supabase.from("dept_budget_allocations").delete().eq("id", data.id);
+          throw new Error(`Tạo HĐ đầu vào thất bại: ${ctErr.message}`);
+        }
       }
 
       return data;

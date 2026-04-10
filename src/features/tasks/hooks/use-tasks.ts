@@ -199,9 +199,12 @@ export function useUpdateTask() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(data.id) });
+      if (vars.assignee_id !== undefined) {
+        qc.invalidateQueries({ queryKey: ["kpi", "periods"] });
+      }
     },
   });
 }

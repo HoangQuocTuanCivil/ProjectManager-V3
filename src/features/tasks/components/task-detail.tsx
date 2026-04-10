@@ -65,6 +65,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["kpi", "periods"] });
       toast.success("Đã xóa công việc");
       onClose();
     },
