@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, Fragment } from "react";
 import { useContracts } from "@/features/contracts";
-import { useDeptBudgetAllocations, useUpsertDeptBudgetAllocation, useDeleteDeptBudgetAllocation, useAcceptanceRounds, useUpsertAcceptanceRound, useDeleteAcceptanceRound } from "@/features/kpi";
+import { useDeptBudgetAllocations, useUpsertDeptBudgetAllocation, useUpdateDeptBudgetAllocation, useDeleteDeptBudgetAllocation, useAcceptanceRounds, useUpsertAcceptanceRound, useDeleteAcceptanceRound } from "@/features/kpi";
 import { useAuthStore } from "@/lib/stores";
 import { Button, EmptyState, ConfirmDialog } from "@/components/shared";
 import { Coins, FileText, Upload, ChevronRight, Plus, Pencil, Trash2 } from "lucide-react";
@@ -65,6 +65,7 @@ export default function BudgetAssignPage() {
       : undefined,
   );
   const upsert = useUpsertDeptBudgetAllocation();
+  const update = useUpdateDeptBudgetAllocation();
   const remove = useDeleteDeptBudgetAllocation();
 
   const canManage = user && ["admin", "leader", "director"].includes(user.role);
@@ -112,8 +113,9 @@ export default function BudgetAssignPage() {
     return { totalContractValue, totalAllocated };
   }, [allocations, filterContractId]);
 
-  /* ─── Popup xác nhận xóa giao khoán ───────────────────────────── */
+  /* ─── Popup xác nhận xóa / chỉnh sửa giao khoán ──────────────── */
   const [deleteTarget, setDeleteTarget] = useState<DeptBudgetAllocation | null>(null);
+  const [editTarget, setEditTarget] = useState<DeptBudgetAllocation | null>(null);
 
   /* ─── Form state ──────────────────────────────────────────────── */
   const [showForm, setShowForm] = useState(false);
@@ -404,6 +406,18 @@ export default function BudgetAssignPage() {
         }}
       />
 
+      {/* ─── Modal chỉnh sửa giao khoán ─── */}
+      {editTarget && canManage && (
+        <EditAllocationModal
+          allocation={editTarget}
+          centers={centers ?? []}
+          departments={departments}
+          onClose={() => setEditTarget(null)}
+          onSave={update.mutateAsync}
+          isPending={update.isPending}
+        />
+      )}
+
       {/* ─── Danh sách giao khoán — nhóm theo Trung tâm ─── */}
       {/* Popup sửa đợt nghiệm thu */}
       {editingRound && (
@@ -485,7 +499,12 @@ export default function BudgetAssignPage() {
                           </td>
                           <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[150px]">{a.note || "—"}</td>
                           {canManage && (
-                            <td className="px-4 py-2.5 text-right">
+                            <td className="px-4 py-2.5 text-right space-x-2">
+                              <button
+                                onClick={() => setEditTarget(a)}
+                                className="text-primary hover:underline text-[11px]">
+                                Sửa
+                              </button>
                               <button
                                 onClick={() => setDeleteTarget(a)}
                                 className="text-destructive hover:underline text-[11px]" disabled={remove.isPending}>
@@ -642,6 +661,7 @@ function EditRoundModal({ round, onClose, onSave, isPending }: {
 
   const inputClass = "mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none";
 
+  const inputClass2 = inputClass;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -653,21 +673,21 @@ function EditRoundModal({ round, onClose, onSave, isPending }: {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm text-muted-foreground font-medium">Tên đợt</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+              <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass2} />
             </div>
             <div>
               <label className="text-sm text-muted-foreground font-medium">Số tiền NT</label>
-              <input type="number" min={0} value={amount || ""} onChange={(e) => setAmount(+e.target.value)} className={inputClass + " font-mono"} />
+              <input type="number" min={0} value={amount || ""} onChange={(e) => setAmount(+e.target.value)} className={inputClass2 + " font-mono"} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm text-muted-foreground font-medium">Ngày</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass2} />
             </div>
             <div>
               <label className="text-sm text-muted-foreground font-medium">Ghi chú</label>
-              <input value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} />
+              <input value={note} onChange={(e) => setNote(e.target.value)} className={inputClass2} />
             </div>
           </div>
         </div>
@@ -675,6 +695,102 @@ function EditRoundModal({ round, onClose, onSave, isPending }: {
           <Button onClick={onClose}>Hủy</Button>
           <Button variant="primary" onClick={handleSave} disabled={isPending}>
             {isPending ? "Đang lưu..." : "Lưu"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Modal chỉnh sửa giao khoán ── */
+function EditAllocationModal({ allocation, centers, departments, onClose, onSave, isPending }: {
+  allocation: DeptBudgetAllocation;
+  centers: { id: string; name: string; code: string | null }[];
+  departments: { id: string; name: string; code: string | null; center_id: string | null }[];
+  onClose: () => void;
+  onSave: (input: any) => Promise<any>;
+  isPending: boolean;
+}) {
+  const initTarget: AssignTarget = allocation.center_id ? "center" : "dept";
+  const [assignTarget, setAssignTarget] = useState<AssignTarget>(initTarget);
+  const [centerId, setCenterId] = useState(allocation.center_id || "");
+  const [deptId, setDeptId] = useState(allocation.dept_id || "");
+  const [amount, setAmount] = useState(Number(allocation.allocated_amount));
+  const [startDate, setStartDate] = useState(allocation.start_date || "");
+  const [endDate, setEndDate] = useState(allocation.end_date || "");
+
+  const handleSave = async () => {
+    if (assignTarget === "center" && !centerId) { toast.error("Vui lòng chọn trung tâm"); return; }
+    if (assignTarget === "dept" && !deptId) { toast.error("Vui lòng chọn phòng ban"); return; }
+    if (amount <= 0) { toast.error("Số tiền phải lớn hơn 0"); return; }
+    await onSave({
+      id: allocation.id,
+      center_id: assignTarget === "center" ? centerId : null,
+      dept_id: assignTarget === "dept" ? deptId : null,
+      allocated_amount: amount,
+      start_date: startDate || null,
+      end_date: endDate || null,
+    });
+    onClose();
+  };
+
+  const inputClass = "mt-1 w-full h-9 px-3 rounded-lg border border-border bg-secondary text-base focus:border-primary focus:outline-none";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="text-base font-bold">Sửa giao khoán — {allocation.allocation_code || allocation.contract?.contract_no || ""}</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg p-1 rounded">&times;</button>
+        </div>
+        <div className="p-5 space-y-4">
+          {/* Giao cho */}
+          <div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground font-medium">Giao cho</label>
+              <div className="flex items-center gap-1 ml-auto">
+                {(["center", "dept"] as const).map((v) => (
+                  <button key={v} onClick={() => { setAssignTarget(v); setCenterId(""); setDeptId(""); }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${assignTarget === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
+                    {v === "center" ? "Trung tâm" : "Phòng ban"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {assignTarget === "center" ? (
+              <SearchSelect value={centerId} onChange={setCenterId}
+                options={centers.map((c) => ({ value: c.id, label: `${c.code || ""} — ${c.name}` }))}
+                placeholder="Chọn trung tâm" className="mt-1" />
+            ) : (
+              <SearchSelect value={deptId} onChange={setDeptId}
+                options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
+                placeholder="Chọn phòng ban" className="mt-1" />
+            )}
+          </div>
+
+          {/* Số tiền */}
+          <div>
+            <label className="text-sm text-muted-foreground font-medium">Số tiền giao khoán</label>
+            <input type="number" min={0} value={amount || ""} onChange={(e) => setAmount(+e.target.value)}
+              className={inputClass + " font-mono"} />
+          </div>
+
+          {/* Ngày bắt đầu / kết thúc */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm text-muted-foreground font-medium">Ngày bắt đầu</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground font-medium">Ngày kết thúc</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+          <Button onClick={onClose}>Hủy</Button>
+          <Button variant="primary" onClick={handleSave} disabled={isPending}>
+            {isPending ? "Đang lưu..." : "Lưu thay đổi"}
           </Button>
         </div>
       </div>

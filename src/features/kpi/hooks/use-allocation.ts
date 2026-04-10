@@ -310,6 +310,68 @@ export function useDeleteDeptBudgetAllocation() {
   });
 }
 
+/** Cập nhật giao khoán (đơn vị nhận, số tiền, thời gian) và đồng bộ HĐ đầu vào liên quan */
+export function useUpdateDeptBudgetAllocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      dept_id?: string | null;
+      center_id?: string | null;
+      allocated_amount?: number;
+      start_date?: string | null;
+      end_date?: string | null;
+    }) => {
+      const { id, ...updates } = input;
+      const row: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (updates.dept_id !== undefined) row.dept_id = updates.dept_id || null;
+      if (updates.center_id !== undefined) row.center_id = updates.center_id || null;
+      if (updates.allocated_amount !== undefined) row.allocated_amount = updates.allocated_amount;
+      if (updates.start_date !== undefined) row.start_date = updates.start_date || null;
+      if (updates.end_date !== undefined) row.end_date = updates.end_date || null;
+
+      const { error } = await supabase
+        .from("dept_budget_allocations")
+        .update(row)
+        .eq("id", id);
+      if (error) throw error;
+
+      // Đồng bộ HĐ đầu vào liên kết qua source_allocation_id
+      const contractUpdate: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (updates.allocated_amount !== undefined) contractUpdate.contract_value = updates.allocated_amount;
+      if (updates.start_date !== undefined) contractUpdate.start_date = updates.start_date || null;
+      if (updates.end_date !== undefined) contractUpdate.end_date = updates.end_date || null;
+
+      // Cập nhật title nếu đơn vị nhận thay đổi
+      if (updates.center_id !== undefined || updates.dept_id !== undefined) {
+        const targetId = updates.center_id || updates.dept_id;
+        const table = updates.center_id ? "centers" : "departments";
+        if (targetId) {
+          const { data: target } = await supabase.from(table).select("name").eq("id", targetId).single();
+          if (target) {
+            // Lấy title gốc từ HĐ đầu ra để cập nhật title incoming
+            const { data: linked } = await supabase
+              .from("contracts")
+              .select("parent_contract_id")
+              .eq("source_allocation_id", id)
+              .single() as { data: { parent_contract_id: string | null } | null; error: any };
+            if (linked?.parent_contract_id) {
+              const { data: parent } = await supabase.from("contracts").select("title").eq("id", linked.parent_contract_id).single();
+              if (parent) contractUpdate.title = `GK: ${parent.title} → ${target.name}`;
+            }
+          }
+        }
+      }
+
+      await supabase.from("contracts").update(contractUpdate).eq("source_allocation_id", id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() });
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+    },
+  });
+}
+
 /** Cấu hình kỳ khoán (3/6 tháng) — mỗi org 1 bản ghi */
 export function useAllocationCycle() {
   return useQuery({

@@ -14,6 +14,7 @@ export {
   useDeleteAllocationPeriod,
   useDeptBudgetAllocations,
   useUpsertDeptBudgetAllocation,
+  useUpdateDeptBudgetAllocation,
   useDeleteDeptBudgetAllocation,
   useAllocationCycle,
   useUpdateAllocationCycle,
