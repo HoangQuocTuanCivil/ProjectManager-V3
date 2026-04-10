@@ -68,7 +68,7 @@ export default function BudgetAssignPage() {
   const update = useUpdateDeptBudgetAllocation();
   const remove = useDeleteDeptBudgetAllocation();
 
-  const canManage = user && ["admin", "leader", "director"].includes(user.role);
+  const canManage = !!user;
   const isDeptScoped = user && !["admin", "leader", "director"].includes(user.role);
 
   /* ─── Nghiệm thu: fetch tất cả rounds, nhóm theo allocation_id ── */

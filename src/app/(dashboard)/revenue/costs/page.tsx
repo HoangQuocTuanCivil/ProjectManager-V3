@@ -72,7 +72,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function CostsPage() {
   const { t } = useI18n();
   const { user } = useAuthStore();
-  const canManage = !!user && ["admin", "leader", "director"].includes(user.role);
+  const canManage = !!user;
   const [activeTab, setActiveTab] = useState<CostsTab>("costs");
 
   return (

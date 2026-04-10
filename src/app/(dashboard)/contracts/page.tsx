@@ -34,7 +34,7 @@ export default function ContractsPage() {
   const { t } = useI18n();
   const { user } = useAuthStore();
   const { data: projects = [] } = useProjects();
-  const canManage = user && ["admin", "leader", "director"].includes(user.role);
+  const canManage = !!user;
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("outgoing");
   const [filterProjectId, setFilterProjectId] = useState<string>("all");

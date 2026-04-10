@@ -36,7 +36,7 @@ export default function InternalRevenuePage() {
   const { user } = useAuthStore();
   const { data: projects = [] } = useProjects();
   const { data: departments = [] } = useDepartments();
-  const canManage = user && ["admin", "leader", "director"].includes(user.role);
+  const canManage = !!user;
 
   const [filterProjectId, setFilterProjectId] = useState<string>("");
   const [filterDeptId, setFilterDeptId] = useState<string>("");

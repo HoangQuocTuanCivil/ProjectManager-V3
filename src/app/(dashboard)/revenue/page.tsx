@@ -22,7 +22,7 @@ import { currentMonthRange } from "@/lib/utils/format";
 export default function CompanyRevenuePage() {
   const { t } = useI18n();
   const { user } = useAuthStore();
-  const canManage = !!user && ["admin", "leader", "director"].includes(user.role);
+  const canManage = !!user;
 
   const { start: monthStart, end: monthEnd } = currentMonthRange();
   const [filters, setFilters] = useState<RevenueFilterValues>({ date_from: monthStart, date_to: monthEnd });
