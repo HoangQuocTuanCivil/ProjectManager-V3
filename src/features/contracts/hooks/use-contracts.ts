@@ -108,15 +108,27 @@ export function useUpdateContract() {
   });
 }
 
-/** Xóa hợp đồng */
+/** Xóa hợp đồng. HĐ đầu vào có source_allocation_id → xóa luôn giao khoán liên quan */
 export function useDeleteContract() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Nếu HĐ incoming có giao khoán liên kết, xóa giao khoán trước
+      const { data: contract } = await supabase
+        .from("contracts")
+        .select("source_allocation_id, contract_type")
+        .eq("id", id)
+        .single() as { data: { source_allocation_id: string | null; contract_type: string } | null; error: any };
+      if (contract?.contract_type === "incoming" && contract.source_allocation_id) {
+        await supabase.from("dept_budget_allocations").delete().eq("id", contract.source_allocation_id);
+      }
       const { error } = await supabase.from("contracts").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["kpi"] });
+    },
   });
 }
 

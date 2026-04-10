@@ -278,6 +278,7 @@ export function useUpsertDeptBudgetAllocation() {
           start_date: input.delivery_date || null,
           notes: input.note || null,
           parent_contract_id: input.contract_id,
+          source_allocation_id: data.id,
           created_by: user!.id,
         } as any);
       }
@@ -292,15 +293,20 @@ export function useUpsertDeptBudgetAllocation() {
   });
 }
 
-/** Xóa giao khoán phòng ban */
+/** Xóa giao khoán và HĐ đầu vào liên quan (source_allocation_id trỏ ngược về allocation) */
 export function useDeleteDeptBudgetAllocation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Xóa HĐ đầu vào được sinh từ giao khoán này
+      await supabase.from("contracts").delete().eq("source_allocation_id", id);
       const { error } = await supabase.from("dept_budget_allocations").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() });
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+    },
   });
 }
 

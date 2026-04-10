@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, Fragment } from "react";
 import { useContracts } from "@/features/contracts";
 import { useDeptBudgetAllocations, useUpsertDeptBudgetAllocation, useDeleteDeptBudgetAllocation, useAcceptanceRounds, useUpsertAcceptanceRound, useDeleteAcceptanceRound } from "@/features/kpi";
 import { useAuthStore } from "@/lib/stores";
-import { Button, EmptyState } from "@/components/shared";
+import { Button, EmptyState, ConfirmDialog } from "@/components/shared";
 import { Coins, FileText, Upload, ChevronRight, Plus, Pencil, Trash2 } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { formatVND } from "@/lib/utils/kpi";
@@ -111,6 +111,9 @@ export default function BudgetAssignPage() {
 
     return { totalContractValue, totalAllocated };
   }, [allocations, filterContractId]);
+
+  /* ─── Popup xác nhận xóa giao khoán ───────────────────────────── */
+  const [deleteTarget, setDeleteTarget] = useState<DeptBudgetAllocation | null>(null);
 
   /* ─── Form state ──────────────────────────────────────────────── */
   const [showForm, setShowForm] = useState(false);
@@ -384,6 +387,23 @@ export default function BudgetAssignPage() {
         </div>
       )}
 
+      {/* ─── Popup xác nhận xóa giao khoán ─── */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Xóa giao khoán"
+        description={deleteTarget
+          ? `Giao khoán ${deleteTarget.allocation_code || ""} cho ${deleteTarget.center?.name || deleteTarget.department?.name || "—"} (${formatVND(Number(deleteTarget.allocated_amount))}) sẽ bị xóa.\n\nHĐ đầu vào liên quan cũng sẽ bị xóa.`
+          : ""}
+        confirmLabel="Xóa"
+        variant="danger"
+        loading={remove.isPending}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          remove.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+        }}
+      />
+
       {/* ─── Danh sách giao khoán — nhóm theo Trung tâm ─── */}
       {/* Popup sửa đợt nghiệm thu */}
       {editingRound && (
@@ -467,7 +487,7 @@ export default function BudgetAssignPage() {
                           {canManage && (
                             <td className="px-4 py-2.5 text-right">
                               <button
-                                onClick={() => { if (confirm(t.kpi.confirmDeleteBudget.replace("{dept}", a.department?.name || ""))) remove.mutate(a.id); }}
+                                onClick={() => setDeleteTarget(a)}
                                 className="text-destructive hover:underline text-[11px]" disabled={remove.isPending}>
                                 {t.common.delete}
                               </button>

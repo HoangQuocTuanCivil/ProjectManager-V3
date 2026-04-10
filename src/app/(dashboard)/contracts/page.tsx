@@ -9,7 +9,7 @@ import {
 } from "@/features/contracts";
 import { useAuthStore } from "@/lib/stores";
 import { useProductServices } from "@/features/revenue/hooks/use-product-services";
-import { Button, EmptyState } from "@/components/shared";
+import { Button, EmptyState, ConfirmDialog } from "@/components/shared";
 import { FileText, TrendingUp, TrendingDown, Clock, CreditCard, ChevronRight } from "lucide-react";
 import { SearchSelect } from "@/components/shared/search-select";
 import { useI18n } from "@/lib/i18n";
@@ -795,6 +795,7 @@ function ContractCard({ contract: c, canManage, contractType }: {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const deleteContract = useDeleteContract();
   const updateContract = useUpdateContract();
 
@@ -964,16 +965,31 @@ function ContractCard({ contract: c, canManage, contractType }: {
                 Sửa
               </button>
               <button
-                onClick={() => {
-                  if (confirm(t.contracts.confirmDelete.replace("{name}", c.title)))
-                    deleteContract.mutate(c.id);
-                }}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors"
               >
                 Xóa
               </button>
             </div>
           )}
+
+          {/* Popup xác nhận xóa hợp đồng */}
+          <ConfirmDialog
+            open={showDeleteConfirm}
+            onOpenChange={setShowDeleteConfirm}
+            title="Xóa hợp đồng"
+            description={
+              c.contract_type === "incoming"
+                ? `HĐ "${c.contract_no}" (${formatVND(Number(c.contract_value))}) sẽ bị xóa.\n\nGiao khoán liên quan cũng sẽ bị xóa.`
+                : `HĐ "${c.contract_no}" — ${c.title}\nGiá trị: ${formatVND(Number(c.contract_value))}`
+            }
+            confirmLabel="Xóa"
+            variant="danger"
+            loading={deleteContract.isPending}
+            onConfirm={() => {
+              deleteContract.mutate(c.id, { onSuccess: () => setShowDeleteConfirm(false) });
+            }}
+          />
 
           {/* Form chỉnh sửa hợp đồng */}
           {showEdit && (
