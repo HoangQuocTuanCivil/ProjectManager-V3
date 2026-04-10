@@ -837,6 +837,10 @@ function ContractCard({ contract: c, canManage, contractType }: {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
+            {/* Số HĐ gốc (outgoing) → Số HĐ giao khoán (incoming) */}
+            {!isOutgoing && c.parent_contract?.contract_no && (
+              <span className="text-xs font-mono text-primary/70">{c.parent_contract.contract_no} →</span>
+            )}
             <span className="text-xs font-mono text-muted-foreground">{c.contract_no}</span>
             <span
               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"

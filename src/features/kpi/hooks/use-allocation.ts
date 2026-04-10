@@ -277,6 +277,7 @@ export function useUpsertDeptBudgetAllocation() {
           status: "active",
           start_date: input.delivery_date || null,
           notes: input.note || null,
+          parent_contract_id: input.contract_id,
           created_by: user!.id,
         } as any);
       }

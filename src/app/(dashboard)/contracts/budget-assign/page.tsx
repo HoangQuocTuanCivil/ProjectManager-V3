@@ -53,9 +53,9 @@ export default function BudgetAssignPage() {
   const { data: centers = [] } = useCenters();
   const [filterContractId, setFilterContractId] = useState<string>("all");
 
-  // Hợp đồng đầu ra đang hoạt động
+  // Hợp đồng đầu ra có thể phân bổ giao khoán
   const activeContracts = useMemo(() =>
-    contracts.filter((c: any) => c.contract_type === "outgoing" && ["active", "completed"].includes(c.status)),
+    contracts.filter((c: any) => c.contract_type === "outgoing" && ["draft", "active", "completed"].includes(c.status)),
     [contracts]
   );
 

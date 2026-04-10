@@ -4,7 +4,7 @@ import type { Contract, ContractAddendum, BillingMilestone, ContractType } from 
 
 const supabase = createClient();
 
-const CONTRACT_SELECT = "*, project:projects(id, code, name, budget), product_service:product_services(id, code, name, category), creator:users!created_by(id, full_name), addendums:contract_addendums(*, creator:users!created_by(id, full_name)), milestones:billing_milestones(*)";
+const CONTRACT_SELECT = "*, project:projects(id, code, name, budget), product_service:product_services(id, code, name, category), creator:users!created_by(id, full_name), parent_contract:contracts!parent_contract_id(id, contract_no, title), addendums:contract_addendums(*, creator:users!created_by(id, full_name)), milestones:billing_milestones(*)";
 
 export const contractKeys = {
   all: ["contracts"] as const,

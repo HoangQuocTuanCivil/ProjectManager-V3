@@ -26,12 +26,14 @@ export interface Contract {
   person_in_charge: string | null;
   contract_scope: string;
   product_service_id: string | null;
+  parent_contract_id: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
   // Joined
   project?: Pick<Project, 'id' | 'code' | 'name' | 'budget'>;
   creator?: Pick<User, 'id' | 'full_name'>;
+  parent_contract?: Pick<Contract, 'id' | 'contract_no' | 'title'> | null;
   addendums?: ContractAddendum[];
   milestones?: BillingMilestone[];
 }
