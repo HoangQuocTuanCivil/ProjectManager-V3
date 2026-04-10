@@ -10,44 +10,43 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
-  let query = supabase
-    .from("revenue_entries")
-    .select("contract_id, amount, status, recognition_date, contract:contracts(id, contract_no, title)")
-    .eq("status", "confirmed")
-    .not("contract_id", "is", null);
+  const [entriesRes, contractsRes] = await Promise.all([
+    (() => {
+      let q = supabase
+        .from("revenue_entries")
+        .select("contract_id, amount, status, recognition_date")
+        .eq("status", "confirmed")
+        .not("contract_id", "is", null);
+      if (from) q = q.gte("recognition_date", from);
+      if (to) q = q.lte("recognition_date", to);
+      return q;
+    })(),
+    supabase
+      .from("contracts")
+      .select("id, contract_no, title")
+      .is("deleted_at", null),
+  ]);
 
-  if (from) query = query.gte("recognition_date", from);
-  if (to) query = query.lte("recognition_date", to);
+  if (entriesRes.error) return errorResponse(entriesRes.error.message, 500);
 
-  const { data, error } = await query;
-  if (error) return errorResponse(error.message, 500);
+  const contractMap = new Map(
+    (contractsRes.data ?? []).map(c => [c.id, c])
+  );
 
-  const map = new Map<string, {
-    contract_id: string;
-    contract_no: string;
-    contract_title: string;
-    total: number;
-    entry_count: number;
-  }>();
+  const map = new Map<string, { contract_id: string; contract_no: string; contract_title: string; total: number; entry_count: number }>();
 
-  for (const row of data ?? []) {
+  for (const row of entriesRes.data ?? []) {
     if (!row.contract_id) continue;
-    const c = row.contract as any;
+    const c = contractMap.get(row.contract_id);
+    if (!c) continue;
     let entry = map.get(row.contract_id);
     if (!entry) {
-      entry = {
-        contract_id: row.contract_id,
-        contract_no: c?.contract_no ?? "",
-        contract_title: c?.title ?? "",
-        total: 0,
-        entry_count: 0,
-      };
+      entry = { contract_id: row.contract_id, contract_no: c.contract_no, contract_title: c.title, total: 0, entry_count: 0 };
       map.set(row.contract_id, entry);
     }
     entry.total += Number(row.amount);
     entry.entry_count++;
   }
 
-  const result = Array.from(map.values()).sort((a, b) => b.total - a.total);
-  return jsonResponse(result);
+  return jsonResponse(Array.from(map.values()).sort((a, b) => b.total - a.total));
 }

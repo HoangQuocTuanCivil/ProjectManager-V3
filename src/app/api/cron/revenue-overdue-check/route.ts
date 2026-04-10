@@ -9,9 +9,10 @@ export async function POST(req: NextRequest) {
 
   const { data: milestones, error } = await admin
     .from("billing_milestones")
-    .select("id, contract_id, title, amount, due_date, contract:contracts(org_id, project_id)")
+    .select("id, contract_id, title, amount, due_date, contract:contracts!inner(org_id, project_id, deleted_at)")
     .eq("status", "upcoming")
-    .lt("due_date", today);
+    .lt("due_date", today)
+    .is("contract.deleted_at", null);
 
   if (error) return errorResponse(error.message, 500);
 

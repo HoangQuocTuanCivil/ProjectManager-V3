@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const supabase = await getServerSupabase();
   const projectId = params.id;
 
-  const [entriesRes, allocRes, adjRes] = await Promise.all([
+  const [entriesRes, allocRes, contractsRes] = await Promise.all([
     supabase
       .from("revenue_entries")
       .select("id, amount, status, dimension, source, recognition_date, description, completion_percentage")
@@ -21,14 +21,24 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       .eq("project_id", projectId),
 
     supabase
-      .from("revenue_adjustments")
-      .select("id, old_amount, new_amount, adjustment_amount, reason, created_at, addendum:contract_addendums(id, addendum_no)")
-      .in("contract_id", (
-        await supabase.from("contracts").select("id").eq("project_id", projectId)
-      ).data?.map(c => c.id) ?? []),
+      .from("contracts")
+      .select("id")
+      .eq("project_id", projectId)
+      .is("deleted_at", null),
   ]);
 
   if (entriesRes.error) return errorResponse(entriesRes.error.message, 500);
+
+  const contractIds = (contractsRes.data ?? []).map(c => c.id);
+
+  let adjustments: any[] = [];
+  if (contractIds.length > 0) {
+    const { data } = await supabase
+      .from("revenue_adjustments")
+      .select("id, old_amount, new_amount, adjustment_amount, reason, created_at, addendum:contract_addendums(id, addendum_no)")
+      .in("contract_id", contractIds);
+    adjustments = data ?? [];
+  }
 
   const entries = entriesRes.data ?? [];
   const confirmed = entries.filter(e => e.status === "confirmed");
@@ -42,8 +52,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     total_confirmed: total,
     entry_count: entries.length,
     avg_completion: avgCompletion,
-    entries: entries,
+    entries,
     allocations: allocRes.data ?? [],
-    adjustments: adjRes.data ?? [],
+    adjustments,
   });
 }

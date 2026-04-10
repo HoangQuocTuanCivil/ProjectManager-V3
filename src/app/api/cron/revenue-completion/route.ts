@@ -6,35 +6,50 @@ export async function POST(req: NextRequest) {
 
   const admin = getAdminSupabase();
 
-  const { data: contracts, error } = await admin
-    .from("contracts")
-    .select("id, org_id, project_id, contract_value, status")
-    .eq("status", "active");
+  const [contractsRes, tasksRes, existingRes] = await Promise.all([
+    admin
+      .from("contracts")
+      .select("id, org_id, project_id, contract_value, status")
+      .eq("status", "active")
+      .is("deleted_at", null),
+    admin
+      .from("tasks")
+      .select("project_id, progress")
+      .is("deleted_at", null)
+      .neq("status", "cancelled")
+      .not("project_id", "is", null),
+    admin
+      .from("revenue_entries")
+      .select("contract_id, amount")
+      .eq("method", "completion_rate")
+      .eq("status", "confirmed"),
+  ]);
 
-  if (error) return errorResponse(error.message, 500);
+  if (contractsRes.error) return errorResponse(contractsRes.error.message, 500);
+
+  const tasksByProject = new Map<string, number[]>();
+  for (const t of tasksRes.data ?? []) {
+    if (!t.project_id) continue;
+    const arr = tasksByProject.get(t.project_id) || [];
+    arr.push(t.progress ?? 0);
+    tasksByProject.set(t.project_id, arr);
+  }
+
+  const existingByContract = new Map<string, number>();
+  for (const e of existingRes.data ?? []) {
+    if (!e.contract_id) continue;
+    existingByContract.set(e.contract_id, (existingByContract.get(e.contract_id) || 0) + Number(e.amount));
+  }
 
   let created = 0;
 
-  for (const contract of contracts ?? []) {
-    const { data: tasks } = await admin
-      .from("tasks")
-      .select("progress")
-      .eq("project_id", contract.project_id)
-      .neq("status", "cancelled");
+  for (const contract of contractsRes.data ?? []) {
+    const progresses = tasksByProject.get(contract.project_id);
+    if (!progresses || progresses.length === 0) continue;
 
-    if (!tasks || tasks.length === 0) continue;
-
-    const avgProgress = tasks.reduce((s, t) => s + (t.progress ?? 0), 0) / tasks.length;
+    const avgProgress = progresses.reduce((s, p) => s + p, 0) / progresses.length;
     const expectedRevenue = Math.round((contract.contract_value * avgProgress) / 100);
-
-    const { data: existing } = await admin
-      .from("revenue_entries")
-      .select("amount")
-      .eq("contract_id", contract.id)
-      .eq("method", "completion_rate")
-      .eq("status", "confirmed");
-
-    const existingTotal = (existing ?? []).reduce((s, e) => s + Number(e.amount), 0);
+    const existingTotal = existingByContract.get(contract.id) || 0;
     const delta = expectedRevenue - existingTotal;
 
     if (Math.abs(delta) < 1) continue;
@@ -67,7 +82,6 @@ export async function POST(req: NextRequest) {
       created_by: adminUser.id,
     }).select("id").single();
 
-    // Phân bổ doanh thu cho các phòng ban tham gia dự án
     if (entry) {
       await admin.rpc("fn_allocate_dept_revenue", { p_entry_id: entry.id });
     }

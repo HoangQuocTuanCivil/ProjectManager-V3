@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
     .from("contracts")
     .select("id, project_id, contract_type, contract_value, product_service_id, status, product_service:product_services(id, code, name, category)")
     .eq("contract_type", "outgoing")
-    .in("status", ["active", "completed"]);
+    .in("status", ["active", "completed"])
+    .is("deleted_at", null);
 
   if (ctErr) return errorResponse(ctErr.message, 500);
 
