@@ -304,8 +304,10 @@ export function useDeleteDeptBudgetAllocation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // Xóa HĐ đầu vào được sinh từ giao khoán này
-      await supabase.from("contracts").delete().eq("source_allocation_id", id);
+      await (supabase.from("contracts") as any)
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("source_allocation_id", id)
+        .is("deleted_at", null);
       const { error } = await supabase.from("dept_budget_allocations").delete().eq("id", id);
       if (error) throw error;
     },

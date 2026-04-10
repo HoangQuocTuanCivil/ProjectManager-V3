@@ -141,16 +141,15 @@ export function useUpdateContract() {
   });
 }
 
-/** Xóa hợp đồng. HĐ đầu vào có source_allocation_id → xóa luôn giao khoán liên quan */
 export function useDeleteContract() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase
-        .from("contracts") as any)
-        .update({ deleted_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
+      const res = await fetch(`/api/contracts/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Không thể xóa hợp đồng");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contractKeys.all });

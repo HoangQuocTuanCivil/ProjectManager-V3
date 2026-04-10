@@ -9,13 +9,33 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (roleErr) return errorResponse(roleErr, 403);
 
   const supabase = await getServerSupabase();
-  const { error } = await (supabase
-    .from("contracts") as any)
-    .update({ deleted_at: new Date().toISOString() })
+  const now = new Date().toISOString();
+
+  const { data: contract } = await supabase
+    .from("contracts")
+    .select("id, project_id, contract_type, source_allocation_id")
     .eq("id", params.id)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .single() as { data: { id: string; project_id: string; contract_type: string; source_allocation_id: string | null } | null; error: any };
+
+  if (!contract) return errorResponse("Hợp đồng không tồn tại", 404);
+
+  const { error } = await (supabase.from("contracts") as any)
+    .update({ deleted_at: now })
+    .eq("id", params.id);
 
   if (error) return errorResponse(error.message, 500);
+
+  if (contract.contract_type === "incoming" && contract.source_allocation_id) {
+    await supabase.from("dept_budget_allocations").delete().eq("id", contract.source_allocation_id);
+  }
+
+  if (contract.project_id) {
+    await (supabase.from("contracts") as any)
+      .update({ deleted_at: now })
+      .eq("parent_contract_id", params.id)
+      .is("deleted_at", null);
+  }
 
   return jsonResponse({ success: true });
 }
