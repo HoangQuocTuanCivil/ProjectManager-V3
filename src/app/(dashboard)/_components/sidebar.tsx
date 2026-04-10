@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Tooltip, TooltipProvider } from "@/components/shared/tooltip";
 import { NAV_ITEMS } from "./nav-config";
+import { useModuleAccess } from "@/features/settings/hooks/use-module-access";
 
 function SidebarContent({
   collapsed,
@@ -22,14 +23,17 @@ function SidebarContent({
   const { user } = useAuthStore();
   const { unreadCount } = useNotifStore();
   const { t } = useI18n();
+  const { data: disabledModules } = useModuleAccess();
 
   const handleNav = (href: string) => {
     router.push(href);
     onNavClick?.();
   };
 
-  // Build nav items with translated labels (settings removed — accessible via topbar account menu)
-  const navItems = NAV_ITEMS.map((item) => ({ ...item, label: t.nav[item.tKey], roles: undefined as string[] | undefined }));
+  // Lọc nav theo role và phân quyền module (ẩn module bị tắt cho user)
+  const navItems = NAV_ITEMS
+    .filter((item) => !disabledModules || !disabledModules.has(item.moduleKey))
+    .map((item) => ({ ...item, label: t.nav[item.tKey], roles: undefined as string[] | undefined }));
 
   return (
     <>

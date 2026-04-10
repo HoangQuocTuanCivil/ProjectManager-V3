@@ -9,6 +9,7 @@ import { PAGE_TITLE_KEYS } from "./_components/nav-config";
 import { Sidebar } from "./_components/sidebar";
 import { MobileDrawer } from "./_components/mobile-drawer";
 import { Topbar } from "./_components/topbar";
+import { ModuleGuard } from "./_components/module-guard";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -60,7 +61,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="print:hidden">
             <Breadcrumbs />
           </div>
-          {children}
+          <ModuleGuard>{children}</ModuleGuard>
         </div>
       </main>
       <div className="print:hidden">

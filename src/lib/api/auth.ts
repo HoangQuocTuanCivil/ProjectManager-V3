@@ -19,7 +19,7 @@ export async function getUserProfile(userId: string) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("users")
-    .select("id, org_id, dept_id, team_id, role, full_name, email, is_active")
+    .select("id, org_id, dept_id, center_id, team_id, role, full_name, email, is_active")
     .eq("id", userId)
     .single();
   if (error) return null;
@@ -27,6 +27,7 @@ export async function getUserProfile(userId: string) {
     id: string;
     org_id: string;
     dept_id: string | null;
+    center_id: string | null;
     team_id: string | null;
     role: string;
     full_name: string;
