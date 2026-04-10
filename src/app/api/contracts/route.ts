@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("contracts")
     .select(CONTRACT_SELECT, { count: "exact" })
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .range(from, to);
 

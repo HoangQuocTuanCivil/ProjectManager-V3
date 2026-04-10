@@ -10,6 +10,8 @@ export {
   useUpdateMilestone,
   useDeleteMilestone,
   useDeleteProject,
+  useArchiveProject,
+  useRestoreProject,
   projectKeys,
 } from './hooks/use-projects';
 export type { ProjectListFilters } from './hooks/use-projects';

@@ -85,7 +85,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   // Soft delete: set status to cancelled
   const { error } = await supabase
     .from("tasks")
-    .update({ status: "cancelled" })
+    .update({ status: "cancelled", deleted_at: new Date().toISOString() })
     .eq("id", params.id);
 
   if (error) return errorResponse(error.message, 500);

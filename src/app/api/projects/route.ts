@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
       manager:users!projects_manager_id_fkey(id, full_name, avatar_url, role),
       department:departments(id, name, code)
     `, { count: "exact" })
+    .is("deleted_at", null)
     .neq("status", "archived")
     .order("created_at", { ascending: false })
     .range(from, to);

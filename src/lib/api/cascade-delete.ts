@@ -65,31 +65,16 @@ export async function deleteUserDependencies(
 }
 
 /**
- * Xóa toàn bộ dữ liệu phụ thuộc trước khi xóa project.
- * Bảng có ON DELETE CASCADE (contracts, project_members, project_departments,
- * project_kpi_summary, dept_budget_allocations, project_dept_factors) được DB tự xử lý.
- * Contracts CASCADE sẽ kéo theo: contract_addendums, billing_milestones, revenue_adjustments.
+ * Soft-delete dữ liệu phụ thuộc khi xóa project.
+ * Đặt deleted_at cho contracts và tasks liên quan.
  */
-export async function deleteProjectDependencies(
+export async function softDeleteProjectDependencies(
   admin: SupabaseClient,
   projectId: string,
 ) {
-  const { data: contracts } = await admin
-    .from("contracts")
-    .select("id")
-    .eq("project_id", projectId);
-
-  const contractIds = (contracts ?? []).map((c) => c.id);
-
+  const now = new Date().toISOString();
   await Promise.all([
-    admin.from("tasks").delete().eq("project_id", projectId),
-    admin.from("revenue_entries" as any).delete().eq("project_id", projectId),
-    admin.from("cost_entries" as any).delete().eq("project_id", projectId),
-    ...(contractIds.length > 0
-      ? [
-          admin.from("revenue_entries" as any).delete().in("contract_id", contractIds),
-          admin.from("cost_entries" as any).delete().in("contract_id", contractIds),
-        ]
-      : []),
+    (admin.from("contracts") as any).update({ deleted_at: now }).eq("project_id", projectId).is("deleted_at", null),
+    (admin.from("tasks") as any).update({ deleted_at: now, status: "cancelled" }).eq("project_id", projectId).is("deleted_at", null),
   ]);
 }

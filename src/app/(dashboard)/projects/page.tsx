@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useProjects, useDeleteProject } from "@/features/projects";
+import { useProjects, useDeleteProject, useArchiveProject } from "@/features/projects";
 import { useContracts } from "@/features/contracts";
 import { useTasks } from "@/features/tasks";
 import { useDebounce } from "@/lib/hooks/use-debounce";
@@ -35,10 +35,12 @@ export default function ProjectsPage() {
   const { data: allTasks = [] } = useTasks({});
   const { user } = useAuthStore();
   const deleteProject = useDeleteProject();
+  const archiveProject = useArchiveProject();
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
   const [view, setView] = useState<ViewMode>("grid");
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<Project | null>(null);
   const debouncedSearch = useDebounce(search, 300);
 
   const STATUS_MAP: Record<ProjectStatus, { label: string; color: string }> = {
@@ -175,7 +177,8 @@ export default function ProjectsPage() {
               taskCount={allTasks.filter((t) => t.project_id === project.id).length}
               overdueCount={allTasks.filter((t) => t.project_id === project.id && t.status === "overdue").length}
               onClick={() => router.push(`/projects/${project.id}`)}
-              canDelete={!!isAdminOrLeader}
+              canManage={!!isAdminOrLeader}
+              onArchive={() => setArchiveTarget(project)}
               onDelete={() => setDeleteTarget(project)}
             />
           ))}
@@ -187,37 +190,47 @@ export default function ProjectsPage() {
           projectBudgetMap={projectBudgetMap}
           projectFundMap={projectFundMap}
           onClick={(id) => router.push(`/projects/${id}`)}
-          canDelete={!!isAdminOrLeader}
+          canManage={!!isAdminOrLeader}
+          onArchive={(p) => setArchiveTarget(p)}
           onDelete={(p) => setDeleteTarget(p)}
         />
       )}
 
-      {/* Delete Confirmation Dialog (Radix) */}
+      <Dialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(null)}>
+        <DialogContent title={t.projects.archiveProject} size="sm">
+          <p className="text-base text-muted-foreground">
+            {t.projects.archiveConfirm} <strong className="text-foreground">{archiveTarget?.name}</strong> ({archiveTarget?.code})?
+          </p>
+          <p className="text-sm text-amber-600 mt-2">{t.projects.archiveWarn}</p>
+          <div className="flex justify-end gap-3 mt-5">
+            <button onClick={() => setArchiveTarget(null)} className="px-4 py-2 text-base rounded-lg border border-border hover:bg-secondary transition-colors">
+              {t.common.cancel}
+            </button>
+            <button
+              onClick={() => archiveTarget && archiveProject.mutate(archiveTarget.id, { onSuccess: () => setArchiveTarget(null) })}
+              disabled={archiveProject.isPending}
+              className="px-4 py-2 text-base rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50"
+            >
+              {archiveProject.isPending ? "..." : t.projects.archiveProject}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent title={t.projects.deleteProject} size="sm">
           <p className="text-base text-muted-foreground">
             {t.projects.deleteConfirm} <strong className="text-foreground">{deleteTarget?.name}</strong> ({deleteTarget?.code})?
           </p>
-          <p className="text-sm text-destructive mt-2">
-            {t.common.cannotUndo} {t.projects.deleteWarn}
-          </p>
+          <p className="text-sm text-destructive mt-2">{t.projects.deleteWarn}</p>
           <div className="flex justify-end gap-3 mt-5">
-            <button
-              onClick={() => setDeleteTarget(null)}
-              className="px-4 py-2 text-base rounded-lg border border-border hover:bg-secondary transition-colors"
-            >
+            <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-base rounded-lg border border-border hover:bg-secondary transition-colors">
               {t.common.cancel}
             </button>
             <button
-              onClick={() => {
-                if (deleteTarget) {
-                  deleteProject.mutate(deleteTarget.id, {
-                    onSuccess: () => setDeleteTarget(null),
-                  });
-                }
-              }}
+              onClick={() => deleteTarget && deleteProject.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })}
               disabled={deleteProject.isPending}
-              className="px-4 py-2 text-base rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-base rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
             >
               {deleteProject.isPending ? t.common.deleting : t.projects.deleteProject}
             </button>
@@ -234,7 +247,8 @@ function ProjectCard({
   taskCount,
   overdueCount,
   onClick,
-  canDelete,
+  canManage,
+  onArchive,
   onDelete,
 }: {
   project: Project;
@@ -242,7 +256,8 @@ function ProjectCard({
   taskCount: number;
   overdueCount: number;
   onClick: () => void;
-  canDelete?: boolean;
+  canManage?: boolean;
+  onArchive?: () => void;
   onDelete?: () => void;
 }) {
   const { t } = useI18n();
@@ -287,7 +302,7 @@ function ProjectCard({
           </div>
           <div className="flex items-center gap-1">
             <HealthBadge health={health as any} />
-            {canDelete && (
+            {canManage && (
               <div className="relative">
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
@@ -299,12 +314,18 @@ function ProjectCard({
                 {showMenu && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} />
-                    <div className="absolute right-0 top-7 z-20 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[120px]">
+                    <div className="absolute right-0 top-7 z-20 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[140px]">
                       <button
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); onClick(); }}
                         className="w-full text-left px-3 py-1.5 text-sm text-foreground hover:bg-secondary transition-colors"
                       >
                         {t.projects.editProject}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); onArchive?.(); }}
+                        className="w-full text-left px-3 py-1.5 text-sm text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                      >
+                        {t.projects.archiveProject}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete?.(); }}
@@ -371,7 +392,8 @@ function ProjectListView({
   projectBudgetMap,
   projectFundMap,
   onClick,
-  canDelete,
+  canManage,
+  onArchive,
   onDelete,
 }: {
   projects: Project[];
@@ -379,7 +401,8 @@ function ProjectListView({
   projectBudgetMap: Map<string, number>;
   projectFundMap: Map<string, number>;
   onClick: (id: string) => void;
-  canDelete?: boolean;
+  canManage?: boolean;
+  onArchive?: (p: Project) => void;
   onDelete?: (p: Project) => void;
 }) {
   const { t } = useI18n();
@@ -397,7 +420,7 @@ function ProjectListView({
       <table className="w-full">
         <thead>
           <tr className="border-b border-border bg-secondary/50 sticky top-0 z-10">
-            {[t.projects.projectCode, t.projects.projectName, t.projects.statusCol, t.projects.manager, t.projects.progressLabel, t.projects.tasksCol, t.projects.totalBudget, t.projects.allocationFundLbl, t.projects.deadlineCol, ...(canDelete ? [""] : [])].map((h, i) => (
+            {[t.projects.projectCode, t.projects.projectName, t.projects.statusCol, t.projects.manager, t.projects.progressLabel, t.projects.tasksCol, t.projects.totalBudget, t.projects.allocationFundLbl, t.projects.deadlineCol, ...(canManage ? [""] : [])].map((h, i) => (
               <th key={i} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{h}</th>
             ))}
           </tr>
@@ -453,15 +476,24 @@ function ProjectListView({
                 <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
                   {formatDate(p.end_date)}
                 </td>
-                {canDelete && (
+                {canManage && (
                   <td className="px-4 py-3">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onDelete?.(p); }}
-                      className="text-sm text-muted-foreground hover:text-destructive transition-colors"
-                      title={t.projects.deleteProject}
-                    >
-                      🗑
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onArchive?.(p); }}
+                        className="text-xs px-2 py-1 rounded text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                        title={t.projects.archiveProject}
+                      >
+                        {t.projects.archiveProject}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDelete?.(p); }}
+                        className="text-xs px-2 py-1 rounded text-destructive hover:bg-destructive/10 transition-colors"
+                        title={t.projects.deleteProject}
+                      >
+                        {t.projects.deleteProject}
+                      </button>
+                    </div>
                   </td>
                 )}
               </tr>

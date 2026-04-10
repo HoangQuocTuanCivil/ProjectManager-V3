@@ -30,6 +30,7 @@ export interface Contract {
   created_by: string;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
   // Joined
   project?: Pick<Project, 'id' | 'code' | 'name' | 'budget'>;
   creator?: Pick<User, 'id' | 'full_name'>;

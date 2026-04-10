@@ -978,11 +978,7 @@ function ContractCard({ contract: c, canManage, contractType }: {
             open={showDeleteConfirm}
             onOpenChange={setShowDeleteConfirm}
             title="Xóa hợp đồng"
-            description={
-              c.contract_type === "incoming"
-                ? `HĐ "${c.contract_no}" (${formatVND(Number(c.contract_value))}) sẽ bị xóa.\n\nGiao khoán liên quan cũng sẽ bị xóa.`
-                : `HĐ "${c.contract_no}" — ${c.title}\nGiá trị: ${formatVND(Number(c.contract_value))}`
-            }
+            description={`HĐ "${c.contract_no}" — ${c.title}\nGiá trị: ${formatVND(Number(c.contract_value))}\n\nHợp đồng sẽ bị ẩn khỏi danh sách. Có thể khôi phục trong 30 ngày.`}
             confirmLabel="Xóa"
             variant="danger"
             loading={deleteContract.isPending}

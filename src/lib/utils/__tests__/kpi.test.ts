@@ -61,6 +61,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     metadata: {},
     created_at: '2026-01-01',
     updated_at: '2026-01-01',
+    deleted_at: null,
     team_id: null,
     ...overrides,
   };

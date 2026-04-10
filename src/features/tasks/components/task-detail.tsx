@@ -60,7 +60,7 @@ export function TaskDetail({ taskId, onClose, zIndex, transparentOverlay }: {
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const supabase = createClient();
-      const { error } = await supabase.from("tasks").update({ status: "cancelled" }).eq("id", taskId);
+      const { error } = await (supabase.from("tasks") as any).update({ status: "cancelled", deleted_at: new Date().toISOString() }).eq("id", taskId);
       if (error) throw error;
     },
     onSuccess: () => {

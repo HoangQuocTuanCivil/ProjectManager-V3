@@ -214,13 +214,44 @@ export function useDeleteProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // Delete related records first
-      await supabase.from("project_departments").delete().eq("project_id", id);
-      await supabase.from("project_members").delete().eq("project_id", id);
-      await supabase.from("milestones").delete().eq("project_id", id);
-      const { error } = await supabase.from("projects").delete().eq("id", id);
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Không thể xóa dự án");
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.all });
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+export function useArchiveProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("projects")
+        .update({ status: "archived" })
+        .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.list() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.all }),
+  });
+}
+
+export function useRestoreProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase
+        .from("projects") as any)
+        .update({ deleted_at: null, status: "active" })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.all }),
   });
 }

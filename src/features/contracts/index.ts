@@ -5,6 +5,7 @@ export {
   useCreateContract,
   useUpdateContract,
   useDeleteContract,
+  useRestoreContract,
   useCreateAddendum,
   useDeleteAddendum,
   useCreateBillingMilestone,

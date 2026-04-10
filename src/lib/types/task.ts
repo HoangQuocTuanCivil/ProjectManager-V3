@@ -54,6 +54,7 @@ export interface Task {
   metadata: Record<string, Json | undefined>;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
   team_id: string | null;
   // Joined
   assignee?: User;

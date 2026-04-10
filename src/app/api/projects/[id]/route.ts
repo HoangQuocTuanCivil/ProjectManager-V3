@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { getAuthProfile, getAdminSupabase, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
-import { deleteProjectDependencies } from "@/lib/api/cascade-delete";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const { profile } = await getAuthProfile();
@@ -58,11 +57,19 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (roleErr) return errorResponse(roleErr, 403);
 
   const admin = getAdminSupabase();
+  const now = new Date().toISOString();
 
-  await deleteProjectDependencies(admin, params.id);
-
-  const { error } = await admin.from("projects").delete().eq("id", params.id);
+  const { error } = await (admin
+    .from("projects") as any)
+    .update({ deleted_at: now, status: "archived" })
+    .eq("id", params.id)
+    .is("deleted_at", null);
   if (error) return errorResponse(error.message, 500);
+
+  await Promise.all([
+    (admin.from("contracts") as any).update({ deleted_at: now }).eq("project_id", params.id).is("deleted_at", null),
+    (admin.from("tasks") as any).update({ deleted_at: now, status: "cancelled" }).eq("project_id", params.id).is("deleted_at", null),
+  ]);
 
   return jsonResponse({ success: true });
 }

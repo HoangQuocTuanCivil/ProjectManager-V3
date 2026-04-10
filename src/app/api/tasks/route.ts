@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
       project:projects(id, code, name),
       department:departments(id, name, code)
     `, { count: "exact" })
+    .is("deleted_at", null)
     .neq("status", "cancelled")
     .order("created_at", { ascending: false })
     .range(from, to);

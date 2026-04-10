@@ -20,6 +20,7 @@ export interface Project {
   contract_no: string | null;
   metadata: Record<string, Json | undefined>;
   created_at: string;
+  deleted_at: string | null;
   // Joined
   manager?: User;
   department?: Department;

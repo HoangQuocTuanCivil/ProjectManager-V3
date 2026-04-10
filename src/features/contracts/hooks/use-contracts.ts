@@ -54,6 +54,7 @@ export function useContracts(filters?: { projectId?: string; type?: ContractType
       let query = supabase
         .from("contracts")
         .select(CONTRACT_SELECT)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (filters?.projectId) query = query.eq("project_id", filters.projectId);
       if (filters?.type) query = query.eq("contract_type", filters.type);
@@ -145,22 +146,30 @@ export function useDeleteContract() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // Nếu HĐ incoming có giao khoán liên kết, xóa giao khoán trước
-      const { data: contract } = await supabase
-        .from("contracts")
-        .select("source_allocation_id, contract_type")
-        .eq("id", id)
-        .single() as { data: { source_allocation_id: string | null; contract_type: string } | null; error: any };
-      if (contract?.contract_type === "incoming" && contract.source_allocation_id) {
-        await supabase.from("dept_budget_allocations").delete().eq("id", contract.source_allocation_id);
-      }
-      const { error } = await supabase.from("contracts").delete().eq("id", id);
+      const { error } = await (supabase
+        .from("contracts") as any)
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
       qc.invalidateQueries({ queryKey: ["kpi"] });
     },
+  });
+}
+
+export function useRestoreContract() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase
+        .from("contracts") as any)
+        .update({ deleted_at: null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
   });
 }
 

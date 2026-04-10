@@ -28,6 +28,7 @@ export function useTasks(filters: TaskFilters = {}) {
           project:projects(id, code, name),
           department:departments(id, name, code, center_id, center:centers(id, name, code))
         `)
+        .is('deleted_at', null)
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
 
