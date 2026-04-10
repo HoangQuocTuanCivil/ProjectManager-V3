@@ -197,7 +197,7 @@ export function useDeptBudgetAllocations(projectId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("dept_budget_allocations")
-        .select("*, project:projects(id, code, name, budget, allocation_fund), contract:contracts(id, contract_no, title, contract_value), department:departments(id, name, code), center:centers(id, name, code), creator:users!created_by(id, full_name)")
+        .select("*, project:projects(id, code, name, budget, allocation_fund), contract:contracts!contract_id(id, contract_no, title, contract_value), department:departments(id, name, code), center:centers(id, name, code), creator:users!created_by(id, full_name)")
         .order("created_at", { ascending: false });
       if (projectId) query = query.eq("project_id", projectId);
       const { data, error } = await query;
