@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { getAuthProfile, getServerSupabase, getAdminSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
 import { hasMinRole } from "@/lib/utils/permissions";
 import type { UserRole } from "@/lib/types";
 
@@ -25,8 +25,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!entry) return errorResponse("Không tìm thấy bút toán", 404);
   if (entry.status === "cancelled") return errorResponse("Bút toán đã bị huỷ", 400);
 
-  if (!hasMinRole(profile.role as UserRole, "director") && entry.dept_id !== profile.dept_id) {
+  const role = profile.role as UserRole;
+  if (!hasMinRole(role, "director") && entry.dept_id && entry.dept_id !== profile.dept_id) {
     return errorResponse("Bạn chỉ được huỷ bút toán thuộc phòng ban mình", 403);
+  }
+  if (!hasMinRole(role, "leader") && !entry.dept_id) {
+    return errorResponse("Chỉ leader trở lên mới được huỷ bút toán chưa gán phòng ban", 403);
   }
 
   const { error: updateErr } = await supabase
@@ -36,10 +40,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (updateErr) return errorResponse(updateErr.message, 500);
 
-  // Bút toán đã xác nhận + có giá trị → tạo bản đối ứng âm để triệt tiêu doanh thu
   if (entry.status === "confirmed" && entry.amount !== 0) {
     const today = new Date().toISOString().split("T")[0];
-    const { data: offsetEntry } = await supabase
+    const { data: offsetEntry, error: insertErr } = await supabase
       .from("revenue_entries")
       .insert({
         org_id: entry.org_id,
@@ -63,7 +66,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .select("id")
       .single();
 
+    if (insertErr) return errorResponse(insertErr.message, 500);
+
     if (offsetEntry) {
+      if (entry.project_id) {
+        const admin = getAdminSupabase();
+        await admin.rpc("fn_allocate_dept_revenue", { p_entry_id: offsetEntry.id });
+      }
+
       await supabase
         .from("revenue_adjustments")
         .update({ revenue_entry_id: offsetEntry.id })
