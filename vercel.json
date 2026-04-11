@@ -20,6 +20,10 @@
     {
       "path": "/api/cron/revenue-overdue-check",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/workflow-engine",
+      "schedule": "*/30 * * * *"
     }
   ],
   "headers": [
