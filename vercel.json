@@ -23,7 +23,7 @@
     },
     {
       "path": "/api/cron/workflow-engine",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 6 * * *"
     }
   ],
   "headers": [
