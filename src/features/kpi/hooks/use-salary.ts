@@ -33,11 +33,13 @@ export function useCreateSalaryBatch() {
       if (!res.ok) throw new Error((await res.json()).error);
       return res.json();
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.salary() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: kpiKeys.salary() });
+      qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
+    },
   });
 }
 
-/** Xóa bảng lương theo tháng, tuỳ chọn theo danh sách user */
 export function useDeleteSalary() {
   const qc = useQueryClient();
   return useMutation({
@@ -48,7 +50,10 @@ export function useDeleteSalary() {
       if (!res.ok) throw new Error((await res.json()).error);
       return res.json() as Promise<{ deleted: number }>;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.salary() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: kpiKeys.salary() });
+      qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
+    },
   });
 }
 

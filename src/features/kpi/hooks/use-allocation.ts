@@ -144,6 +144,7 @@ export function useCalculateAllocation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.periods() });
       qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
+      qc.invalidateQueries({ queryKey: kpiKeys.salary() });
       qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
@@ -169,6 +170,7 @@ export function useApproveAllocation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.periods() });
       qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
+      qc.invalidateQueries({ queryKey: kpiKeys.salary() });
     },
   });
 }
@@ -190,6 +192,7 @@ export function useDeleteAllocationPeriod() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.periods() });
       qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
+      qc.invalidateQueries({ queryKey: kpiKeys.salary() });
       qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
@@ -303,6 +306,7 @@ export function useUpsertDeptBudgetAllocation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() });
+      qc.invalidateQueries({ queryKey: kpiKeys.periods() });
       qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
       qc.invalidateQueries({ queryKey: ["contracts"] });
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -324,6 +328,7 @@ export function useDeleteDeptBudgetAllocation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() });
+      qc.invalidateQueries({ queryKey: kpiKeys.periods() });
       qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
       qc.invalidateQueries({ queryKey: ["contracts"] });
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -388,6 +393,7 @@ export function useUpdateDeptBudgetAllocation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() });
+      qc.invalidateQueries({ queryKey: kpiKeys.periods() });
       qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
       qc.invalidateQueries({ queryKey: ["contracts"] });
       qc.invalidateQueries({ queryKey: ["projects"] });

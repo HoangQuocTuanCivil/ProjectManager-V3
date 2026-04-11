@@ -239,8 +239,10 @@ export function useEvaluateKPI() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: ["kpi", "periods"] });
+      qc.invalidateQueries({ queryKey: ["kpi", "fund-summary"] });
       qc.invalidateQueries({ queryKey: ["revenue"] });
       qc.invalidateQueries({ queryKey: ["reports"] });
+      qc.invalidateQueries({ queryKey: ["acceptance"] });
     },
   });
 }

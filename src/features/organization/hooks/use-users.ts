@@ -69,6 +69,7 @@ export function useUpdateUser() {
       qc.invalidateQueries({ queryKey: userKeys.list() });
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["kpi", "periods"] });
+      qc.invalidateQueries({ queryKey: ["workflows", "pending"] });
     },
   });
 }

@@ -194,6 +194,7 @@ export function useApproveProposal() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.all });
       qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['tasks', 'workload'] });
     },
   });
 }

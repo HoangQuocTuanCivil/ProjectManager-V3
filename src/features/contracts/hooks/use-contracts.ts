@@ -250,6 +250,7 @@ export function useCreateAddendum() {
       qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["revenue"] });
       qc.invalidateQueries({ queryKey: ["reports"] });
+      qc.invalidateQueries({ queryKey: ["kpi", "fund-summary"] });
     },
   });
 }
@@ -287,6 +288,7 @@ export function useDeleteAddendum() {
       qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["revenue"] });
       qc.invalidateQueries({ queryKey: ["reports"] });
+      qc.invalidateQueries({ queryKey: ["kpi", "fund-summary"] });
     },
   });
 }
@@ -317,6 +319,7 @@ export function useCreateBillingMilestone() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["revenue"] });
     },
   });
@@ -337,6 +340,7 @@ export function useUpdateBillingMilestone() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["revenue"] });
     },
   });
@@ -351,6 +355,7 @@ export function useDeleteBillingMilestone() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["revenue"] });
     },
   });

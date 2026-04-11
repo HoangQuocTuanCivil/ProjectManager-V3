@@ -92,6 +92,7 @@ export function useDeleteCenter() {
       qc.invalidateQueries({ queryKey: centerKeys.all });
       qc.invalidateQueries({ queryKey: ["departments"] });
       qc.invalidateQueries({ queryKey: userKeys.list() });
+      qc.invalidateQueries({ queryKey: ["kpi"] });
     },
   });
 }
