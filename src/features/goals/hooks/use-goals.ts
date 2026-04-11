@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { createGoalSchema } from "@/features/goals/schemas/goal.schema";
 import type { Goal, GoalCreateInput } from "@/lib/types";
 import type { TablesInsert } from "@/lib/types/database";
 
@@ -75,6 +76,11 @@ export function useCreateGoal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: GoalCreateInput) => {
+      const parsed = createGoalSchema.safeParse(input);
+      if (!parsed.success) {
+        throw new Error(parsed.error.issues.map((i) => i.message).join("; "));
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -86,7 +92,7 @@ export function useCreateGoal() {
       const { data, error } = await supabase
         .from("goals")
         .insert({
-          ...input,
+          ...parsed.data,
           org_id: profile!.org_id,
           owner_id: user!.id,
         } as TablesInsert<'goals'>)

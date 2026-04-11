@@ -24,6 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     .from("revenue_entries")
     .select(DETAIL_SELECT)
     .eq("id", params.id)
+    .neq("status", "cancelled")
     .single();
 
   if (error) return errorResponse(error.message, error.code === "PGRST116" ? 404 : 500);

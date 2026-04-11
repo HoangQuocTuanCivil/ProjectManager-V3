@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse } from "@/lib/api/helpers";
+import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
 
-/** Tổng hợp quỹ phòng ban: dự kiến / doanh thu / chi phí / lương / còn lại.
- *  Hỗ trợ lọc theo khoảng thời gian (start_date, end_date) để tính toán
- *  chi phí và lương trong kỳ. Nếu không truyền date thì lấy toàn bộ. */
 export async function GET(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
+
+  const roleErr = requireMinRole(profile, "director");
+  if (roleErr) return errorResponse(roleErr, 403);
 
   const admin = getUntypedAdmin();
   const { searchParams } = new URL(req.url);

@@ -23,7 +23,7 @@ export const createTaskSchema = z.object({
   team_id: optionalUuid,
   priority: taskPriority.default("medium"),
   task_type: taskType.default("task"),
-  kpi_weight: z.number().min(0).max(100).default(1),
+  kpi_weight: z.number().int().min(1).max(10).default(5),
   expect_quality: kpiField.default(100),
   expect_difficulty: kpiField.default(100),
   expect_volume: kpiField.default(100),
@@ -89,7 +89,7 @@ export const updateTaskSchema = createTaskSchema.partial().extend({
 
 export const KPI_EVALUATION_FIELDS = new Set([
   "actual_volume", "actual_quality", "actual_difficulty", "actual_ahead",
-  "actual_score", "expect_score", "kpi_variance",
+  "actual_score", "kpi_variance",
   "kpi_evaluated_by", "kpi_evaluated_at", "kpi_note",
 ]);
 

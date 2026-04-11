@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
   const { data: tasks, error } = await supabase
     .from("tasks")
     .select("assignee_id, status, assignee:users!tasks_assignee_id_fkey(id, full_name, avatar_url, role)")
-    .is("deleted_at", null)
+    .eq("org_id", profile.org_id)
+    .is("deleted_at" as any, null)
     .neq("status", "cancelled")
     .not("assignee_id", "is", null);
 

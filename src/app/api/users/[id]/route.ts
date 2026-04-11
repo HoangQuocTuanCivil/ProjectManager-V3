@@ -1,26 +1,62 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getAdminSupabase, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { getAuthProfile, getAdminSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
+import { hasMinRole } from "@/lib/utils/permissions";
 import { deleteUserDependencies } from "@/lib/api/cascade-delete";
+import type { UserRole } from "@/lib/types";
+
+const VALID_ROLES: UserRole[] = ["admin", "leader", "director", "head", "team_leader", "staff"];
+
+const USER_SELECT = "*, department:departments!users_dept_id_fkey(id, name, code)";
+
+const IMMUTABLE_FIELDS = new Set([
+  "id", "org_id", "created_at", "email", "department", "team", "custom_role",
+]);
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const { profile } = await getAuthProfile();
+  const { user, profile } = await getAuthProfile();
+  if (!user || !profile) return errorResponse("Unauthorized", 401);
+
   const roleErr = requireMinRole(profile, "leader");
   if (roleErr) return errorResponse(roleErr, 403);
 
-  const body = await req.json();
-  const { id: _id, org_id: _org, created_at: _ca, email: _email, department: _dept, team: _team, custom_role: _cr, ...updates } = body;
+  const callerRole = profile.role as UserRole;
 
-  if (updates.center_id === "") updates.center_id = null;
-  if (updates.dept_id === "") updates.dept_id = null;
-  if (updates.team_id === "") updates.team_id = null;
-  if (updates.custom_role_id === "") updates.custom_role_id = null;
+  const body = await req.json();
+  const updates: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(body)) {
+    if (IMMUTABLE_FIELDS.has(key)) continue;
+    updates[key] = value === "" && key.endsWith("_id") ? null : value;
+  }
+
+  if (updates.role !== undefined) {
+    const newRole = updates.role as UserRole;
+
+    if (!VALID_ROLES.includes(newRole)) {
+      return errorResponse("Vai trò không hợp lệ", 422);
+    }
+
+    if (params.id === user.id) {
+      return errorResponse("Không thể thay đổi vai trò của chính mình", 403);
+    }
+
+    if (hasMinRole(newRole, callerRole)) {
+      return errorResponse("Không thể gán vai trò bằng hoặc cao hơn vai trò của mình", 403);
+    }
+
+    const admin = getAdminSupabase();
+    const { data: target } = await admin.from("users").select("role").eq("id", params.id).single();
+    if (target && hasMinRole(target.role as UserRole, callerRole)) {
+      return errorResponse("Không thể sửa thông tin người có vai trò bằng hoặc cao hơn mình", 403);
+    }
+  }
 
   const admin = getAdminSupabase();
   const { data, error } = await admin
     .from("users")
     .update(updates)
     .eq("id", params.id)
-    .select("*, department:departments!users_dept_id_fkey(id, name, code)")
+    .select(USER_SELECT)
     .single();
 
   if (error) return errorResponse(error.message, 500);

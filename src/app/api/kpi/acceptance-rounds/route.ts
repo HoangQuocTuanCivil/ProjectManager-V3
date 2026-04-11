@@ -2,8 +2,6 @@ import { NextRequest } from "next/server";
 import { getAuthProfile, getUntypedAdmin, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
 import { createAcceptanceRoundSchema } from "@/features/kpi/schemas/allocation.schema";
 
-/** GET: batch fetch đợt nghiệm thu cho nhiều giao khoán
- *  Query: allocation_ids=id1,id2,... */
 export async function GET(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
@@ -24,7 +22,6 @@ export async function GET(req: NextRequest) {
   return jsonResponse(data);
 }
 
-/** POST: tạo đợt nghiệm thu mới */
 export async function POST(req: NextRequest) {
   const { user, profile } = await getAuthProfile();
   if (!user || !profile) return errorResponse("Unauthorized", 401);
@@ -55,7 +52,6 @@ export async function POST(req: NextRequest) {
   return jsonResponse(data, 201);
 }
 
-/** PATCH: cập nhật đợt nghiệm thu */
 export async function PATCH(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
@@ -66,18 +62,32 @@ export async function PATCH(req: NextRequest) {
   const { id, round_name, amount, round_date, note, sort_order } = body;
   if (!id) return errorResponse("Thiếu id", 400);
 
-  const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+  const admin = getUntypedAdmin();
+
+  const { data: existing } = await admin
+    .from("acceptance_rounds")
+    .select("org_id")
+    .eq("id", id)
+    .single();
+
+  if (!existing) return errorResponse("Không tìm thấy đợt nghiệm thu", 404);
+  if (existing.org_id !== profile.org_id) return errorResponse("Forbidden", 403);
+
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (round_name !== undefined) updates.round_name = round_name;
-  if (amount !== undefined) updates.amount = amount;
+  if (amount !== undefined) {
+    if (typeof amount !== "number" || amount < 0) return errorResponse("Số tiền phải >= 0", 422);
+    updates.amount = amount;
+  }
   if (round_date !== undefined) updates.round_date = round_date || null;
   if (note !== undefined) updates.note = note || null;
   if (sort_order !== undefined) updates.sort_order = sort_order;
 
-  const admin = getUntypedAdmin();
   const { data, error } = await admin
     .from("acceptance_rounds")
     .update(updates)
     .eq("id", id)
+    .eq("org_id", profile.org_id)
     .select("*")
     .single();
 
@@ -85,7 +95,6 @@ export async function PATCH(req: NextRequest) {
   return jsonResponse(data);
 }
 
-/** DELETE: xóa đợt nghiệm thu */
 export async function DELETE(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
@@ -97,8 +106,22 @@ export async function DELETE(req: NextRequest) {
   if (!id) return errorResponse("Thiếu id", 400);
 
   const admin = getUntypedAdmin();
-  const { error } = await admin.from("acceptance_rounds").delete().eq("id", id);
-  if (error) return errorResponse(error.message, 500);
 
+  const { data: existing } = await admin
+    .from("acceptance_rounds")
+    .select("org_id")
+    .eq("id", id)
+    .single();
+
+  if (!existing) return errorResponse("Không tìm thấy đợt nghiệm thu", 404);
+  if (existing.org_id !== profile.org_id) return errorResponse("Forbidden", 403);
+
+  const { error } = await admin
+    .from("acceptance_rounds")
+    .delete()
+    .eq("id", id)
+    .eq("org_id", profile.org_id);
+
+  if (error) return errorResponse(error.message, 500);
   return jsonResponse({ success: true });
 }
