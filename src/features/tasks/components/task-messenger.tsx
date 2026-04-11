@@ -253,13 +253,13 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
           );
           if (mentionedUsers.length > 0) {
             const excerpt = content.length > 100 ? content.slice(0, 100) + "..." : content;
-            await supabase.from("notifications").insert(
+            await (supabase.from("notifications") as any).insert(
               mentionedUsers.map((mu: any) => ({
                 org_id: user.org_id,
                 user_id: mu.id,
                 title: `${user.full_name} đã nhắc đến bạn`,
                 body: excerpt,
-                type: "mention" as const,
+                type: "mention",
                 task_id: taskId,
                 data: { task_id: taskId },
               }))
