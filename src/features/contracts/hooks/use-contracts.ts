@@ -141,10 +141,12 @@ export function useUpdateContract() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
-      if (vars.status && ["terminated", "settled"].includes(vars.status)) {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      if (vars.status || vars.contract_value !== undefined) {
         qc.invalidateQueries({ queryKey: ["tasks"] });
         qc.invalidateQueries({ queryKey: ["revenue"] });
         qc.invalidateQueries({ queryKey: ["reports"] });
+        qc.invalidateQueries({ queryKey: ["kpi"] });
       }
     },
   });
@@ -246,11 +248,12 @@ export function useCreateAddendum() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
       qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+      qc.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }
 
-/** Xóa phụ lục */
 export function useDeleteAddendum() {
   const qc = useQueryClient();
   return useMutation({
@@ -282,6 +285,8 @@ export function useDeleteAddendum() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
       qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+      qc.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 }

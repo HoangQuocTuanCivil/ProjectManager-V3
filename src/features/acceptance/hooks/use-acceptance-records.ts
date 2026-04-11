@@ -131,6 +131,9 @@ export function useUpdatePayment() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: acceptanceKeys.all });
       qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+      qc.invalidateQueries({ queryKey: ["reports"] });
+      qc.invalidateQueries({ queryKey: ["kpi", "fund-summary"] });
     },
   });
 }
