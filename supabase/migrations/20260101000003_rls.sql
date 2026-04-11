@@ -1,27 +1,49 @@
 -- ============================================================================
--- A2Z WORKHUB — ROW LEVEL SECURITY POLICIES
+-- A2Z WORKHUB — ROW LEVEL SECURITY POLICIES (consolidated)
+-- Tất cả RLS policies cho toàn bộ hệ thống
 -- ============================================================================
 
--- ─── ENABLE RLS ──────────────────────────────────────────────────────────────
+-- ─── BẬT RLS CHO TẤT CẢ BẢNG ───────────────────────────────────────────────
 
 DO $$
 DECLARE tbl TEXT;
 BEGIN
   FOR tbl IN SELECT unnest(ARRAY[
-    'organizations','departments','users','projects','project_members','project_departments',
+    -- Core
+    'organizations','departments','users','centers','teams',
+    -- Dự án
+    'projects','project_members','project_departments',
+    -- Mục tiêu
     'goals','goal_targets','goal_projects','milestones',
+    -- Task
     'tasks','task_comments','task_attachments','task_status_logs','task_scores',
     'task_dependencies','task_checklists','checklist_items','time_entries',
-    'kpi_configs','allocation_configs','allocation_periods','allocation_results','dept_budget_allocations',
-    'kpi_records','project_kpi_summary','global_kpi_summary',
+    -- KPI & Phân bổ
+    'kpi_configs','allocation_configs','allocation_periods','allocation_results',
+    'dept_budget_allocations','kpi_records','project_kpi_summary','global_kpi_summary',
+    'allocation_cycle_config',
+    -- Lương & hệ số
+    'salary_records','salary_deductions','project_dept_factors',
+    -- Hệ thống
     'notifications','user_sessions','audit_logs','user_invitations',
     'permissions','custom_roles','role_permissions',
+    -- Workflow
     'workflow_templates','workflow_steps','workflow_transitions',
     'task_workflow_state','workflow_history',
+    -- Template & form
     'task_templates','project_templates','intake_forms','form_submissions',
+    -- Dashboard & settings
     'status_updates','dashboards','dashboard_widgets',
     'automation_rules','automation_logs','org_settings',
-    'centers','teams','task_proposals'
+    'task_proposals',
+    -- Hợp đồng
+    'contracts','contract_addendums','billing_milestones',
+    -- Doanh thu & chi phí
+    'product_services','product_service_categories',
+    'revenue_entries','internal_revenue','cost_entries',
+    'revenue_adjustments','dept_revenue_allocations',
+    -- Module & nghiệm thu
+    'module_access','acceptance_rounds','period_project_factors'
   ])
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', tbl);
@@ -29,6 +51,7 @@ BEGIN
 END $$;
 
 -- ─── ORGANIZATIONS ───────────────────────────────────────────────────────────
+-- Đọc: chỉ org mình
 CREATE POLICY "org_r" ON organizations FOR SELECT USING (id = public.user_org_id());
 
 -- ─── USERS ───────────────────────────────────────────────────────────────────
@@ -97,8 +120,8 @@ CREATE POLICY "pd_m" ON project_departments FOR ALL
     AND public.user_role() IN ('admin', 'leader'));
 
 -- ─── TASKS ───────────────────────────────────────────────────────────────────
--- Admin/Leader: full access | Director: scoped center | Head: scoped dept
--- Staff: xem/sửa task mình hoặc team mình lead | Team_leader: xem/sửa task team mình
+-- Admin/Leader: full | Director: scoped center | Head: scoped dept
+-- Staff: task mình hoặc team mình lead | Team_leader: task team mình
 CREATE POLICY "t_leader" ON tasks FOR ALL
   USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader'));
 CREATE POLICY "t_director" ON tasks FOR ALL USING (
@@ -119,7 +142,6 @@ CREATE POLICY "t_staff_u" ON tasks FOR UPDATE USING (
 CREATE POLICY "t_staff_team_leader_insert" ON tasks FOR INSERT
   WITH CHECK (org_id = public.user_org_id() AND public.user_role() = 'staff'
     AND EXISTS(SELECT 1 FROM teams WHERE leader_id = auth.uid() AND is_active = TRUE));
--- Team leader policies
 CREATE POLICY "t_tl_r" ON tasks FOR SELECT TO authenticated USING (
   public.user_role() = 'team_leader' AND org_id = public.user_org_id()
   AND (assignee_id = auth.uid() OR assigner_id = auth.uid()
@@ -247,19 +269,19 @@ CREATE POLICY "ar_m" ON allocation_results FOR ALL
     AND public.user_role() IN ('admin', 'leader', 'director'));
 
 -- ─── DEPT BUDGET ALLOCATIONS ─────────────────────────────────────────────────
--- Admin/leader/director: xem tất cả + quản lý
--- Head/team_leader/staff: chỉ xem ngân sách phòng ban mình
+-- Đọc: admin/leader/director/executive xem tất cả, còn lại chỉ dept mình
+-- Quản lý: admin/leader/director
 CREATE POLICY "dba_r" ON dept_budget_allocations FOR SELECT
   USING (
     org_id = public.user_org_id()
     AND (
       public.user_role() IN ('admin', 'leader', 'director')
+      OR public.user_is_executive()
       OR dept_id = public.user_dept_id()
     )
   );
 CREATE POLICY "dba_m" ON dept_budget_allocations FOR ALL
   USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
-
 
 -- ─── KPI RECORDS ─────────────────────────────────────────────────────────────
 CREATE POLICY "kr_r" ON kpi_records FOR SELECT USING (org_id = public.user_org_id());
@@ -279,7 +301,7 @@ CREATE POLICY "gks_m" ON global_kpi_summary FOR ALL
   USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
 
 -- ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
--- Mỗi user chỉ xem/sửa/xóa notification của mình, hệ thống có thể insert cho bất kỳ ai
+-- Mỗi user chỉ xem/sửa/xóa notification của mình, hệ thống insert cho bất kỳ ai
 CREATE POLICY "notif_select" ON notifications FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "notif_update" ON notifications FOR UPDATE USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 CREATE POLICY "notif_insert" ON notifications FOR INSERT WITH CHECK (true);
@@ -412,33 +434,155 @@ CREATE POLICY "tp_insert" ON task_proposals FOR INSERT
 CREATE POLICY "tp_update" ON task_proposals FOR UPDATE
   USING (org_id = public.user_org_id() AND (proposed_by = auth.uid() OR approver_id = auth.uid()));
 
--- ─── PHASE 2: LƯƠNG, KHOÁN, HỆ SỐ ──────────────────────────────────────────
-
-ALTER TABLE allocation_cycle_config ENABLE ROW LEVEL SECURITY;
-ALTER TABLE salary_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE salary_deductions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE project_dept_factors ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY acc_r ON allocation_cycle_config FOR SELECT
+-- ─── CONTRACTS ───────────────────────────────────────────────────────────────
+-- Đọc: cùng org | Quản lý: tất cả user cùng org (không giới hạn role)
+CREATE POLICY "ct_r" ON contracts FOR SELECT USING (org_id = public.user_org_id());
+CREATE POLICY "ct_m" ON contracts FOR ALL
   USING (org_id = public.user_org_id());
-CREATE POLICY acc_m ON allocation_cycle_config FOR ALL
+
+-- ─── CONTRACT ADDENDUMS ─────────────────────────────────────────────────────
+-- Đọc: cùng org qua contract | Quản lý: tất cả user cùng org
+CREATE POLICY "ca_r" ON contract_addendums FOR SELECT
+  USING (contract_id IN (SELECT id FROM contracts WHERE org_id = public.user_org_id()));
+CREATE POLICY "ca_m" ON contract_addendums FOR ALL
+  USING (contract_id IN (SELECT id FROM contracts WHERE org_id = public.user_org_id()));
+
+-- ─── BILLING MILESTONES ─────────────────────────────────────────────────────
+-- Đọc: cùng org qua contract | Quản lý: tất cả user cùng org
+CREATE POLICY "bm_r" ON billing_milestones FOR SELECT
+  USING (contract_id IN (SELECT id FROM contracts WHERE org_id = public.user_org_id()));
+CREATE POLICY "bm_m" ON billing_milestones FOR ALL
+  USING (contract_id IN (SELECT id FROM contracts WHERE org_id = public.user_org_id()));
+
+-- ─── REVENUE ENTRIES ─────────────────────────────────────────────────────────
+-- Đọc: cùng org | Elevated: admin/leader/director full | Dept: head/tl/staff chỉ dept mình
+CREATE POLICY "re_r" ON revenue_entries FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY "re_manage_elevated" ON revenue_entries FOR ALL
+  USING (
+    org_id = public.user_org_id()
+    AND public.user_role() IN ('admin', 'leader', 'director')
+  );
+CREATE POLICY "re_manage_dept" ON revenue_entries FOR ALL
+  USING (
+    org_id = public.user_org_id()
+    AND public.user_role() IN ('head', 'team_leader', 'staff')
+    AND (
+      dept_id = public.user_dept_id()
+      OR created_by = auth.uid()
+    )
+  );
+
+-- ─── INTERNAL REVENUE ────────────────────────────────────────────────────────
+-- Đọc: cùng org | Elevated: full | Dept: head/tl/staff scoped
+CREATE POLICY "ir_r" ON internal_revenue FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY "ir_manage_elevated" ON internal_revenue FOR ALL
+  USING (
+    org_id = public.user_org_id()
+    AND public.user_role() IN ('admin', 'leader', 'director')
+  );
+CREATE POLICY "ir_manage_dept" ON internal_revenue FOR ALL
+  USING (
+    org_id = public.user_org_id()
+    AND public.user_role() IN ('head', 'team_leader', 'staff')
+    AND (
+      dept_id = public.user_dept_id()
+      OR created_by = auth.uid()
+    )
+  );
+
+-- ─── COST ENTRIES ────────────────────────────────────────────────────────────
+-- Đọc: cùng org | Elevated: full | Dept: head/tl/staff scoped
+CREATE POLICY "ce_r" ON cost_entries FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY "ce_manage_elevated" ON cost_entries FOR ALL
+  USING (
+    org_id = public.user_org_id()
+    AND public.user_role() IN ('admin', 'leader', 'director')
+  );
+CREATE POLICY "ce_manage_dept" ON cost_entries FOR ALL
+  USING (
+    org_id = public.user_org_id()
+    AND public.user_role() IN ('head', 'team_leader', 'staff')
+    AND (
+      dept_id = public.user_dept_id()
+      OR created_by = auth.uid()
+    )
+  );
+
+-- ─── PRODUCT SERVICES ───────────────────────────────────────────────────────
+-- Đọc: cùng org | Quản lý: admin/leader/director
+CREATE POLICY "ps_r" ON product_services FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY "ps_m" ON product_services FOR ALL
   USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
 
-CREATE POLICY sr_r ON salary_records FOR SELECT
+-- ─── PRODUCT SERVICE CATEGORIES ──────────────────────────────────────────────
+-- Đọc: cùng org | Quản lý: admin/leader/director
+CREATE POLICY "psc_r" ON product_service_categories FOR SELECT
   USING (org_id = public.user_org_id());
-CREATE POLICY sr_m ON salary_records FOR ALL
+CREATE POLICY "psc_m" ON product_service_categories FOR ALL
   USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
 
-CREATE POLICY sd_r ON salary_deductions FOR SELECT
+-- ─── REVENUE ADJUSTMENTS ────────────────────────────────────────────────────
+CREATE POLICY "ra_r" ON revenue_adjustments FOR SELECT
   USING (org_id = public.user_org_id());
-CREATE POLICY sd_m ON salary_deductions FOR ALL
+CREATE POLICY "ra_m" ON revenue_adjustments FOR ALL
   USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
 
-CREATE POLICY pdf_r ON project_dept_factors FOR SELECT
-  USING (project_id IN (SELECT id FROM projects WHERE org_id = public.user_org_id()));
-CREATE POLICY pdf_m ON project_dept_factors FOR ALL
-  USING (project_id IN (SELECT id FROM projects WHERE org_id = public.user_org_id())
+-- ─── DEPT REVENUE ALLOCATIONS ───────────────────────────────────────────────
+-- Đọc: phòng ban cùng org | Quản lý: admin/leader/director
+CREATE POLICY "dra_r" ON dept_revenue_allocations FOR SELECT
+  USING (dept_id IN (SELECT id FROM departments WHERE org_id = public.user_org_id()));
+CREATE POLICY "dra_m" ON dept_revenue_allocations FOR ALL
+  USING (public.user_role() IN ('admin', 'leader', 'director')
+    AND dept_id IN (SELECT id FROM departments WHERE org_id = public.user_org_id()));
+
+-- ─── MODULE ACCESS ───────────────────────────────────────────────────────────
+-- Đọc: cùng org (sidebar cần check) | Quản lý: chỉ admin
+CREATE POLICY "ma_r" ON module_access FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY "ma_m" ON module_access FOR ALL
+  USING (org_id = public.user_org_id() AND public.user_role() = 'admin');
+
+-- ─── ACCEPTANCE ROUNDS ──────────────────────────────────────────────────────
+-- Đợt nghiệm thu nội bộ: đọc/quản lý theo org
+CREATE POLICY "acr_r" ON acceptance_rounds FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY "acr_m" ON acceptance_rounds FOR ALL
+  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
+
+-- ─── PERIOD PROJECT FACTORS ─────────────────────────────────────────────────
+-- Hệ số khó theo dự án/đợt khoán: đọc qua allocation_periods, quản lý: elevated roles
+CREATE POLICY "ppf_r" ON period_project_factors FOR SELECT
+  USING (period_id IN (SELECT id FROM allocation_periods WHERE org_id = public.user_org_id()));
+CREATE POLICY "ppf_m" ON period_project_factors FOR ALL
+  USING (period_id IN (SELECT id FROM allocation_periods WHERE org_id = public.user_org_id())
     AND public.user_role() IN ('admin', 'leader', 'director'));
 
-SELECT '✅ 003_rls: Tất cả RLS policies đã tạo xong' AS status;
+-- ─── ALLOCATION CYCLE CONFIG ────────────────────────────────────────────────
+CREATE POLICY "acc_r" ON allocation_cycle_config FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY "acc_m" ON allocation_cycle_config FOR ALL
+  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
 
+-- ─── SALARY RECORDS ──────────────────────────────────────────────────────────
+CREATE POLICY "sr_r" ON salary_records FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY "sr_m" ON salary_records FOR ALL
+  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
+
+-- ─── SALARY DEDUCTIONS ──────────────────────────────────────────────────────
+CREATE POLICY "sd_r" ON salary_deductions FOR SELECT
+  USING (org_id = public.user_org_id());
+CREATE POLICY "sd_m" ON salary_deductions FOR ALL
+  USING (org_id = public.user_org_id() AND public.user_role() IN ('admin', 'leader', 'director'));
+
+-- ─── PROJECT DEPT FACTORS ───────────────────────────────────────────────────
+-- Hệ số khó theo dự án-phòng ban
+CREATE POLICY "pdf_r" ON project_dept_factors FOR SELECT
+  USING (project_id IN (SELECT id FROM projects WHERE org_id = public.user_org_id()));
+CREATE POLICY "pdf_m" ON project_dept_factors FOR ALL
+  USING (project_id IN (SELECT id FROM projects WHERE org_id = public.user_org_id())
+    AND public.user_role() IN ('admin', 'leader', 'director'));

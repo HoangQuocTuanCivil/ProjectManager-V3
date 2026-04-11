@@ -1,7 +1,9 @@
 -- ============================================================================
 -- A2Z WORKHUB — DỮ LIỆU MẪU (SEED)
--- Gộp từ các migration cũ: 015_seed, 017_extended_seed, 20260403100000_demo
--- Chạy SAU 4 file schema/functions/rls/storage
+-- Gộp toàn bộ seed data: tổ chức, phòng ban, trung tâm, người dùng, nhóm,
+-- KPI, quyền, vai trò, dự án, mục tiêu, công việc, bình luận, khoán,
+-- thông báo, danh mục dịch vụ, sản phẩm dịch vụ.
+-- Chạy SAU 5 file schema/functions/rls/storage/views
 -- Mật khẩu mặc định: Test@2026!
 -- ============================================================================
 
@@ -23,6 +25,18 @@ VALUES
   ('de000000-0000-0000-0000-000000000002', 'a2a00000-0000-0000-0000-000000000001', 'Phòng Thiết kế',    'TK',  'Thiết kế kỹ thuật hạ tầng giao thông', 2),
   ('de000000-0000-0000-0000-000000000003', 'a2a00000-0000-0000-0000-000000000001', 'Phòng Giám sát',    'GS',  'Giám sát thi công tại hiện trường',     3)
 ON CONFLICT (id) DO NOTHING;
+
+-- Ban điều hành — phòng ban đặc biệt, nhân sự có quyền xem toàn bộ trung tâm
+INSERT INTO departments (id, org_id, name, code, description, sort_order, is_executive)
+VALUES (
+  'de000000-0000-0000-0000-000000000099',
+  'a2a00000-0000-0000-0000-000000000001',
+  'Ban điều hành',
+  'BDH',
+  'Ban lãnh đạo - có quyền xem toàn bộ trung tâm',
+  0,
+  true
+) ON CONFLICT (id) DO UPDATE SET is_executive = true;
 
 -- ─── TRUNG TÂM ───────────────────────────────────────────────────────────────
 -- Trung tâm kỹ thuật quản lý BIM + Thiết kế
@@ -47,8 +61,7 @@ WHERE id IN (
 -- Auth users được tạo thủ công qua Supabase Dashboard hoặc script migrate_auth_users.ps1
 -- (Không thể INSERT vào auth.users qua migrations trên Supabase cloud)
 
--- ─── USER PROFILES ───────────────────────────────────────────────────────────
--- Hồ sơ người dùng trong bảng public.users — khớp với auth.users ở trên
+-- ─── HỒ SƠ NGƯỜI DÙNG ───────────────────────────────────────────────────────
 -- Tuấn: admin (Quản trị viên)
 INSERT INTO users (id, org_id, dept_id, center_id, full_name, email, role, job_title, is_active)
 VALUES
@@ -123,8 +136,8 @@ INSERT INTO permissions (id, group_name, name, description, sort_order) VALUES
   ('settings.security',     'Cài đặt',    'Bảo mật',                    'Cấu hình bảo mật hệ thống',                 54)
 ON CONFLICT (id) DO NOTHING;
 
--- ─── CUSTOM ROLES ─────────────────────────────────────────────────────────────
--- Vai trò tùy chỉnh: BIM Manager (mở rộng từ head) và Senior Engineer (mở rộng từ staff)
+-- ─── VAI TRÒ TÙY CHỈNH ──────────────────────────────────────────────────────
+-- BIM Manager (mở rộng từ head) và Senior Engineer (mở rộng từ staff)
 INSERT INTO custom_roles (id, org_id, name, description, color, base_role)
 VALUES
   ('cc000000-0000-0000-0000-000000000001','a2a00000-0000-0000-0000-000000000001','BIM Manager',    'Nhóm trưởng BIM nâng cao', '#3b82f6','head'),
@@ -401,6 +414,31 @@ INSERT INTO notifications (org_id, user_id, title, body, type, is_read, created_
    'system',FALSE,'2026-04-01 08:00:00+07')
 ON CONFLICT DO NOTHING;
 
-SELECT '✅ 005_seed_data: Dữ liệu mẫu đã tạo xong' AS status;
+-- ─── DANH MỤC SẢN PHẨM / DỊCH VỤ ───────────────────────────────────────────
+-- 5 loại hình dịch vụ tư vấn xây dựng
+INSERT INTO product_service_categories (org_id, slug, name, color, sort_order)
+SELECT o.id, v.slug, v.name, v.color, v.sort_order
+FROM organizations o,
+(VALUES
+  ('design',      'Thiết kế',  'bg-blue-500/10 text-blue-600',     1),
+  ('consulting',  'Tư vấn',    'bg-purple-500/10 text-purple-600', 2),
+  ('survey',      'Khảo sát',  'bg-amber-500/10 text-amber-600',   3),
+  ('supervision', 'Giám sát',  'bg-green-500/10 text-green-600',   4),
+  ('other',       'Khác',      'bg-gray-500/10 text-gray-600',     5)
+) AS v(slug, name, color, sort_order)
+ON CONFLICT DO NOTHING;
 
-
+-- ─── SẢN PHẨM / DỊCH VỤ MẪU ────────────────────────────────────────────────
+-- 5 dịch vụ tư vấn phổ biến
+INSERT INTO product_services (org_id, code, name, category, unit_price, description)
+SELECT
+  o.id, v.code, v.name, v.category, v.price, v.description
+FROM (SELECT id FROM organizations LIMIT 1) o,
+(VALUES
+  ('TK-KTRUC', 'Thiết kế Kiến trúc',  'design',      0, 'Thiết kế kiến trúc công trình'),
+  ('TV-GSAT',  'Tư vấn Giám sát',     'supervision', 0, 'Tư vấn giám sát thi công'),
+  ('KS-DHINH', 'Khảo sát Địa hình',   'survey',      0, 'Khảo sát địa hình, địa chất'),
+  ('TK-KCAU',  'Thiết kế Kết cấu',    'design',      0, 'Thiết kế kết cấu công trình'),
+  ('TV-TTRA',  'Tư vấn Thẩm tra',     'consulting',  0, 'Tư vấn thẩm tra thiết kế')
+) AS v(code, name, category, price, description)
+ON CONFLICT ON CONSTRAINT uq_ps_org_code DO NOTHING;

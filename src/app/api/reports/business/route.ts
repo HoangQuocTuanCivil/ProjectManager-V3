@@ -175,8 +175,9 @@ async function fetchCostsByCenter(admin: Admin, orgId: string, f: Filters) {
   const empty = (): CostBucket => ({ cogs: 0, selling: 0, admin: 0, financial: 0 });
 
   let q = admin.from("cost_entries").select("dept_id, category, amount").eq("org_id", orgId);
-  if (f.from) q = q.gte("period_start", f.from);
-  if (f.to) q = q.lte("period_end", f.to);
+  // Overlap filter: nhất quán với fetchCosts — bao gồm chi phí giao kỳ với khoảng lọc
+  if (f.from) q = q.gte("period_end", f.from);
+  if (f.to) q = q.lte("period_start", f.to);
   const { data } = await q;
 
   const deptCenter = await buildDeptCenterMap(admin, orgId);
@@ -266,8 +267,10 @@ async function fetchCosts(admin: Admin, orgId: string, groupBy: GroupBy, f: Filt
   let q = admin.from("cost_entries")
     .select("dept_id, contract_id, category, amount")
     .eq("org_id", orgId);
-  if (f.from) q = q.gte("period_start", f.from);
-  if (f.to) q = q.lte("period_end", f.to);
+  // Overlap filter: bao gồm chi phí có kỳ giao với khoảng lọc (period_end >= from AND period_start <= to)
+  // thay vì chỉ lấy chi phí nằm trọn trong khoảng (period_start >= from AND period_end <= to)
+  if (f.from) q = q.gte("period_end", f.from);
+  if (f.to) q = q.lte("period_start", f.to);
   const { data } = await q;
 
   if (groupBy === "company") {
@@ -360,8 +363,9 @@ async function fetchIncomingContracts(admin: Admin, orgId: string, groupBy: Grou
     .eq("org_id", orgId).eq("contract_type", "incoming")
     .in("status", ["active", "completed"])
     .is("deleted_at", null);
-  /* HĐ đầu vào sinh từ giao khoán thường không có signed_date,
-     dùng created_at để lọc theo khoảng thời gian */
+  // created_at là timestamptz — cần thêm T23:59:59 cho bound trên
+  // để bao gồm toàn bộ ngày cuối (so sánh "2026-06-30" với timestamptz
+  // sẽ thành "2026-06-30T00:00:00" → bỏ sót bản ghi sau 00:00)
   if (f.from) q = q.gte("created_at", f.from);
   if (f.to) q = q.lte("created_at", `${f.to}T23:59:59`);
 

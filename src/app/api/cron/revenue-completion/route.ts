@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       .not("project_id", "is", null),
     admin
       .from("revenue_entries")
-      .select("contract_id, amount")
+      .select("contract_id, amount, description")
       .eq("method", "completion_rate")
       .eq("status", "confirmed"),
   ]);
@@ -36,12 +36,24 @@ export async function POST(req: NextRequest) {
   }
 
   const existingByContract = new Map<string, number>();
+  // Trích xuất số lượng task từ các entry trước đó (lưu trong description)
+  // để phát hiện khi task bị chuyển khỏi project gây negative delta giả
+  const prevTaskCountByContract = new Map<string, number>();
   for (const e of existingRes.data ?? []) {
     if (!e.contract_id) continue;
     existingByContract.set(e.contract_id, (existingByContract.get(e.contract_id) || 0) + Number(e.amount));
+    const match = (e as any).description?.match(/(\d+) tasks/);
+    if (match) {
+      const count = parseInt(match[1]);
+      prevTaskCountByContract.set(
+        e.contract_id,
+        Math.max(prevTaskCountByContract.get(e.contract_id) || 0, count),
+      );
+    }
   }
 
   let created = 0;
+  let skippedNegative = 0;
 
   for (const contract of contractsRes.data ?? []) {
     const progresses = tasksByProject.get(contract.project_id);
@@ -53,6 +65,22 @@ export async function POST(req: NextRequest) {
     const delta = expectedRevenue - existingTotal;
 
     if (Math.abs(delta) < 1) continue;
+
+    // Chặn negative delta khi nguyên nhân là task bị chuyển khỏi project.
+    // So sánh số task hiện tại với số task ghi nhận trong entry trước đó:
+    // nếu task count giảm → delta âm do mất task, không phải progress giảm thật.
+    if (delta < 0) {
+      const currentCount = progresses.length;
+      const prevCount = prevTaskCountByContract.get(contract.id);
+      if (prevCount !== undefined && currentCount < prevCount) {
+        console.warn(
+          `[revenue-completion] Skipped negative delta ${delta} for contract ${contract.id}` +
+          ` (tasks: ${currentCount} current vs ${prevCount} previous — tasks removed from project)`,
+        );
+        skippedNegative++;
+        continue;
+      }
+    }
 
     const { data: adminUser } = await admin
       .from("users")
@@ -73,7 +101,7 @@ export async function POST(req: NextRequest) {
       method: "completion_rate",
       source: "manual",
       amount: delta,
-      description: `Ghi nhận theo % hoàn thành (${Math.round(avgProgress)}%)`,
+      description: `Ghi nhận theo % hoàn thành (${Math.round(avgProgress)}%, ${progresses.length} tasks)`,
       recognition_date: recognitionDate,
       status: "confirmed",
       completion_percentage: Math.round(avgProgress * 100) / 100,
@@ -89,5 +117,5 @@ export async function POST(req: NextRequest) {
     created++;
   }
 
-  return jsonResponse({ success: true, created });
+  return jsonResponse({ success: true, created, skipped_negative: skippedNegative });
 }
