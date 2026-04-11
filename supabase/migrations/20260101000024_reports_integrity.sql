@@ -71,7 +71,13 @@ BEGIN
    WHERE id = NEW.contract_id;
 
   UPDATE projects
-     SET budget     = v_new_value,
+     SET budget = (
+           SELECT COALESCE(SUM(contract_value), 0)
+           FROM contracts
+           WHERE project_id = v_contract.project_id
+             AND contract_type = 'outgoing'
+             AND deleted_at IS NULL
+         ),
          updated_at = NOW()
    WHERE id = v_contract.project_id;
 

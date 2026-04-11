@@ -2,20 +2,19 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useNotifStore } from "@/lib/stores";
 import {
   useNotificationList,
+  useNotificationUnreadCount,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
   groupNotifications,
 } from "../hooks/use-notifications";
 import { NotificationList } from "./notification-list";
-import { Button } from "@/components/shared";
 import { toast } from "sonner";
 
 export function NotificationBell() {
   const router = useRouter();
-  const { unreadCount } = useNotifStore();
+  const { data: unreadCount = 0 } = useNotificationUnreadCount();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

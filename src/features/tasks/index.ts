@@ -10,6 +10,14 @@ export {
 } from './hooks/use-tasks';
 export type { WorkloadEntry } from './hooks/use-tasks';
 
+export {
+  useTimeEntries,
+  useCreateTimeEntry,
+  useDeleteTimeEntry,
+  timeEntryKeys,
+} from './hooks/use-time-entries';
+export type { TimeEntry } from './hooks/use-time-entries';
+
 export { createTaskSchema, updateTaskSchema } from './schemas/task.schema';
 export type { CreateTaskInput, UpdateTaskInput } from './schemas/task.schema';
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useAuthStore, useNotifStore } from "@/lib/stores";
+import { useAuthStore } from "@/lib/stores";
+import { useNotificationUnreadCount } from "@/features/notifications/hooks/use-notifications";
 import { cn } from "@/lib/utils/cn";
 import { useI18n } from "@/lib/i18n";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
@@ -21,7 +22,7 @@ function SidebarContent({
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuthStore();
-  const { unreadCount } = useNotifStore();
+  const { data: unreadCount = 0 } = useNotificationUnreadCount();
   const { t } = useI18n();
   const { data: disabledModules } = useModuleAccess();
 

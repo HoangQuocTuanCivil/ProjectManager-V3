@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Bút toán đã xác nhận + có giá trị → tạo bản đối ứng âm để triệt tiêu doanh thu
   if (entry.status === "confirmed" && entry.amount !== 0) {
     const today = new Date().toISOString().split("T")[0];
-    await supabase
+    const { data: offsetEntry } = await supabase
       .from("revenue_entries")
       .insert({
         org_id: entry.org_id,
@@ -59,7 +59,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         period_start: entry.period_start,
         period_end: entry.period_end,
         created_by: user.id,
-      });
+      })
+      .select("id")
+      .single();
+
+    if (offsetEntry) {
+      await supabase
+        .from("revenue_adjustments")
+        .update({ revenue_entry_id: offsetEntry.id })
+        .eq("revenue_entry_id", params.id);
+    }
   }
 
   return jsonResponse({ success: true });

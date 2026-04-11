@@ -21,6 +21,7 @@ export interface NotificationItem {
   title: string;
   body: string | null;
   type: NotificationType;
+  task_id: string | null;
   data: Record<string, any>;
   is_read: boolean;
   created_at: string;

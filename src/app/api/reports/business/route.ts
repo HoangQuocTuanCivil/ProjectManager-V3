@@ -241,17 +241,19 @@ async function fetchRevenue(admin: Admin, orgId: string, groupBy: GroupBy, f: Fi
     return map;
   }
 
-  const { data } = await admin.from("dept_revenue_allocations")
-    .select("dept_id, allocated_amount, department:departments(center_id), revenue_entry:revenue_entries(recognition_date, status, org_id)");
+  let allocQuery = admin.from("dept_revenue_allocations")
+    .select("dept_id, allocated_amount, department:departments(center_id), revenue_entry:revenue_entries!inner(recognition_date, status, org_id)")
+    .eq("revenue_entry.org_id", orgId)
+    .eq("revenue_entry.status", "confirmed");
+  if (f.from) allocQuery = allocQuery.gte("revenue_entry.recognition_date", f.from);
+  if (f.to) allocQuery = allocQuery.lte("revenue_entry.recognition_date", f.to);
+  if (f.deptId) allocQuery = allocQuery.eq("dept_id", f.deptId);
+
+  const { data } = await allocQuery;
 
   for (const row of data ?? []) {
-    const entry = row.revenue_entry as any;
     const dept = row.department as any;
-    if (!entry || entry.status !== "confirmed" || entry.org_id !== orgId) continue;
-    if (f.from && entry.recognition_date < f.from) continue;
-    if (f.to && entry.recognition_date > f.to) continue;
     if (f.centerId && dept?.center_id !== f.centerId) continue;
-    if (f.deptId && row.dept_id !== f.deptId) continue;
     map.set(row.dept_id, (map.get(row.dept_id) ?? 0) + Number(row.allocated_amount));
   }
   return map;

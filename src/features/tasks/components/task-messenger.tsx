@@ -259,9 +259,10 @@ export function TaskMessenger({ taskId, projectId }: { taskId: string; projectId
                 user_id: mu.id,
                 title: `${user.full_name} đã nhắc đến bạn`,
                 body: excerpt,
-                type: "mention",
+                type: "mention" as const,
+                task_id: taskId,
                 data: { task_id: taskId },
-              })) as any
+              }))
             );
           }
         }

@@ -117,10 +117,16 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     (admin.from("revenue_entries") as any).update({ deleted_at: now, status: "cancelled" }).eq("project_id", params.id).is("deleted_at", null),
     (admin.from("allocation_periods") as any).update({ deleted_at: now }).eq("project_id", params.id).is("deleted_at", null),
     ...(taskIds && taskIds.length > 0
-      ? [(admin.from("task_workflow_state") as any)
-          .update({ completed_at: now, result: "cancelled" })
-          .in("task_id", taskIds.map((t: { id: string }) => t.id))
-          .is("completed_at", null)]
+      ? [
+          (admin.from("task_workflow_state") as any)
+            .update({ completed_at: now, result: "cancelled" })
+            .in("task_id", taskIds.map((t: { id: string }) => t.id))
+            .is("completed_at", null),
+          (admin.from("notifications") as any)
+            .update({ is_read: true })
+            .in("task_id", taskIds.map((t: { id: string }) => t.id))
+            .eq("is_read", false),
+        ]
       : []),
   ]);
 

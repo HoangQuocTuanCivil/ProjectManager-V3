@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore, useNotifStore } from "@/lib/stores";
+import { useAuthStore } from "@/lib/stores";
+import { useNotificationUnreadCount } from "@/features/notifications/hooks/use-notifications";
 import { useSignOut } from "@/features/organization";
 import { ROLE_CONFIG } from "@/lib/utils/kpi";
 import { Search, Bell, Menu, Settings, LogOut, User, KeyRound, Building2, Users, Building, UsersRound, ShieldCheck, Target, FileText, Landmark, Package, Lock } from "lucide-react";
@@ -131,7 +132,7 @@ export function Topbar({
   onMenuClick: () => void;
   onSearchClick: () => void;
 }) {
-  const { unreadCount } = useNotifStore();
+  const { data: unreadCount = 0 } = useNotificationUnreadCount();
   const router = useRouter();
   const isMac = useMemo(() => typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent), []);
   const shortcutLabel = isMac ? "⌘K" : "Ctrl+K";

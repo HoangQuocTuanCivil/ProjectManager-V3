@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { StatCard, FilterChip, Button } from "@/components/shared";
-import { useNotifStore } from "@/lib/stores";
+
+
 import {
   useNotificationList,
   useMarkNotificationRead,
@@ -22,7 +23,6 @@ type FilterKey = "all" | "unread" | NotificationType;
 export default function NotificationsPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<FilterKey>("all");
-  const { setUnreadCount } = useNotifStore();
 
   const { data: notifications = [], isLoading } = useNotificationList(filter === "unread" ? "unread" : undefined);
   const markRead = useMarkNotificationRead();
@@ -64,10 +64,7 @@ export default function NotificationsPage() {
         </div>
         {unreadCount > 0 && (
           <Button size="sm" onClick={() => markAllRead.mutate(undefined, {
-            onSuccess: () => {
-              setUnreadCount(0);
-              toast.success("Đã đánh dấu tất cả đã đọc");
-            },
+            onSuccess: () => toast.success("Đã đánh dấu tất cả đã đọc"),
             onError: (e: any) => toast.error(e.message || "Lỗi đánh dấu đã đọc"),
           })} disabled={markAllRead.isPending}>
             {markAllRead.isPending ? "..." : "Đánh dấu tất cả đã đọc"}

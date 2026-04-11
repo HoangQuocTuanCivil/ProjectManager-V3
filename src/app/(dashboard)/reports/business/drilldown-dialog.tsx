@@ -149,11 +149,12 @@ function RevenueDetail({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: strin
   const { data, isLoading } = useQuery({
     queryKey: ["drilldown", "revenue", dateFrom, dateTo],
     queryFn: async () => {
-      let q = supabase
-        .from("contracts")
+      let q = (supabase
+        .from("contracts") as any)
         .select("id, contract_no, title, contract_value, signed_date, status, project:projects(code, name), product_service:product_services(code, name)")
         .eq("contract_type", "outgoing")
         .in("status", ["active", "completed"])
+        .is("deleted_at", null)
         .order("contract_value", { ascending: false });
       if (dateFrom) q = q.gte("signed_date", dateFrom);
       if (dateTo) q = q.lte("signed_date", dateTo);

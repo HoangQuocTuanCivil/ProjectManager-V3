@@ -84,7 +84,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const now = new Date().toISOString();
 
-  const [taskResult, wfResult] = await Promise.all([
+  const [taskResult] = await Promise.all([
     supabase
       .from("tasks")
       .update({ status: "cancelled", deleted_at: now })
@@ -94,6 +94,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       .update({ completed_at: now, result: "cancelled" })
       .eq("task_id", params.id)
       .is("completed_at", null),
+    supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("task_id", params.id)
+      .eq("is_read", false),
   ]);
 
   if (taskResult.error) return errorResponse(taskResult.error.message, 500);
