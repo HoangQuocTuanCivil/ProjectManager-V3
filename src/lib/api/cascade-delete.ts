@@ -48,8 +48,11 @@ export async function deleteUserDependencies(
     t("status_updates").update({ author_id: currentUserId }).eq("author_id", targetId),
     t("salary_records").update({ created_by: currentUserId }).eq("created_by", targetId),
 
-    // Delete user-owned records
-    admin.from("tasks").delete().eq("assignee_id", targetId),
+    // Soft-delete user-owned tasks
+    (admin.from("tasks") as any)
+      .update({ deleted_at: new Date().toISOString(), status: "cancelled" })
+      .eq("assignee_id", targetId)
+      .is("deleted_at", null),
     t("salary_deductions").delete().eq("user_id", targetId),
     t("salary_records").delete().eq("user_id", targetId),
     admin.from("allocation_results").delete().eq("user_id", targetId),
@@ -73,8 +76,24 @@ export async function softDeleteProjectDependencies(
   projectId: string,
 ) {
   const now = new Date().toISOString();
-  await Promise.all([
-    (admin.from("contracts") as any).update({ deleted_at: now }).eq("project_id", projectId).is("deleted_at", null),
-    (admin.from("tasks") as any).update({ deleted_at: now, status: "cancelled" }).eq("project_id", projectId).is("deleted_at", null),
-  ]);
+
+  await (admin.from("contracts") as any)
+    .update({ deleted_at: now })
+    .eq("project_id", projectId).is("deleted_at", null);
+
+  await (admin.from("tasks") as any)
+    .update({ deleted_at: now, status: "cancelled" })
+    .eq("project_id", projectId).is("deleted_at", null);
+
+  await (admin.from("revenue_entries") as any)
+    .update({ deleted_at: now, status: "cancelled" })
+    .eq("project_id", projectId).is("deleted_at", null);
+
+  await (admin.from("dept_budget_allocations") as any)
+    .update({ deleted_at: now })
+    .eq("project_id", projectId);
+
+  await (admin.from("allocation_periods") as any)
+    .update({ deleted_at: now })
+    .eq("project_id", projectId);
 }

@@ -115,6 +115,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   if (error) return errorResponse(error.message, 500);
 
+  await (supabase.from("revenue_entries") as any)
+    .update({ deleted_at: now, status: "cancelled" })
+    .eq("contract_id", params.id)
+    .eq("status", "draft")
+    .is("deleted_at", null);
+
   if (contract.contract_type === "incoming" && contract.source_allocation_id) {
     await (supabase.from("dept_budget_allocations") as any)
       .update({ deleted_at: now })

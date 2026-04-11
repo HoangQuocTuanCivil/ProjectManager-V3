@@ -120,6 +120,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   await (admin.from("allocation_periods") as any)
     .update({ deleted_at: now }).eq("project_id", params.id).is("deleted_at", null);
 
+  await (admin.from("dept_budget_allocations") as any)
+    .update({ deleted_at: now }).eq("project_id", params.id);
+
   if (taskIds && taskIds.length > 0) {
     const ids = taskIds.map((t: { id: string }) => t.id);
     await (admin.from("task_workflow_state") as any)

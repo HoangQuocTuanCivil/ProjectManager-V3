@@ -42,9 +42,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     .eq("dept_id", deptId);
   const teamIds = (teams ?? []).map((t: any) => t.id);
 
-  /* Reset dept_id trên bảng có FK đến departments không có ON DELETE SET NULL */
   await admin.from("projects").update({ dept_id: null }).eq("dept_id", deptId);
   await admin.from("goals").update({ dept_id: null }).eq("dept_id", deptId);
+  await admin.from("workflow_templates").update({ dept_id: null }).eq("dept_id", deptId);
+  await admin.from("project_departments").delete().eq("dept_id", deptId);
 
   /* Reset dept_id và team_id của tất cả users thuộc phòng ban */
   await admin
