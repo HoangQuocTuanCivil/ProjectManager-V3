@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, parsePagination } from "@/lib/api/helpers";
+import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole, parsePagination } from "@/lib/api/helpers";
 import { createProjectSchema } from "@/features/projects/schemas/project.schema";
 
 export async function GET(req: NextRequest) {
@@ -37,6 +37,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { user, profile } = await getAuthProfile();
   if (!user || !profile) return errorResponse("Unauthorized", 401);
+
+  const roleErr = requireMinRole(profile, "director");
+  if (roleErr) return errorResponse(roleErr, 403);
 
   const body = await req.json();
   const parsed = createProjectSchema.safeParse(body);

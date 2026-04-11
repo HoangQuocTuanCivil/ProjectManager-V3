@@ -47,14 +47,26 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const admin = getAdminSupabase();
 
-  const { count } = await admin
-    .from("workflow_steps")
-    .select("id", { count: "exact", head: true })
-    .eq("assigned_custom_role", params.id);
+  const [{ count: workflowCount }, { count: userCount }] = await Promise.all([
+    admin
+      .from("workflow_steps")
+      .select("id", { count: "exact", head: true })
+      .eq("assigned_custom_role", params.id),
+    admin
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("custom_role_id", params.id),
+  ]);
 
-  if (count && count > 0) {
+  if (workflowCount && workflowCount > 0) {
     return errorResponse(
-      `Không thể xóa: vai trò đang được sử dụng bởi ${count} bước quy trình`,
+      `Không thể xóa: vai trò đang được sử dụng bởi ${workflowCount} bước quy trình`,
+      409,
+    );
+  }
+  if (userCount && userCount > 0) {
+    return errorResponse(
+      `Không thể xóa: vai trò đang được gán cho ${userCount} người dùng`,
       409,
     );
   }

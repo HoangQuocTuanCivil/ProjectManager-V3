@@ -83,6 +83,18 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const admin = getAdminSupabase();
 
+  const { data: target } = await admin
+    .from("users")
+    .select("org_id, role")
+    .eq("id", targetId)
+    .single();
+
+  if (!target) return errorResponse("Người dùng không tồn tại", 404);
+  if (target.org_id !== profile.org_id) return errorResponse("Forbidden", 403);
+  if (hasMinRole(target.role as UserRole, profile.role as UserRole)) {
+    return errorResponse("Không thể xóa người có vai trò bằng hoặc cao hơn mình", 403);
+  }
+
   await deleteUserDependencies(admin, targetId, user.id);
 
   const { error } = await admin.from("users").delete().eq("id", targetId);

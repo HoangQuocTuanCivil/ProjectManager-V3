@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse } from "@/lib/api/helpers";
+import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole } from "@/lib/api/helpers";
 
 export async function POST(req: NextRequest) {
   const { profile } = await getAuthProfile();
   if (!profile) return errorResponse("Unauthorized", 401);
+
+  const roleErr = requireMinRole(profile, "head");
+  if (roleErr) return errorResponse(roleErr, 403);
 
   const body = await req.json();
   const { type, format = "json", project_id, period_start, period_end } = body;

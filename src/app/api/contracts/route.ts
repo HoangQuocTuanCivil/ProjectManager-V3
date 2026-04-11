@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, parsePagination } from "@/lib/api/helpers";
+import { getAuthProfile, getServerSupabase, jsonResponse, errorResponse, requireMinRole, parsePagination } from "@/lib/api/helpers";
 import { createContractSchema } from "@/features/contracts/schemas/contract.schema";
 
 const CONTRACT_SELECT = `
@@ -46,6 +46,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { user, profile } = await getAuthProfile();
   if (!user || !profile) return errorResponse("Unauthorized", 401);
+
+  const roleErr = requireMinRole(profile, "head");
+  if (roleErr) return errorResponse(roleErr, 403);
 
   const body = await req.json();
   const parsed = createContractSchema.safeParse(body);
