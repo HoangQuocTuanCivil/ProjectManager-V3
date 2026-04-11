@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
         .from("tasks")
         .select("id, title, status, priority, task_type, kpi_weight, progress, expect_score, actual_score, kpi_variance, start_date, deadline, completed_at, assignee:users!tasks_assignee_id_fkey(full_name), project:projects(code, name)")
         .neq("status", "cancelled")
+        .is("deleted_at" as any, null)
         .order("created_at", { ascending: false });
 
       if (project_id) query = query.eq("project_id", project_id);
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
         .from("projects")
         .select("id, code, name, status, budget, allocation_fund, start_date, end_date, client, manager:users!projects_manager_id_fkey(full_name)")
         .neq("status", "archived")
+        .is("deleted_at", null)
         .order("code");
 
       if (error) return errorResponse(error.message, 500);

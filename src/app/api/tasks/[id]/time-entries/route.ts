@@ -22,8 +22,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const body = await req.json();
 
-  if (!body.duration_minutes || body.duration_minutes <= 0) {
-    return errorResponse("Thời gian phải lớn hơn 0", 422);
+  const duration = Number(body.duration_minutes);
+  if (!duration || duration <= 0 || duration > 1440) {
+    return errorResponse("Thời gian phải từ 1 đến 1440 phút (24 giờ)", 422);
   }
 
   const supabase = await getServerSupabase();
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       user_id: user.id,
       start_time: body.start_time || null,
       end_time: body.end_time || null,
-      duration_minutes: body.duration_minutes,
+      duration_minutes: duration,
       description: body.description || null,
       is_billable: body.is_billable ?? false,
     })

@@ -54,7 +54,7 @@ export function useUpdateSetting() {
           org_id: profile!.org_id,
           category,
           key,
-          value: JSON.stringify(value),
+          value,
           updated_by: user!.id,
           updated_at: new Date().toISOString(),
         },

@@ -105,30 +105,29 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     );
   }
 
-  const { data: taskIds } = await (admin
-    .from("tasks") as any)
-    .select("id")
-    .eq("project_id", params.id)
-    .is("deleted_at", null);
+  await (admin.from("contracts") as any)
+    .update({ deleted_at: now }).eq("project_id", params.id).is("deleted_at", null);
 
-  await Promise.all([
-    (admin.from("contracts") as any).update({ deleted_at: now }).eq("project_id", params.id).is("deleted_at", null),
-    (admin.from("tasks") as any).update({ deleted_at: now, status: "cancelled" }).eq("project_id", params.id).is("deleted_at", null),
-    (admin.from("revenue_entries") as any).update({ deleted_at: now, status: "cancelled" }).eq("project_id", params.id).is("deleted_at", null),
-    (admin.from("allocation_periods") as any).update({ deleted_at: now }).eq("project_id", params.id).is("deleted_at", null),
-    ...(taskIds && taskIds.length > 0
-      ? [
-          (admin.from("task_workflow_state") as any)
-            .update({ completed_at: now, result: "cancelled" })
-            .in("task_id", taskIds.map((t: { id: string }) => t.id))
-            .is("completed_at", null),
-          (admin.from("notifications") as any)
-            .update({ is_read: true })
-            .in("task_id", taskIds.map((t: { id: string }) => t.id))
-            .eq("is_read", false),
-        ]
-      : []),
-  ]);
+  const { data: taskIds } = await (admin.from("tasks") as any)
+    .select("id").eq("project_id", params.id).is("deleted_at", null);
+
+  await (admin.from("tasks") as any)
+    .update({ deleted_at: now, status: "cancelled" }).eq("project_id", params.id).is("deleted_at", null);
+
+  await (admin.from("revenue_entries") as any)
+    .update({ deleted_at: now, status: "cancelled" }).eq("project_id", params.id).is("deleted_at", null);
+
+  await (admin.from("allocation_periods") as any)
+    .update({ deleted_at: now }).eq("project_id", params.id).is("deleted_at", null);
+
+  if (taskIds && taskIds.length > 0) {
+    const ids = taskIds.map((t: { id: string }) => t.id);
+    await (admin.from("task_workflow_state") as any)
+      .update({ completed_at: now, result: "cancelled" })
+      .in("task_id", ids).is("completed_at", null);
+    await (admin.from("notifications") as any)
+      .update({ is_read: true }).in("task_id", ids).eq("is_read", false);
+  }
 
   return jsonResponse({ success: true });
 }

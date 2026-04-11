@@ -12,7 +12,7 @@ export const createRevenueEntrySchema = z.object({
   method: recognitionMethod.default("acceptance"),
   source: revenueSource.default("manual"),
   source_id: z.string().uuid().nullish(),
-  amount: z.number().refine((v) => v !== 0, "Số tiền không được bằng 0"),
+  amount: z.number().positive("Số tiền phải lớn hơn 0"),
   description: z.string().min(1, "Mô tả không được để trống").max(2000),
   period_start: z.string().nullish(),
   period_end: z.string().nullish(),

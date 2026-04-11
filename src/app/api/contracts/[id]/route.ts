@@ -93,11 +93,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   if (!contract) return errorResponse("Hợp đồng không tồn tại", 404);
 
-  const { count: confirmedCount } = await supabase
-    .from("revenue_entries")
+  const { count: confirmedCount } = await (supabase
+    .from("revenue_entries") as any)
     .select("id", { count: "exact", head: true })
     .eq("contract_id", params.id)
-    .eq("status", "confirmed");
+    .eq("status", "confirmed")
+    .is("deleted_at", null);
 
   if (confirmedCount && confirmedCount > 0) {
     return errorResponse(
@@ -115,7 +116,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (error) return errorResponse(error.message, 500);
 
   if (contract.contract_type === "incoming" && contract.source_allocation_id) {
-    await supabase.from("dept_budget_allocations").delete().eq("id", contract.source_allocation_id);
+    await (supabase.from("dept_budget_allocations") as any)
+      .update({ deleted_at: now })
+      .eq("id", contract.source_allocation_id);
   }
 
   await (supabase.from("contracts") as any)
