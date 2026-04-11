@@ -65,11 +65,14 @@ export function useUpdateUser() {
       if (!res.ok) throw new Error(data.error || "Lỗi cập nhật");
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.list() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: userKeys.list() });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["kpi", "periods"] });
+    },
   });
 }
 
-/** Xóa tài khoản user */
 export function useDeleteUser() {
   const qc = useQueryClient();
   return useMutation({
@@ -79,7 +82,13 @@ export function useDeleteUser() {
       if (!res.ok) throw new Error(data.error || "Lỗi xóa tài khoản");
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.list() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: userKeys.list() });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: ["kpi", "periods"] });
+    },
   });
 }
 
@@ -94,13 +103,17 @@ export function useBulkDeleteUsers() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Lỗi xóa hàng loạt");
-      return data as { deleted: number; errors?: string[] };
+      return data as { deleted: number; skipped?: number; errors?: string[] };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: userKeys.list() });
       qc.invalidateQueries({ queryKey: ["departments"] });
       qc.invalidateQueries({ queryKey: ["centers"] });
       qc.invalidateQueries({ queryKey: ["teams"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: ["kpi", "periods"] });
     },
   });
 }

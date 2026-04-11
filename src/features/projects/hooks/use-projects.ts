@@ -158,7 +158,9 @@ export function useCreateProject() {
 
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.list() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: projectKeys.all });
+    },
   });
 }
 
@@ -280,6 +282,7 @@ export function useArchiveProject() {
       qc.invalidateQueries({ queryKey: ["contracts"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["revenue"] });
+      qc.invalidateQueries({ queryKey: ["reports"] });
       qc.invalidateQueries({ queryKey: ["kpi"] });
     },
   });
@@ -300,6 +303,7 @@ export function useRestoreProject() {
       qc.invalidateQueries({ queryKey: ["contracts"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["revenue"] });
+      qc.invalidateQueries({ queryKey: ["reports"] });
       qc.invalidateQueries({ queryKey: ["kpi"] });
     },
   });

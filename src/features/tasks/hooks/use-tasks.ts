@@ -181,6 +181,7 @@ export function useCreateTask() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: taskKeys.workload() });
     },
   });
 }
@@ -202,6 +203,7 @@ export function useUpdateTask() {
     onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(data.id) });
+      qc.invalidateQueries({ queryKey: taskKeys.workload() });
       if (vars.assignee_id !== undefined) {
         qc.invalidateQueries({ queryKey: ["kpi", "periods"] });
       }
@@ -236,6 +238,7 @@ export function useEvaluateKPI() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: ["kpi", "periods"] });
     },
   });
 }
@@ -306,6 +309,7 @@ export function useUpdateProgress() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(data.id) });
+      qc.invalidateQueries({ queryKey: taskKeys.workload() });
       qc.invalidateQueries({ queryKey: ["workflows", "pending"] });
     },
   });

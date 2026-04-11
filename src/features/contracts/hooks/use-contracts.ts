@@ -119,11 +119,13 @@ export function useCreateContract() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
   });
 }
 
-/** Cập nhật hợp đồng */
 export function useUpdateContract() {
   const qc = useQueryClient();
   return useMutation({
@@ -160,6 +162,8 @@ export function useDeleteContract() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["kpi"] });
       qc.invalidateQueries({ queryKey: ["revenue"] });
       qc.invalidateQueries({ queryKey: ["reports"] });
@@ -177,7 +181,10 @@ export function useRestoreContract() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
   });
 }
 
@@ -303,11 +310,13 @@ export function useCreateBillingMilestone() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+    },
   });
 }
 
-/** Cập nhật mốc thanh toán (đổi trạng thái, ghi nhận thanh toán) */
 export function useUpdateBillingMilestone() {
   const qc = useQueryClient();
   return useMutation({
@@ -321,11 +330,13 @@ export function useUpdateBillingMilestone() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+    },
   });
 }
 
-/** Xóa mốc thanh toán */
 export function useDeleteBillingMilestone() {
   const qc = useQueryClient();
   return useMutation({
@@ -333,6 +344,9 @@ export function useDeleteBillingMilestone() {
       const { error } = await supabase.from("billing_milestones").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: contractKeys.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contractKeys.all });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
+    },
   });
 }

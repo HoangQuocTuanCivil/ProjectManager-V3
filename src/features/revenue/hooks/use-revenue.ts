@@ -27,6 +27,14 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return json;
 }
 
+function invalidateRevenueDeps(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: revenueKeys.all });
+  qc.invalidateQueries({ queryKey: ["projects"] });
+  qc.invalidateQueries({ queryKey: ["contracts"] });
+  qc.invalidateQueries({ queryKey: ["reports"] });
+  qc.invalidateQueries({ queryKey: ["kpi", "fund-summary"] });
+}
+
 /* ───── Revenue Entries ──────────────────────────────────────── */
 
 export function useRevenueEntries(filters?: {
@@ -59,7 +67,7 @@ export function useCreateRevenueEntry() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }
 
@@ -72,7 +80,7 @@ export function useUpdateRevenueEntry() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }
 
@@ -80,7 +88,7 @@ export function useDeleteRevenueEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiFetch(`/api/revenue/${id}`, { method: "DELETE" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }
 
@@ -88,7 +96,7 @@ export function useConfirmRevenueEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiFetch(`/api/revenue/${id}/confirm`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }
 
@@ -96,7 +104,7 @@ export function useCancelRevenueEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiFetch(`/api/revenue/${id}/cancel`, { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.entries() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }
 
@@ -144,7 +152,7 @@ export function useCreateInternalRevenue() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.internal() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }
 
@@ -159,7 +167,7 @@ export function useUpdateInternalRevenue() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.internal() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }
 
@@ -170,7 +178,7 @@ export function useDeleteInternalRevenue() {
       const { error } = await supabase.from("internal_revenue").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.internal() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }
 
@@ -217,7 +225,7 @@ export function useCreateCostEntry() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.costs() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }
 
@@ -228,6 +236,6 @@ export function useDeleteCostEntry() {
       const { error } = await supabase.from("cost_entries").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: revenueKeys.costs() }),
+    onSuccess: () => invalidateRevenueDeps(qc),
   });
 }

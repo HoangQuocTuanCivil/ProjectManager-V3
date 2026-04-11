@@ -143,11 +143,12 @@ export function useCalculateAllocation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.periods() });
+      qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }
 
-/** Duyệt đợt khoán */
 export function useApproveAllocation() {
   const qc = useQueryClient();
   return useMutation({
@@ -165,11 +166,13 @@ export function useApproveAllocation() {
         .eq("id", periodId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: kpiKeys.periods() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: kpiKeys.periods() });
+      qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
+    },
   });
 }
 
-/** Xóa đợt khoán và kết quả liên quan */
 export function useDeleteAllocationPeriod() {
   const qc = useQueryClient();
   return useMutation({
@@ -186,6 +189,8 @@ export function useDeleteAllocationPeriod() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.periods() });
+      qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 }
@@ -298,13 +303,14 @@ export function useUpsertDeptBudgetAllocation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() });
-      // Cập nhật danh sách HĐ để tab incoming hiện HĐ đầu vào mới
+      qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
       qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
     },
   });
 }
 
-/** Xóa giao khoán và HĐ đầu vào liên quan (source_allocation_id trỏ ngược về allocation) */
 export function useDeleteDeptBudgetAllocation() {
   const qc = useQueryClient();
   return useMutation({
@@ -318,12 +324,14 @@ export function useDeleteDeptBudgetAllocation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() });
+      qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
       qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
     },
   });
 }
 
-/** Cập nhật giao khoán (đơn vị nhận, số tiền, thời gian) và đồng bộ HĐ đầu vào liên quan */
 export function useUpdateDeptBudgetAllocation() {
   const qc = useQueryClient();
   return useMutation({
@@ -380,7 +388,10 @@ export function useUpdateDeptBudgetAllocation() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kpiKeys.budgetAllocations() });
+      qc.invalidateQueries({ queryKey: kpiKeys.fundSummary() });
       qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["revenue"] });
     },
   });
 }
